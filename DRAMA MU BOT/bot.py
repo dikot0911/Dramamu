@@ -235,7 +235,7 @@ def main() -> None:
     application.add_handler(CommandHandler("start", start))
     
     # 2. Nanganin Mini App
-    application.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, handle_webapp_data))
+    application.add_handler(MessageHandler(filters.WEB_APP_DATA, handle_webapp_data)) # <--- INI BENER
     
     # 3. Nanganin AI Agent (Pesan teks biasa)
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, ai_agent_handler))
@@ -492,6 +492,7 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
 
 
 
