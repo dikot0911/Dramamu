@@ -109,7 +109,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     
     keyboard = [
         # Baris 1: Link Grup (URL Eksternal)
-        [InlineKeyboardButton("⭐️ GRUP DRAMA MU OFFICIAL ⭐️", url="https://t.me/grup_lu")], # <-- GANTI URL GRUP LU
+        [InlineKeyboardButton("⭐️ GRUP DRAMA MU OFFICIAL ⭐️", url="https://t.me/dramamuofficial")], # <-- GANTI URL GRUP LU
         
         # Baris 2: Cari Judul & Cari Cuan (2 kolom)
         [
@@ -124,7 +124,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         ],
         
         # Baris 4: Hubungi Kami (Link Eksternal)
-        [InlineKeyboardButton("💬 HUBUNGI KAMI", url="https://t.me/admin_lu")] # <-- GANTI URL ADMIN LU
+        [InlineKeyboardButton("💬 HUBUNGI KAMI", url="https://t.me/kot_dik")] # <-- GANTI URL ADMIN LU
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
@@ -245,3 +245,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
