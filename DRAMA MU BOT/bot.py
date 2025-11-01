@@ -15,7 +15,7 @@ URL_CARI_JUDUL = f"{BASE_URL}/drama.html"
 URL_BELI_VIP = f"{BASE_URL}/payment.html"
 URL_PROFILE = f"{BASE_URL}/profile.html"  # (File ini belum kita bikin)
 URL_REQUEST = f"{BASE_URL}/request.html"
-URL_REFERRAL = f"{BASE_URL}/referal.html
+URL_REFERRAL = f"{BASE_URL}/referal.html"
 # ---
 
 # --- KONEKSI DATABASE (SAMA KAYAK main.py) ---
@@ -212,3 +212,4 @@ def main() -> None:
 if __name__ == "__main__":
 
     main()
+
