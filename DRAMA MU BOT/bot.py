@@ -1,4 +1,4 @@
-import loggingimport logging
+import logging
 import psycopg2
 import json
 import os
@@ -492,5 +492,6 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
 
 
