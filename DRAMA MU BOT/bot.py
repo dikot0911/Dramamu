@@ -1,29 +1,31 @@
 import logging
 import psycopg2
 import json
+import os
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
 from telegram.constants import ParseMode
 
-# --- ⚠️ GANTI INI ⚠️ ---
-BOT_TOKEN = "8480298677:AAEAAjfGYLyixnFoBoaci4GGIo_i9MIlxgo"
+# --- BOT TOKEN (BACA DARI RENDER) ---
+# (Kita asumsikan lu udah ganti tokennya di Render Environment)
+BOT_TOKEN = os.environ.get("8480298677:AAEAAjfGYLyixnFoBoaci4GGIo_i9MIlxgo") 
 
-# --- NANTI INI DIISI URL PUBLIK (NETLIFY/RENDER) SEMUA ---
-BASE_URL = "https://dramamuid.netlify.app" # <-- URL Netlify lu
+# --- URL NETLIFY (UDAH ONLINE) ---
+BASE_URL = "https://dramamuid.netlify.app" 
 
 URL_CARI_JUDUL = f"{BASE_URL}/drama.html"
 URL_BELI_VIP = f"{BASE_URL}/payment.html"
-URL_PROFILE = f"{BASE_URL}/profile.html"  # (File ini belum kita bikin)
+URL_PROFILE = f"{BASE_URL}/profile.html"
 URL_REQUEST = f"{BASE_URL}/request.html"
 URL_REFERRAL = f"{BASE_URL}/referal.html"
 # ---
 
-# --- KONEKSI DATABASE (SAMA KAYAK main.py) ---
-DB_HOST = "aws-1-ap-southeast-2.pooler.supabase.com"
-DB_PORT = "6543"
-DB_NAME = "postgres"
-DB_USER = "postgres.geczfycekxkeiubbajz" # (Yang udah bener)
-DB_PASS = "Kk02199542527"
+# --- KONEKSI DATABASE (BACA DARI RENDER) ---
+DB_HOST = os.environ.get("DB_HOST")
+DB_PORT = os.environ.get("DB_PORT")
+DB_NAME = os.environ.get("DB_NAME")
+DB_USER = os.environ.get("DB_USER")
+DB_PASS = os.environ.get("DB_PASS")
 # ---
 
 # String koneksi database
@@ -61,7 +63,6 @@ def check_vip_status(telegram_id: int) -> bool:
         if user and user[0] == True:
             is_vip = True
         elif not user:
-            # Kalo user belum ada, daftarin
             cur.execute(
                 "INSERT INTO users (telegram_id, is_vip) VALUES (%s, %s)",
                 (telegram_id, False)
@@ -85,7 +86,6 @@ def get_movie_details(movie_id: int) -> dict:
     movie = None
     try:
         cur = conn.cursor()
-        # Ambil kolom yang kita perluin
         cur.execute("SELECT title, video_link FROM movies WHERE id = %s;", (movie_id,))
         movie_data = cur.fetchone()
         
@@ -105,32 +105,45 @@ def get_movie_details(movie_id: int) -> dict:
 
 # --- FUNGSI 1: TAMPILIN MENU UTAMA (/start) ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Mengirim panel menu utama (SEMUA TOMBOL MINI APP)."""
+    """Mengirim panel menu utama (LAYOUT BARU 2x2)."""
     
     keyboard = [
-        # Baris 1: Cari Judul (Mini App)
-        [InlineKeyboardButton("🎬 Cari Judul v1 [□]", web_app=WebAppInfo(url=URL_CARI_JUDUL))],
+        # Baris 1: Link Grup (URL Eksternal)
+        [InlineKeyboardButton("⭐️ GRUP DRAMA MU OFFICIAL ⭐️", url="https://t.me/grup_lu")], # <-- GANTI URL GRUP LU
         
-        # Baris 2: Beli VIP & Profile
+        # Baris 2: Cari Judul & Cari Cuan (2 kolom)
         [
-            InlineKeyboardButton("💎 Beli VIP [□]", web_app=WebAppInfo(url=URL_BELI_VIP)),
-            InlineKeyboardButton("👤 Profile [□]", web_app=WebAppInfo(url=URL_PROFILE))
+            InlineKeyboardButton("🎬 CARI JUDUL [□]", web_app=WebAppInfo(url=URL_CARI_JUDUL)),
+            InlineKeyboardButton("💰 CARI CUAN [□]", web_app=WebAppInfo(url=URL_REFERRAL))
         ],
         
-        # Baris 3: Request & Referral
+        # Baris 3: Beli VIP & Req Drama (2 kolom)
         [
-            InlineKeyboardButton("📝 Request Drama [□]", web_app=WebAppInfo(url=URL_REQUEST)),
-            InlineKeyboardButton("💰 Cari Cuan (Referral)", callback_data="coming_soon") # (Contoh tombol biasa)
-        ]
+            InlineKeyboardButton("💎 BELI VIP [□]", web_app=WebAppInfo(url=URL_BELI_VIP)),
+            InlineKeyboardButton("📝 REQ DRAMA [□]", web_app=WebAppInfo(url=URL_REQUEST))
+        ],
+        
+        # Baris 4: Hubungi Kami (Link Eksternal)
+        [InlineKeyboardButton("💬 HUBUNGI KAMI", url="https://t.me/admin_lu")] # <-- GANTI URL ADMIN LU
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    await update.message.reply_photo(
-        photo=open("poster.jpg", "rb"), # (Pastiin ada file poster.jpg di folder lu)
-        caption="Selamat datang di Dramamu 🎬\n"
-                "Silakan pilih menu di bawah:",
-        reply_markup=reply_markup
-    )
+    try:
+        # Coba kirim foto
+        await update.message.reply_photo(
+            photo=open("poster.jpg", "rb"), # (File poster.jpg lu udah di GitHub)
+            caption="Selamat datang di Dramamu 🎬\n"
+                    "Dunia drama dari semua aplikasi, cukup segelas kopi harganya ☕",
+            reply_markup=reply_markup
+        )
+    except Exception as e:
+        logger.error(f"Gagal kirim foto: {e}. Coba kirim teks aja.")
+        # Kalo gagal (misal file gak ada), kirim teks aja biar bot gak crash
+        await update.message.reply_text(
+            text="Selamat datang di Dramamu 🎬\n"
+                 "Silakan pilih menu di bawah:",
+            reply_markup=reply_markup
+        )
 
 # --- FUNGSI 2: NANGANIN DATA DARI MINI APP (PALING PENTING) ---
 async def handle_webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -171,45 +184,64 @@ async def handle_webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 )
         
         elif action == "request_drama":
-            # --- Alur Request Drama (BARU) ---
+            # --- Alur Request Drama ---
             judul = data.get("judul")
             apk = data.get("apk")
-            
-            # (Nanti lu bisa simpen ini ke DB atau kirim ke chat admin)
             logger.info(f"REQUEST BARU DARI {user_id}: Judul: {judul}, APK: {apk}")
-            
-            # Kasih konfirmasi ke user
             await context.bot.send_message(
                 chat_id=user_id,
                 text=f"✅ Request lu buat film '{judul}' (dari {apk}) udah kami terima, bre!"
             )
             
-        # (Nanti kita tambahin 'elif action == "withdraw_referral"' di sini)
+        elif action == "withdraw_referral":
+            # --- Alur Penarikan ---
+            data_penarikan = {
+                "jumlah": data.get("jumlah"),
+                "metode": data.get("metode"),
+                "nomor": data.get("nomor_rekening"),
+                "nama": data.get("nama_pemilik")
+            }
+            logger.info(f"PENARIKAN BARU DARI {user_id}: {data_penarikan}")
+            await context.bot.send_message(
+                chat_id=user_id,
+                text=f"✅ Request penarikan lu (Rp {data_penarikan['jumlah']}) udah kami terima. "
+                     "Akan diproses admin 1x24 jam."
+            )
     
     except Exception as e:
         logger.error(f"Error pas nanganin data WebApp: {e}")
         await context.bot.send_message(chat_id=user_id, text=f"Aduh bre, ada error: {e}")
 
+# --- FUNGSI 3: NANGANIN AI AGENT (opsional) ---
+async def ai_agent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user_message = update.message.text
+    jawaban_ai = f"AI Agent lagi nanganin pesan lu: '{user_message}' (Ini masih dummy)"
+    await update.message.reply_text(jawaban_ai)
 
 # --- FUNGSI UTAMA (MAIN) ---
 def main() -> None:
     """Fungsi utama untuk menjalankan bot."""
-    print("Bot (Arsitektur BARU) sedang berjalan... (Tekan Ctrl+C untuk berhenti)")
+    
+    # Cek kalo TOKEN ada
+    if not BOT_TOKEN:
+        logger.error("BOT_TOKEN tidak ditemukan! Matiin bot.")
+        return
+        
+    logger.info("Bot (Versi FINAL) sedang berjalan...")
     
     application = Application.builder().token(BOT_TOKEN).build()
 
-    # Perintah /start
+    # 1. Nanganin /start
     application.add_handler(CommandHandler("start", start))
     
-    # INI HANDLER BARU: Nangkep data yg dikirim dari Mini App
+    # 2. Nanganin Mini App
     application.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, handle_webapp_data))
     
-    # (Nanti kita tambahin CallbackQueryHandler buat nanganin tombol 'Part 1', 'Part 2', dll)
+    # 3. Nanganin AI Agent (Pesan teks biasa)
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, ai_agent_handler))
     
     # Mulai bot
     application.run_polling()
 
 if __name__ == "__main__":
-
     main()
-
