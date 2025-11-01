@@ -9,11 +9,13 @@ from telegram.constants import ParseMode
 BOT_TOKEN = "8480298677:AAEAAjfGYLyixnFoBoaci4GGIo_i9MIlxgo"
 
 # --- NANTI INI DIISI URL PUBLIK (NETLIFY/RENDER) SEMUA ---
-# Kita bikin 4 URL beda buat 4 Mini App
-URL_CARI_JUDUL = "http://127.0.0.1:8000/drama.html" # <- Nanti ini diganti
-URL_BELI_VIP = "http://127.0.0.1:8000/payment.html" # <- Nanti ini diganti
-URL_PROFILE = "http://127.0.0.1:8000/profile.html" # <- Nanti ini diganti
-URL_REQUEST = "http://127.0.0.1:8000/request.html" # <- Nanti ini diganti
+BASE_URL = "https://dramamuid.netlify.app" # <-- URL Netlify lu
+
+URL_CARI_JUDUL = f"{BASE_URL}/drama.html"
+URL_BELI_VIP = f"{BASE_URL}/payment.html"
+URL_PROFILE = f"{BASE_URL}/profile.html"  # (File ini belum kita bikin)
+URL_REQUEST = f"{BASE_URL}/request.html"
+URL_REFERRAL = f"{BASE_URL}/referal.html
 # ---
 
 # --- KONEKSI DATABASE (SAMA KAYAK main.py) ---
@@ -208,4 +210,5 @@ def main() -> None:
     application.run_polling()
 
 if __name__ == "__main__":
+
     main()
