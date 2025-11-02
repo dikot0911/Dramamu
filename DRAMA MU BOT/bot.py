@@ -175,7 +175,7 @@ async def handle_webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE)
                     await context.bot.send_message(chat_id=user_id, text="Aduh, film-nya gak ketemu di database.")
             else:
                 # USER BELUM VIP
-                keyboard = [[InlineKeyboardButton("💎 Beli VIP Sekarang [□]", web_app=WebAppInfo(url=URL_BELI_VIP))]]
+                keyboard = [[InlineKeyboardButton("💎 Beli VIP Sekarang [□]", web_app=WebAppInfo(url=URL_BELI_VIP)))]]
                 await context.bot.send_message(
                     chat_id=user_id,
                     text="Anda belum VIP. 💎\nSilakan gabung VIP untuk menonton.",
@@ -234,7 +234,7 @@ def main() -> None:
     application.add_handler(CommandHandler("start", start))
     
     # 2. Nanganin Mini App (FILTER YANG BENER)
-    application.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, handle_webapp_data)) # <--- INI BENER
+    application.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, handle_webapp_data))
     
     # 3. Nanganin AI Agent (Pesan teks biasa)
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, ai_agent_handler))
@@ -244,4 +244,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
