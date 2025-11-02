@@ -281,8 +281,7 @@ def main():
     # === HANDLER ===
     app.add_handler(CommandHandler("start", start))
     
-    # HAPUS HANDLER YANG BIKIN CRASH (filters.StatusUpdate.WEB_APP_DATA)
-    # TINGGALIN HANDLER filters.ALL (LOGIKA LU UDAH BENER)
+    # Hapus handler ganda, pake ini aja (logika lu udah bener)
     app.add_handler(MessageHandler(filters.ALL, handle_webapp_data), group=-1)
     
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, ai_agent_handler), group=1)
