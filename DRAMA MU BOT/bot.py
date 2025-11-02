@@ -281,7 +281,7 @@ def main():
     # === HANDLER ===
     app.add_handler(CommandHandler("start", start))
     
-    # Hapus handler ganda, pake ini aja (logika lu udah bener)
+    # INI HANDLER YANG BENER (LOGIKA LU)
     app.add_handler(MessageHandler(filters.ALL, handle_webapp_data), group=-1)
     
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, ai_agent_handler), group=1)
@@ -292,4 +292,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
