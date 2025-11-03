@@ -282,7 +282,7 @@ def main():
 
     # 2. Handler Mini App (Spesifik cuma nangkep data WebApp)
     # ⚠️ PENTING: filters.StatusUpdate.WEB_APP_DATA
-    app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, handle_webapp_data))
+    app.add_handler(MessageHandler(filters.ALL, handle_webapp_data), group=-1)
 
     # 3. Handler AI Agent (Nangkep sisa teks biasa)
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, ai_agent_handler))
@@ -296,3 +296,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
