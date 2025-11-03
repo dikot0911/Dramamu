@@ -2,15 +2,14 @@ import logging
 import psycopg2
 import json
 import os
-from aiohttp import web
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, ParseMode
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
+from telegram.constants import ParseMode
 
 # ==========================================================
 # 🔧 KONFIGURASI DASAR
 # ==========================================================
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
-ADMIN_ID = int(os.environ.get("ADMIN_ID", 0))
 
 BASE_URL = "https://dramamuid.netlify.app"
 URL_CARI_JUDUL = f"{BASE_URL}/drama.html"
@@ -20,7 +19,7 @@ URL_REQUEST = f"{BASE_URL}/request.html"
 URL_REFERRAL = f"{BASE_URL}/referal.html"
 
 # ==========================================================
-# 📦 DATABASE CONFIG
+# 📦 DATABASE CONFIG (POSTGRESQL)
 # ==========================================================
 DB_HOST = os.environ.get("DB_HOST")
 DB_PORT = os.environ.get("DB_PORT")
@@ -29,72 +28,87 @@ DB_USER = os.environ.get("DB_USER")
 DB_PASS = os.environ.get("DB_PASS")
 
 conn_string = None
-if all([DB_NAME, DB_USER, DB_HOST, DB_PORT, DB_PASS]):
+if DB_NAME and DB_USER and DB_HOST and DB_PORT and DB_PASS:
     conn_string = f"dbname='{DB_NAME}' user='{DB_USER}' host='{DB_HOST}' port='{DB_PORT}' password='{DB_PASS}'"
 
 # ==========================================================
 # 🪵 LOGGING
 # ==========================================================
 logging.basicConfig(
-    format="%(asctime)s - %(levelname)s - %(message)s", level=logging.INFO
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
 logger = logging.getLogger("dramamu-bot")
 
+
 # ==========================================================
-# 🧩 DATABASE
+# 🧩 HELPER: DATABASE CONNECTION
 # ==========================================================
 def get_db_connection():
     if not conn_string:
-        logger.error("DB belum dikonfigurasi!")
+        logger.error("DB connection string belum lengkap!")
         return None
     try:
-        return psycopg2.connect(conn_string)
+        conn = psycopg2.connect(conn_string)
+        return conn
     except Exception as e:
         logger.error(f"Gagal konek DB: {e}")
         return None
 
 
+# ==========================================================
+# 💎 CEK STATUS VIP USER
+# ==========================================================
 def check_vip_status(telegram_id: int) -> bool:
     conn = get_db_connection()
     if not conn:
         return False
+
+    is_vip = False
     try:
         cur = conn.cursor()
         cur.execute("SELECT is_vip FROM users WHERE telegram_id = %s;", (telegram_id,))
         user = cur.fetchone()
-        if user and user[0]:
-            return True
-        else:
+
+        if user and user[0] is True:
+            is_vip = True
+        elif not user:
             cur.execute(
-                "INSERT INTO users (telegram_id, is_vip) VALUES (%s, %s) ON CONFLICT (telegram_id) DO NOTHING;",
+                "INSERT INTO users (telegram_id, is_vip) VALUES (%s, %s)",
                 (telegram_id, False),
             )
             conn.commit()
-            return False
+        cur.close()
     except Exception as e:
         logger.error(f"Error cek VIP: {e}")
-        return False
     finally:
-        conn.close()
+        if conn:
+            conn.close()
+
+    return is_vip
 
 
-def get_movie_details(movie_id: int) -> dict | None:
+# ==========================================================
+# 🎬 AMBIL DETAIL FILM
+# ==========================================================
+def get_movie_details(movie_id: int) -> dict:
     conn = get_db_connection()
     if not conn:
         return None
+
+    movie = None
     try:
         cur = conn.cursor()
         cur.execute("SELECT title, video_link FROM movies WHERE id = %s;", (movie_id,))
         row = cur.fetchone()
+        if row:
+            movie = {"title": row[0], "video_link": row[1]}
         cur.close()
-        if not row:
-            return None
-        return {"title": row[0], "video_link": row[1]}
     except Exception as e:
         logger.error(f"Error ambil movie: {e}")
-        return None
     finally:
-        conn.close()
+        if conn:
+            conn.close()
+    return movie
 
 
 # ==========================================================
@@ -113,6 +127,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ],
         [InlineKeyboardButton("💬 HUBUNGI KAMI", url="https://t.me/kot_dik")],
     ]
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
     caption = (
         "🎬 <b>Selamat datang di Dramamu</b>\n\n"
         "Nonton semua drama favorit cuma segelas kopi ☕\n"
@@ -120,64 +137,44 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     try:
-        await update.message.reply_photo(
-            photo=open("poster.jpg", "rb"),
-            caption=caption,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode=ParseMode.HTML,
-        )
-    except Exception:
-        await update.message.reply_text(
-            caption, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode=ParseMode.HTML
-        )
+        if os.path.exists("poster.jpg"):
+            with open("poster.jpg", "rb") as img:
+                await update.message.reply_photo(
+                    photo=img, caption=caption, reply_markup=reply_markup, parse_mode=ParseMode.HTML
+                )
+        else:
+            await update.message.reply_text(caption, reply_markup=reply_markup, parse_mode=ParseMode.HTML)
+    except Exception as e:
+        logger.error(f"Gagal kirim /start: {e}")
+        await update.message.reply_text("Halo bre! Pilih menu di bawah 👇", reply_markup=reply_markup)
 
 
 # ==========================================================
-# 🛰 HANDLER WEBAPP DATA VIA TELEGRAM SENDDATA
+# 📡 HANDLER WEBAPP DATA
 # ==========================================================
 async def handle_webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.message or not getattr(update.message, "web_app_data", None):
+    # Dia nangkep data yang nempel di 'update.message'
+    if not update.message or not update.message.web_app_data:
+        logger.warning("Handler WebApp dipanggil tapi tidak ada data.")
         return
 
+    data_str = update.message.web_app_data.data
     user_id = update.effective_user.id
+    
+    logger.info(f"📨 Data diterima dari {user_id}: {data_str}")
+
+    # decode JSON
     try:
-        data = json.loads(update.message.web_app_data.data)
-    except Exception:
-        await context.bot.send_message(user_id, "Data WebApp tidak valid bre.")
+        data = json.loads(data_str)
+    except json.JSONDecodeError:
+        await context.bot.send_message(chat_id=user_id, text="Data dari WebApp tidak valid, bre.")
         return
 
-    await process_webapp_action(context, user_id, data)
-
-
-# ==========================================================
-# 🌐 HANDLER WEBAPP VIA HTTP POST (buat fetch() dari HTML)
-# ==========================================================
-async def webapp_post(request: web.Request):
-    try:
-        payload = await request.json()
-        user_id = payload.get("user_id")
-        data = payload.get("data", {})
-
-        if not user_id:
-            return web.Response(status=400, text="user_id kosong")
-
-        app: Application = request.app["telegram_app"]
-        context = type("FakeCtx", (), {"bot": app.bot})()  # bikin context dummy
-
-        await process_webapp_action(context, user_id, data)
-        return web.Response(text="OK")
-    except Exception as e:
-        logger.error(f"WebApp POST error: {e}")
-        return web.Response(status=400, text=f"Error: {e}")
-
-
-# ==========================================================
-# 🧠 PROSES AKSI DARI MINI APP
-# ==========================================================
-async def process_webapp_action(context, user_id, data):
     action = data.get("action")
 
-    # === Aksi Nonton Drama ===
+    # =============================
+    # 1️⃣ AKSI NONTON DRAMA
+    # =============================
     if action == "watch":
         movie_id = int(data.get("movie_id", 0))
         if not movie_id:
@@ -189,6 +186,7 @@ async def process_webapp_action(context, user_id, data):
             if not movie:
                 await context.bot.send_message(chat_id=user_id, text="Film gak ditemukan di database.")
                 return
+
             try:
                 await context.bot.send_video(
                     chat_id=user_id,
@@ -200,64 +198,101 @@ async def process_webapp_action(context, user_id, data):
                 logger.error(f"Gagal kirim video: {e}")
                 await context.bot.send_message(chat_id=user_id, text=f"🎬 {movie['title']}\n{movie['video_link']}")
         else:
-            keyboard = [
-                [InlineKeyboardButton("💎 Beli VIP Sekarang", web_app=WebAppInfo(url=URL_BELI_VIP))]
-            ]
+            keyboard = [[InlineKeyboardButton("💎 Beli VIP Sekarang [□]", web_app=WebAppInfo(url=URL_BELI_VIP))]]
             await context.bot.send_message(
                 chat_id=user_id,
-                text="🚫 Kamu belum VIP. Klik di bawah buat upgrade 💎",
+                text="🚫 Anda belum VIP.\nGabung VIP biar bisa nonton full, bre!",
                 reply_markup=InlineKeyboardMarkup(keyboard),
             )
 
+    # =============================
+    # 2️⃣ AKSI REQUEST DRAMA
+    # =============================
     elif action == "request_drama":
-        await context.bot.send_message(user_id, f"✅ Request '{data.get('judul')}' udah kami terima!")
+        judul = data.get("judul", "-")
+        apk = data.get("apk", "-")
+        logger.info(f"📝 REQUEST: {user_id} — {judul} dari {apk}")
+        await context.bot.send_message(chat_id=user_id, text=f"✅ Request '{judul}' (dari {apk}) udah kami terima!")
 
+    # =============================
+    # 3️⃣ AKSI WITHDRAW REFERRAL
+    # =============================
     elif action == "withdraw_referral":
-        await context.bot.send_message(user_id, f"✅ Penarikan Rp {data.get('jumlah')} sedang diproses, bre!")
+        jumlah = data.get("jumlah")
+        metode = data.get("metode")
+        nomor = data.get("nomor_rekening")
+        nama = data.get("nama_pemilik")
 
+        logger.info(f"💸 PENARIKAN: {user_id} — Rp{jumlah} via {metode} ({nama} - {nomor})")
+        await context.bot.send_message(
+            chat_id=user_id,
+            text=f"✅ Request penarikan Rp {jumlah} udah diterima.\nDiproses admin dalam 1x24 jam.",
+        )
+
+    # =============================
+    # ❓AKSI TIDAK DIKENALI
+    # =============================
     else:
-        await context.bot.send_message(user_id, "⚠️ Aksi tidak dikenal.")
+        logger.warning(f"Aksi tidak dikenal: {action}")
+        await context.bot.send_message(chat_id=user_id, text="⚠️ Aksi tidak dikenali dari WebApp.")
 
 
 # ==========================================================
-# 💬 HANDLER PESAN BIASA
+# 💬 HANDLER PESAN BIASA (AI AGENT)
 # ==========================================================
 async def ai_agent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.message or getattr(update.message, "web_app_data", None):
+    msg = update.effective_message
+    # Cek kalo ini teks biasa DAN BUKAN data webapp
+    if not msg or not msg.text or getattr(msg, "web_app_data", None):
         return
-    await update.message.reply_text(f"🤖 Pesan lo: {update.message.text}")
+        
+    user_msg = msg.text
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=f"🤖 AI belum aktif, bre. Pesan: {user_msg}")
 
 
 # ==========================================================
-# ⚙️ MAIN
+# ⚠️ GLOBAL ERROR HANDLER
 # ==========================================================
-async def main():
+async def global_error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logger.error(f"Global error: {context.error}", exc_info=context.error)
+    admin_id = os.environ.get("ADMIN_ID")
+    if admin_id:
+        try:
+            await context.bot.send_message(chat_id=int(admin_id), text=f"⚠️ Bot error: {context.error}")
+        except Exception:
+            pass
+
+
+# ==========================================================
+# 🧠 MAIN FUNCTION
+# ==========================================================
+def main():
     if not BOT_TOKEN:
-        logger.error("BOT_TOKEN kosong bre!")
+        logger.error("BOT_TOKEN kosong, bre! Set env-nya dulu.")
         return
 
-    logger.info("🚀 Dramamu Bot aktif & siap terima data dari MiniApp")
+    logger.info("🚀 Dramamu Bot (Versi v20 FINAL) sudah jalan...")
 
     app = Application.builder().token(BOT_TOKEN).build()
+
+    # === HANDLER (INI VERSI YANG BENER) ===
+    
+    # 1. Handler /start (Jalan duluan)
     app.add_handler(CommandHandler("start", start))
+
+    # 2. Handler Mini App (Spesifik cuma nangkep data WebApp)
+    # ⚠️ PENTING: filters.StatusUpdate.WEB_APP_DATA
     app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, handle_webapp_data))
+
+    # 3. Handler AI Agent (Nangkep sisa teks biasa)
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, ai_agent_handler))
 
-    # === Tambah HTTP server untuk POST ===
-    web_app = web.Application()
-    web_app["telegram_app"] = app
-    web_app.router.add_post("/webapp", webapp_post)
-
-    runner = web.AppRunner(web_app)
-    await runner.setup()
-    site = web.TCPSite(runner, "0.0.0.0", int(os.environ.get("PORT", 8080)))
-    await site.start()
-
-    await app.start()
-    await app.updater.start_polling()
-    await app.updater.idle()
+    # 4. Error handler global
+    app.add_error_handler(global_error_handler)
+    
+    # Mulai bot (polling)
+    app.run_polling()
 
 
 if __name__ == "__main__":
-    import asyncio
-    asyncio.run(main())
+    main()
