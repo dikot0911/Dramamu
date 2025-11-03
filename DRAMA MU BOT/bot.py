@@ -2,14 +2,16 @@ import logging
 import psycopg2
 import json
 import os
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, ParseMode
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
 from telegram.constants import ParseMode
+from aiohttp import web
 
 # ==========================================================
 # 🔧 KONFIGURASI DASAR
 # ==========================================================
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
+ADMIN_ID = int(os.environ.get("ADMIN_ID", 0))
 
 BASE_URL = "https://dramamuid.netlify.app"
 URL_CARI_JUDUL = f"{BASE_URL}/drama.html"
@@ -39,9 +41,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger("dramamu-bot")
 
-
 # ==========================================================
-# 🧩 HELPER: DATABASE CONNECTION
+# 🧩 DATABASE CONNECTION
 # ==========================================================
 def get_db_connection():
     if not conn_string:
@@ -54,7 +55,6 @@ def get_db_connection():
         logger.error(f"Gagal konek DB: {e}")
         return None
 
-
 # ==========================================================
 # 💎 CEK STATUS VIP USER
 # ==========================================================
@@ -62,13 +62,11 @@ def check_vip_status(telegram_id: int) -> bool:
     conn = get_db_connection()
     if not conn:
         return False
-
     is_vip = False
     try:
         cur = conn.cursor()
         cur.execute("SELECT is_vip FROM users WHERE telegram_id = %s;", (telegram_id,))
         user = cur.fetchone()
-
         if user and user[0] is True:
             is_vip = True
         elif not user:
@@ -83,9 +81,7 @@ def check_vip_status(telegram_id: int) -> bool:
     finally:
         if conn:
             conn.close()
-
     return is_vip
-
 
 # ==========================================================
 # 🎬 AMBIL DETAIL FILM
@@ -94,7 +90,6 @@ def get_movie_details(movie_id: int) -> dict:
     conn = get_db_connection()
     if not conn:
         return None
-
     movie = None
     try:
         cur = conn.cursor()
@@ -109,7 +104,6 @@ def get_movie_details(movie_id: int) -> dict:
         if conn:
             conn.close()
     return movie
-
 
 # ==========================================================
 # 🚀 HANDLER /start
@@ -127,15 +121,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ],
         [InlineKeyboardButton("💬 HUBUNGI KAMI", url="https://t.me/kot_dik")],
     ]
-
     reply_markup = InlineKeyboardMarkup(keyboard)
-
     caption = (
         "🎬 <b>Selamat datang di Dramamu</b>\n\n"
         "Nonton semua drama favorit cuma segelas kopi ☕\n"
         "Pilih menu di bawah, bre!"
     )
-
     try:
         if os.path.exists("poster.jpg"):
             with open("poster.jpg", "rb") as img:
@@ -148,22 +139,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.error(f"Gagal kirim /start: {e}")
         await update.message.reply_text("Halo bre! Pilih menu di bawah 👇", reply_markup=reply_markup)
 
-
 # ==========================================================
-# 📡 HANDLER WEBAPP DATA
+# 📡 HANDLER WEBAPP DATA (filters khusus)
 # ==========================================================
 async def handle_webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Dia nangkep data yang nempel di 'update.message'
-    if not update.message or not update.message.web_app_data:
+    if not update.message or not getattr(update.message, "web_app_data", None):
         logger.warning("Handler WebApp dipanggil tapi tidak ada data.")
         return
-
     data_str = update.message.web_app_data.data
     user_id = update.effective_user.id
-    
     logger.info(f"📨 Data diterima dari {user_id}: {data_str}")
 
-    # decode JSON
     try:
         data = json.loads(data_str)
     except json.JSONDecodeError:
@@ -186,7 +172,6 @@ async def handle_webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE)
             if not movie:
                 await context.bot.send_message(chat_id=user_id, text="Film gak ditemukan di database.")
                 return
-
             try:
                 await context.bot.send_video(
                     chat_id=user_id,
@@ -222,46 +207,36 @@ async def handle_webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE)
         metode = data.get("metode")
         nomor = data.get("nomor_rekening")
         nama = data.get("nama_pemilik")
-
         logger.info(f"💸 PENARIKAN: {user_id} — Rp{jumlah} via {metode} ({nama} - {nomor})")
         await context.bot.send_message(
             chat_id=user_id,
             text=f"✅ Request penarikan Rp {jumlah} udah diterima.\nDiproses admin dalam 1x24 jam.",
         )
 
-    # =============================
-    # ❓AKSI TIDAK DIKENALI
-    # =============================
     else:
         logger.warning(f"Aksi tidak dikenal: {action}")
         await context.bot.send_message(chat_id=user_id, text="⚠️ Aksi tidak dikenali dari WebApp.")
 
-
 # ==========================================================
-# 💬 HANDLER PESAN BIASA (AI AGENT)
+# 💬 HANDLER PESAN BIASA
 # ==========================================================
 async def ai_agent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = update.effective_message
-    # Cek kalo ini teks biasa DAN BUKAN data webapp
     if not msg or not msg.text or getattr(msg, "web_app_data", None):
         return
-        
     user_msg = msg.text
     await context.bot.send_message(chat_id=update.effective_chat.id, text=f"🤖 AI belum aktif, bre. Pesan: {user_msg}")
-
 
 # ==========================================================
 # ⚠️ GLOBAL ERROR HANDLER
 # ==========================================================
 async def global_error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.error(f"Global error: {context.error}", exc_info=context.error)
-    admin_id = os.environ.get("ADMIN_ID")
-    if admin_id:
+    if ADMIN_ID:
         try:
-            await context.bot.send_message(chat_id=int(admin_id), text=f"⚠️ Bot error: {context.error}")
+            await context.bot.send_message(chat_id=ADMIN_ID, text=f"⚠️ Bot error: {context.error}")
         except Exception:
             pass
-
 
 # ==========================================================
 # 🧠 MAIN FUNCTION
@@ -271,29 +246,17 @@ def main():
         logger.error("BOT_TOKEN kosong, bre! Set env-nya dulu.")
         return
 
-    logger.info("🚀 Dramamu Bot (Versi v20 FINAL) sudah jalan...")
+    logger.info("🚀 Dramamu Bot (Versi v21 FINAL) sudah jalan...")
 
     app = Application.builder().token(BOT_TOKEN).build()
 
-    # === HANDLER (INI VERSI YANG BENER) ===
-    
-    # 1. Handler /start (Jalan duluan)
+    # === HANDLER ===
     app.add_handler(CommandHandler("start", start))
-
-    # 2. Handler Mini App (Spesifik cuma nangkep data WebApp)
-    # ⚠️ PENTING: filters.StatusUpdate.WEB_APP_DATA
-    app.add_handler(MessageHandler(filters.ALL, handle_webapp_data), group=-1)
-
-    # 3. Handler AI Agent (Nangkep sisa teks biasa)
+    app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, handle_webapp_data), group=-1)
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, ai_agent_handler))
-
-    # 4. Error handler global
     app.add_error_handler(global_error_handler)
-    
-    # Mulai bot (polling)
-    app.run_polling()
 
+    app.run_polling()
 
 if __name__ == "__main__":
     main()
-
