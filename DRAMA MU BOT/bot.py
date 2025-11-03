@@ -118,12 +118,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("⭐️ GRUP DRAMA MU OFFICIAL ⭐️", url="https://t.me/dramamuofficial")],
         [
-            InlineKeyboardButton("🎬 CARI JUDUL [□]", web_app=WebAppInfo(url=URL_CARI_JUDUL)),
-            InlineKeyboardButton("💰 CARI CUAN [□]", web_app=WebAppInfo(url=URL_REFERRAL)),
+            InlineKeyboardButton("🎬 CARI JUDUL", web_app=WebAppInfo(url=URL_CARI_JUDUL)),
+            InlineKeyboardButton("💰 CARI CUAN", web_app=WebAppInfo(url=URL_REFERRAL)),
         ],
         [
-            InlineKeyboardButton("💎 BELI VIP [□]", web_app=WebAppInfo(url=URL_BELI_VIP)),
-            InlineKeyboardButton("📝 REQ DRAMA [□]", web_app=WebAppInfo(url=URL_REQUEST)),
+            InlineKeyboardButton("💎 BELI VIP", web_app=WebAppInfo(url=URL_BELI_VIP)),
+            InlineKeyboardButton("📝 REQ DRAMA", web_app=WebAppInfo(url=URL_REQUEST)),
         ],
         [InlineKeyboardButton("💬 HUBUNGI KAMI", url="https://t.me/kot_dik")],
     ]
@@ -153,19 +153,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # 📡 HANDLER WEBAPP DATA
 # ==========================================================
 async def handle_webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    message = update.effective_message
-    user_id = update.effective_user.id if update.effective_user else None
-
-    # (Logika lu udah bener)
-    # cek apakah pesan mengandung web_app_data
-    if not message or not getattr(message, "web_app_data", None):
+    # Dia nangkep data yang nempel di 'update.message'
+    if not update.message or not update.message.web_app_data:
+        logger.warning("Handler WebApp dipanggil tapi tidak ada data.")
         return
 
-    data_str = message.web_app_data.data
-    if not data_str:
-        logger.warning("⚠️ WebApp data kosong.")
-        return
-
+    data_str = update.message.web_app_data.data
+    user_id = update.effective_user.id
+    
     logger.info(f"📨 Data diterima dari {user_id}: {data_str}")
 
     # decode JSON
@@ -247,8 +242,10 @@ async def handle_webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE)
 # ==========================================================
 async def ai_agent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = update.effective_message
-    if not msg or not msg.text or msg.web_app_data:
+    # Cek kalo ini teks biasa DAN BUKAN data webapp
+    if not msg or not msg.text or getattr(msg, "web_app_data", None):
         return
+        
     user_msg = msg.text
     await context.bot.send_message(chat_id=update.effective_chat.id, text=f"🤖 AI belum aktif, bre. Pesan: {user_msg}")
 
@@ -274,23 +271,28 @@ def main():
         logger.error("BOT_TOKEN kosong, bre! Set env-nya dulu.")
         return
 
-    logger.info("🚀 Dramamu Bot sudah jalan...")
+    logger.info("🚀 Dramamu Bot (Versi v20 FINAL) sudah jalan...")
 
     app = Application.builder().token(BOT_TOKEN).build()
 
-    # === HANDLER ===
+    # === HANDLER (INI VERSI YANG BENER) ===
+    
+    # 1. Handler /start (Jalan duluan)
     app.add_handler(CommandHandler("start", start))
-    
-    # INI HANDLER YANG BENER (LOGIKA LU)
-    app.add_handler(MessageHandler(filters.ALL, handle_webapp_data), group=-1)
-    
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, ai_agent_handler), group=1)
 
+    # 2. Handler Mini App (Spesifik cuma nangkep data WebApp)
+    # ⚠️ PENTING: filters.StatusUpdate.WEB_APP_DATA
+    app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, handle_webapp_data))
+
+    # 3. Handler AI Agent (Nangkep sisa teks biasa)
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, ai_agent_handler))
+
+    # 4. Error handler global
     app.add_error_handler(global_error_handler)
+    
+    # Mulai bot (polling)
     app.run_polling()
 
 
 if __name__ == "__main__":
     main()
-
-
