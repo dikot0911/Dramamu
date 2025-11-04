@@ -385,3 +385,4 @@ if __name__ == '__main__':
     logger.info(f"📝 Request: {URL_REQUEST}")
     logger.info(f"🎁 Referral: {URL_REFERRAL}")
     bot.infinity_polling()
+    
