@@ -91,33 +91,62 @@ def get_movie_by_id(movie_id):
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    """Handler untuk command /start - kirim welcome message dengan Web App button"""
+    """Handler untuk command /start - kirim welcome message dengan banner dan Web App button"""
     logger.info(f"User {message.from_user.id} memulai bot")
     
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    # URL banner promosi Dramamu
+    BANNER_URL = "https://geczfycekxkeiubbaijz.supabase.co/storage/v1/object/public/POSTER/banner-dramamu.jpg"
     
-    btn_cari = types.KeyboardButton("🎬 Cari Judul", web_app=types.WebAppInfo(URL_CARI_JUDUL))
-    btn_vip = types.KeyboardButton("⭐ Beli VIP", web_app=types.WebAppInfo(URL_BELI_VIP))
-    btn_profile = types.KeyboardButton("👤 Profile", web_app=types.WebAppInfo(URL_PROFILE))
-    btn_request = types.KeyboardButton("📝 Request Film", web_app=types.WebAppInfo(URL_REQUEST))
-    btn_referral = types.KeyboardButton("🎁 Referral", web_app=types.WebAppInfo(URL_REFERRAL))
-    
-    markup.add(btn_cari, btn_vip)
-    markup.add(btn_profile, btn_request)
-    markup.add(btn_referral)
-    
+    # Pesan welcome yang casual
     welcome_text = (
-        f"👋 Halo {message.from_user.first_name}!\n\n"
-        "Selamat datang di Dramamu Bot 🎥\n\n"
-        "Pilih menu di bawah untuk mulai:\n\n"
-        "🎬 <b>Cari Judul</b> - Lihat daftar film\n"
-        "⭐ <b>Beli VIP</b> - Upgrade ke member VIP\n"
-        "👤 <b>Profile</b> - Lihat profil Anda\n"
-        "📝 <b>Request Film</b> - Request film favorit\n"
-        "🎁 <b>Referral</b> - Dapatkan bonus referral"
+        "🎬 <b>Selamat datang di Dramamu</b>\n\n"
+        "Nonton semua drama favorit cuma segelas kopi ☕\n"
+        "Pilih menu di bawah, bre!"
     )
     
-    bot.send_message(message.chat.id, welcome_text, reply_markup=markup, parse_mode='HTML')
+    # Inline keyboard untuk grup official
+    inline_markup = types.InlineKeyboardMarkup()
+    inline_markup.row(
+        types.InlineKeyboardButton("⭐ GRUP DRAMA MU OFFICIAL ⭐", url="https://t.me/dramamuofficial")
+    )
+    
+    # Reply keyboard untuk menu utama dengan Web App
+    keyboard_markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    
+    btn_cari = types.KeyboardButton("🎬 CARI JUDUL", web_app=types.WebAppInfo(URL_CARI_JUDUL))
+    btn_vip = types.KeyboardButton("💎 BELI VIP", web_app=types.WebAppInfo(URL_BELI_VIP))
+    btn_profile = types.KeyboardButton("👤 Profile", web_app=types.WebAppInfo(URL_PROFILE))
+    btn_request = types.KeyboardButton("📽 REQ DRAMA", web_app=types.WebAppInfo(URL_REQUEST))
+    btn_referral = types.KeyboardButton("🎁 Referral", web_app=types.WebAppInfo(URL_REFERRAL))
+    
+    keyboard_markup.add(btn_cari, btn_vip)
+    keyboard_markup.add(btn_profile, btn_request)
+    keyboard_markup.add(btn_referral)
+    
+    # Kirim banner dengan caption dan inline button
+    try:
+        bot.send_photo(
+            message.chat.id,
+            BANNER_URL,
+            caption=welcome_text,
+            parse_mode='HTML',
+            reply_markup=inline_markup
+        )
+        # Kirim pesan tambahan untuk menampilkan keyboard
+        bot.send_message(
+            message.chat.id,
+            "Pilih menu:",
+            reply_markup=keyboard_markup
+        )
+    except Exception as e:
+        logger.error(f"Error sending banner: {e}")
+        # Fallback: kirim text saja jika banner gagal
+        bot.send_message(
+            message.chat.id, 
+            welcome_text, 
+            reply_markup=keyboard_markup, 
+            parse_mode='HTML'
+        )
 
 
 @bot.message_handler(content_types=['web_app_data'])
@@ -385,4 +414,3 @@ if __name__ == '__main__':
     logger.info(f"📝 Request: {URL_REQUEST}")
     logger.info(f"🎁 Referral: {URL_REFERRAL}")
     bot.infinity_polling()
-    
