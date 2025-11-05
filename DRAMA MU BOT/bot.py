@@ -143,11 +143,18 @@ def escape_html(text):
 
 
 def get_movie_by_id(movie_id):
-# ... (kode ini sama, tidak berubah) ...
+    """Fetch movie detail dari API berdasarkan movie_id"""
     try:
-# ... (kode ini sama, tidak berubah) ...
+        response = requests.get(f"{API_BASE_URL}/movies", timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            movies = data.get('movies', [])
+            for movie in movies:
+                if movie['id'] == movie_id:
+                    return movie
+        return None
     except requests.exceptions.RequestException as e:
-# ... (kode ini sama, tidak berubah) ...
+        logger.error(f"Error fetching movie: {e}")
         return None
 
 
@@ -583,4 +590,6 @@ if __name__ == '__main__':
     logger.info("✅ Bot layout updated - Welcome message & inline keyboards fixed!")
 # ... (kode ini sama, tidak berubah) ...
     bot.infinity_polling()
+
+
 
