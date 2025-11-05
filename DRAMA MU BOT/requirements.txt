@@ -3,5 +3,7 @@ uvicorn
 psycopg2-binary
 midtransclient
 gunicorn
-python-telegram-bot
 aiohttp
+pyTelegramBotAPI
+supabase
+requests
