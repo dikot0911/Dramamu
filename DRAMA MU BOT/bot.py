@@ -134,11 +134,11 @@ def add_vip(user_id, username=None):
 
 
 def escape_html(text):
-# ... (kode ini sama, tidak berubah) ...
+    """Escape HTML special characters untuk mencegah break formatting"""
     if not text:
-# ... (kode ini sama, tidak berubah) ...
+        return text
     return (text
-# ... (kode ini sama, tidak berubah) ...
+            .replace('&', '&amp;')
             .replace("'", '&#39;'))
 
 
