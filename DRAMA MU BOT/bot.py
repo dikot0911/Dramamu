@@ -118,7 +118,7 @@ def send_welcome(message):
         "Pilih menu di bawah, bre!"
     )
     
-    # Inline keyboard untuk menu utama (tombol di dalam chat bubble)
+    # Inline keyboard untuk menu utama dengan Web App di chat bubble
     inline_markup = types.InlineKeyboardMarkup()
     
     # Row 0: Link Grup
@@ -126,21 +126,21 @@ def send_welcome(message):
         types.InlineKeyboardButton("⭐ GRUP DRAMA MU OFFICIAL ⭐", url="https://t.me/dramamuofficial")
     )
     
-    # Row 1: CARI JUDUL | CARI CUAN
+    # Row 1: CARI JUDUL | CARI CUAN  
     inline_markup.row(
-        types.InlineKeyboardButton("🎬 CARI JUDUL", web_app=types.WebAppInfo(URL_CARI_JUDUL)),
-        types.InlineKeyboardButton("💰 CARI CUAN", web_app=types.WebAppInfo(URL_CARI_CUAN))
+        types.InlineKeyboardButton("🎬 CARI JUDUL", web_app=types.WebAppInfo(url=URL_CARI_JUDUL)),
+        types.InlineKeyboardButton("💰 CARI CUAN", web_app=types.WebAppInfo(url=URL_CARI_CUAN))
     )
     
     # Row 2: BELI VIP | REQ DRAMA
     inline_markup.row(
-        types.InlineKeyboardButton("💎 BELI VIP", web_app=types.WebAppInfo(URL_BELI_VIP)),
-        types.InlineKeyboardButton("📽 REQ DRAMA", web_app=types.WebAppInfo(URL_REQUEST))
+        types.InlineKeyboardButton("💎 BELI VIP", web_app=types.WebAppInfo(url=URL_BELI_VIP)),
+        types.InlineKeyboardButton("📽 REQ DRAMA", web_app=types.WebAppInfo(url=URL_REQUEST))
     )
     
     # Row 3: HUBUNGI KAMI (full width)
     inline_markup.row(
-        types.InlineKeyboardButton("💬 HUBUNGI KAMI", web_app=types.WebAppInfo(URL_HUBUNGI_KAMI))
+        types.InlineKeyboardButton("💬 HUBUNGI KAMI", web_app=types.WebAppInfo(url=URL_HUBUNGI_KAMI))
     )
     
     # Kirim banner dengan caption dan inline keyboard di chat bubble
