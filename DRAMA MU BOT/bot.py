@@ -115,42 +115,36 @@ def send_welcome(message):
     welcome_text = (
         "🎬 <b>Selamat datang di Dramamu</b>\n\n"
         "Nonton semua drama favorit cuma segelas kopi ☕\n\n"
+        "⭐ Join <a href='https://t.me/dramamuofficial'>GRUP DRAMA MU OFFICIAL</a> ⭐\n\n"
         "Pilih menu di bawah, bre!"
     )
     
-    # Inline keyboard untuk menu utama dengan Web App di chat bubble
-    inline_markup = types.InlineKeyboardMarkup()
+    # Reply keyboard dengan WebApp (SATU-SATUNYA cara yang support WebApp)
+    keyboard_markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     
-    # Row 0: Link Grup
-    inline_markup.row(
-        types.InlineKeyboardButton("⭐ GRUP DRAMA MU OFFICIAL ⭐", url="https://t.me/dramamuofficial")
-    )
-    
-    # Row 1: CARI JUDUL | CARI CUAN  
-    inline_markup.row(
-        types.InlineKeyboardButton("🎬 CARI JUDUL", web_app=types.WebAppInfo(url=URL_CARI_JUDUL)),
-        types.InlineKeyboardButton("💰 CARI CUAN", web_app=types.WebAppInfo(url=URL_CARI_CUAN))
-    )
+    # Row 1: CARI JUDUL | CARI CUAN
+    btn_cari_judul = types.KeyboardButton("🎬 CARI JUDUL", web_app=types.WebAppInfo(URL_CARI_JUDUL))
+    btn_cari_cuan = types.KeyboardButton("💰 CARI CUAN", web_app=types.WebAppInfo(URL_CARI_CUAN))
     
     # Row 2: BELI VIP | REQ DRAMA
-    inline_markup.row(
-        types.InlineKeyboardButton("💎 BELI VIP", web_app=types.WebAppInfo(url=URL_BELI_VIP)),
-        types.InlineKeyboardButton("📽 REQ DRAMA", web_app=types.WebAppInfo(url=URL_REQUEST))
-    )
+    btn_beli_vip = types.KeyboardButton("💎 BELI VIP", web_app=types.WebAppInfo(URL_BELI_VIP))
+    btn_req_drama = types.KeyboardButton("📽 REQ DRAMA", web_app=types.WebAppInfo(URL_REQUEST))
     
     # Row 3: HUBUNGI KAMI (full width)
-    inline_markup.row(
-        types.InlineKeyboardButton("💬 HUBUNGI KAMI", web_app=types.WebAppInfo(url=URL_HUBUNGI_KAMI))
-    )
+    btn_hubungi_kami = types.KeyboardButton("💬 HUBUNGI KAMI", web_app=types.WebAppInfo(URL_HUBUNGI_KAMI))
     
-    # Kirim banner dengan caption dan inline keyboard di chat bubble
+    keyboard_markup.add(btn_cari_judul, btn_cari_cuan)
+    keyboard_markup.add(btn_beli_vip, btn_req_drama)
+    keyboard_markup.add(btn_hubungi_kami)
+    
+    # Kirim banner dengan caption dan reply keyboard
     try:
         bot.send_photo(
             message.chat.id,
             BANNER_URL,
             caption=welcome_text,
             parse_mode='HTML',
-            reply_markup=inline_markup
+            reply_markup=keyboard_markup
         )
     except Exception as e:
         logger.error(f"Error sending banner: {e}")
@@ -158,7 +152,7 @@ def send_welcome(message):
         bot.send_message(
             message.chat.id, 
             welcome_text, 
-            reply_markup=inline_markup, 
+            reply_markup=keyboard_markup, 
             parse_mode='HTML'
         )
 
