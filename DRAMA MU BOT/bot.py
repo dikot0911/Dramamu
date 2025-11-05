@@ -22,9 +22,11 @@ else:
     BASE_URL = MINIAPP_URL.rsplit('/', 1)[0] if '/' in MINIAPP_URL.split('://')[-1] else MINIAPP_URL
 
 URL_CARI_JUDUL = f"{BASE_URL}/drama.html"
+URL_CARI_CUAN = f"{BASE_URL}/referal.html"
 URL_BELI_VIP = f"{BASE_URL}/payment.html"
-URL_PROFILE = f"{BASE_URL}/profile.html"
 URL_REQUEST = f"{BASE_URL}/request.html"
+URL_HUBUNGI_KAMI = f"{BASE_URL}/contact.html"
+URL_PROFILE = f"{BASE_URL}/profile.html"
 URL_REFERRAL = f"{BASE_URL}/referal.html"
 
 if not TELEGRAM_BOT_TOKEN:
@@ -73,6 +75,18 @@ def add_vip(user_id, username=None):
     logger.info(f"✅ User {user_id} ditambahkan ke VIP")
 
 
+def escape_html(text):
+    """Escape HTML special characters untuk mencegah break formatting"""
+    if not text:
+        return text
+    return (text
+            .replace('&', '&amp;')
+            .replace('<', '&lt;')
+            .replace('>', '&gt;')
+            .replace('"', '&quot;')
+            .replace("'", '&#39;'))
+
+
 def get_movie_by_id(movie_id):
     """Fetch movie detail dari API berdasarkan movie_id"""
     try:
@@ -97,33 +111,39 @@ def send_welcome(message):
     # URL banner promosi Dramamu
     BANNER_URL = "https://geczfycekxkeiubbaijz.supabase.co/storage/v1/object/public/POSTER/banner-dramamu.jpg"
     
-    # Pesan welcome yang casual
+    # Pesan welcome dengan link grup di caption
     welcome_text = (
         "🎬 <b>Selamat datang di Dramamu</b>\n\n"
-        "Nonton semua drama favorit cuma segelas kopi ☕\n"
+        "Nonton semua drama favorit cuma segelas kopi ☕\n\n"
         "Pilih menu di bawah, bre!"
     )
     
-    # Inline keyboard untuk grup official
+    # Inline keyboard untuk menu utama (tombol di dalam chat bubble)
     inline_markup = types.InlineKeyboardMarkup()
+    
+    # Row 0: Link Grup
     inline_markup.row(
         types.InlineKeyboardButton("⭐ GRUP DRAMA MU OFFICIAL ⭐", url="https://t.me/dramamuofficial")
     )
     
-    # Reply keyboard untuk menu utama dengan Web App
-    keyboard_markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    # Row 1: CARI JUDUL | CARI CUAN
+    inline_markup.row(
+        types.InlineKeyboardButton("🎬 CARI JUDUL", web_app=types.WebAppInfo(URL_CARI_JUDUL)),
+        types.InlineKeyboardButton("💰 CARI CUAN", web_app=types.WebAppInfo(URL_CARI_CUAN))
+    )
     
-    btn_cari = types.KeyboardButton("🎬 CARI JUDUL", web_app=types.WebAppInfo(URL_CARI_JUDUL))
-    btn_vip = types.KeyboardButton("💎 BELI VIP", web_app=types.WebAppInfo(URL_BELI_VIP))
-    btn_profile = types.KeyboardButton("👤 Profile", web_app=types.WebAppInfo(URL_PROFILE))
-    btn_request = types.KeyboardButton("📽 REQ DRAMA", web_app=types.WebAppInfo(URL_REQUEST))
-    btn_referral = types.KeyboardButton("🎁 Referral", web_app=types.WebAppInfo(URL_REFERRAL))
+    # Row 2: BELI VIP | REQ DRAMA
+    inline_markup.row(
+        types.InlineKeyboardButton("💎 BELI VIP", web_app=types.WebAppInfo(URL_BELI_VIP)),
+        types.InlineKeyboardButton("📽 REQ DRAMA", web_app=types.WebAppInfo(URL_REQUEST))
+    )
     
-    keyboard_markup.add(btn_cari, btn_vip)
-    keyboard_markup.add(btn_profile, btn_request)
-    keyboard_markup.add(btn_referral)
+    # Row 3: HUBUNGI KAMI (full width)
+    inline_markup.row(
+        types.InlineKeyboardButton("💬 HUBUNGI KAMI", web_app=types.WebAppInfo(URL_HUBUNGI_KAMI))
+    )
     
-    # Kirim banner dengan caption dan inline button
+    # Kirim banner dengan caption dan inline keyboard di chat bubble
     try:
         bot.send_photo(
             message.chat.id,
@@ -132,19 +152,13 @@ def send_welcome(message):
             parse_mode='HTML',
             reply_markup=inline_markup
         )
-        # Kirim pesan tambahan untuk menampilkan keyboard
-        bot.send_message(
-            message.chat.id,
-            "Pilih menu:",
-            reply_markup=keyboard_markup
-        )
     except Exception as e:
         logger.error(f"Error sending banner: {e}")
         # Fallback: kirim text saja jika banner gagal
         bot.send_message(
             message.chat.id, 
             welcome_text, 
-            reply_markup=keyboard_markup, 
+            reply_markup=inline_markup, 
             parse_mode='HTML'
         )
 
@@ -192,12 +206,17 @@ def send_movie_to_vip(chat_id, movie):
     logger.info(f"✅ Mengirim film ke VIP user: {chat_id}")
     logger.info(f"📸 Poster URL: {movie.get('poster_url', 'N/A')}")
     
+    # Escape HTML untuk title dan description
+    safe_title = escape_html(movie.get('title', 'Unknown'))
+    safe_description = escape_html(movie.get('description', ''))
+    
     caption = (
-        f"🎬 <b>{movie['title']}</b>\n\n"
-        f"{movie['description']}\n\n"
+        f"🎬 <b>{safe_title}</b>\n\n"
+        f"{safe_description}\n\n"
         f"🌟 <i>Selamat menonton!</i>"
     )
     
+    # Inline keyboard dengan layout konsisten
     markup = types.InlineKeyboardMarkup()
     markup.row(
         types.InlineKeyboardButton("▶️ Tonton Sekarang", url=movie['video_link'])
@@ -232,13 +251,17 @@ def send_non_vip_message(chat_id, movie):
     logger.info(f"⚠️ User {chat_id} belum VIP, kirim pesan ajakan")
     logger.info(f"📸 Poster URL: {movie.get('poster_url', 'N/A')}")
     
+    # Escape HTML untuk title
+    safe_title = escape_html(movie.get('title', 'Unknown'))
+    
     text = (
-        f"🔒 <b>{movie['title']}</b>\n\n"
+        f"🔒 <b>{safe_title}</b>\n\n"
         f"Maaf, konten ini hanya untuk member VIP.\n\n"
         f"Anda belum menjadi member VIP.\n"
         f"Silakan join VIP terlebih dahulu untuk menonton film ini! 🌟"
     )
     
+    # Inline keyboard dengan layout konsisten
     markup = types.InlineKeyboardMarkup()
     markup.row(
         types.InlineKeyboardButton("⭐ Join VIP Sekarang", callback_data="join_vip")
@@ -274,6 +297,9 @@ def handle_callback_query(call):
     logger.info(f"Callback received: {call.data} from user {call.from_user.id}")
     
     try:
+        # Cek apakah message memiliki photo atau tidak
+        has_photo = call.message.photo is not None and len(call.message.photo) > 0
+        
         if call.data == "join_vip":
             text = (
                 "💎 <b>Paket VIP Dramamu</b>\n\n"
@@ -295,15 +321,16 @@ def handle_callback_query(call):
             )
             
             try:
-                bot.edit_message_caption(
-                    caption=text,
-                    chat_id=call.message.chat.id,
-                    message_id=call.message.message_id,
-                    parse_mode='HTML',
-                    reply_markup=markup
-                )
-            except ApiTelegramException as e:
-                if "message is not modified" not in str(e):
+                # Edit sesuai dengan tipe message
+                if has_photo:
+                    bot.edit_message_caption(
+                        caption=text,
+                        chat_id=call.message.chat.id,
+                        message_id=call.message.message_id,
+                        parse_mode='HTML',
+                        reply_markup=markup
+                    )
+                else:
                     bot.edit_message_text(
                         text=text,
                         chat_id=call.message.chat.id,
@@ -311,6 +338,9 @@ def handle_callback_query(call):
                         parse_mode='HTML',
                         reply_markup=markup
                     )
+            except ApiTelegramException as e:
+                if "message is not modified" not in str(e):
+                    logger.error(f"Error editing message: {e}")
             
             bot.answer_callback_query(call.id)
             return
@@ -333,15 +363,16 @@ def handle_callback_query(call):
             )
             
             try:
-                bot.edit_message_caption(
-                    caption=text,
-                    chat_id=call.message.chat.id,
-                    message_id=call.message.message_id,
-                    parse_mode='HTML',
-                    reply_markup=markup
-                )
-            except ApiTelegramException as e:
-                if "message is not modified" not in str(e):
+                # Edit sesuai dengan tipe message
+                if has_photo:
+                    bot.edit_message_caption(
+                        caption=text,
+                        chat_id=call.message.chat.id,
+                        message_id=call.message.message_id,
+                        parse_mode='HTML',
+                        reply_markup=markup
+                    )
+                else:
                     bot.edit_message_text(
                         text=text,
                         chat_id=call.message.chat.id,
@@ -349,6 +380,9 @@ def handle_callback_query(call):
                         parse_mode='HTML',
                         reply_markup=markup
                     )
+            except ApiTelegramException as e:
+                if "message is not modified" not in str(e):
+                    logger.error(f"Error editing message: {e}")
             
             bot.answer_callback_query(call.id)
             return
@@ -409,8 +443,9 @@ if __name__ == '__main__':
     logger.info("🤖 Bot dimulai...")
     logger.info(f"📱 BASE URL: {BASE_URL}")
     logger.info(f"🎬 Cari Judul: {URL_CARI_JUDUL}")
-    logger.info(f"⭐ Beli VIP: {URL_BELI_VIP}")
-    logger.info(f"👤 Profile: {URL_PROFILE}")
-    logger.info(f"📝 Request: {URL_REQUEST}")
-    logger.info(f"🎁 Referral: {URL_REFERRAL}")
+    logger.info(f"💰 Cari Cuan: {URL_CARI_CUAN}")
+    logger.info(f"💎 Beli VIP: {URL_BELI_VIP}")
+    logger.info(f"📽 Request Drama: {URL_REQUEST}")
+    logger.info(f"💬 Hubungi Kami: {URL_HUBUNGI_KAMI}")
+    logger.info("✅ Bot layout updated - Welcome message & inline keyboards fixed!")
     bot.infinity_polling()
