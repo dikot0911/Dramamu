@@ -7,3 +7,11 @@ aiohttp
 pyTelegramBotAPI
 supabase
 requests
+fastapi
+midtransclient
+psycopg2-binary
+pydantic
+python-telegram-bot
+requests
+telegram
+uvicorn
