@@ -1,4 +1,5 @@
 import psycopg2
+from psycopg2 import pool
 import sys
 import time
 import os
@@ -8,7 +9,7 @@ import hashlib
 import hmac
 import json
 from urllib.parse import unquote, parse_qsl
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 import midtransclient
@@ -32,18 +33,37 @@ BASE_URL = "https://dramamuid.netlify.app"
 URL_BELI_VIP = f"{BASE_URL}/payment.html"
 
 # --- INFO MIDTRANS ---
-MIDTRANS_SERVER_KEY = os.environ.get("MIDTRANS_SERVER_KEY")
-MIDTRANS_CLIENT_KEY = os.environ.get("MIDTRANS_CLIENT_KEY")
+MIDTRANS_SERVER_KEY = os.environ.get("MIDTRANS_SERVER_KEY", "")
+MIDTRANS_CLIENT_KEY = os.environ.get("MIDTRANS_CLIENT_KEY", "")
 
-# Inisialisasi Midtrans
-midtrans_client = midtransclient.Snap(
-    is_production=False,
-    server_key=MIDTRANS_SERVER_KEY,
-    client_key=MIDTRANS_CLIENT_KEY
-)
+# Inisialisasi Midtrans (hanya jika credentials tersedia)
+midtrans_client = None
+if MIDTRANS_SERVER_KEY and MIDTRANS_CLIENT_KEY:
+    midtrans_client = midtransclient.Snap(
+        is_production=False,
+        server_key=MIDTRANS_SERVER_KEY,
+        client_key=MIDTRANS_CLIENT_KEY
+    )
 
-# Buat string koneksi
-conn_string = f"dbname='{DB_NAME}' user='{DB_USER}' host='{DB_HOST}' port='{DB_PORT}' password='{DB_PASS}'"
+# ==========================================================
+# 📊 DATABASE CONNECTION POOL (OPTIMIZED)
+# ==========================================================
+connection_pool = None
+if DB_HOST and DB_PORT and DB_NAME and DB_USER and DB_PASS:
+    try:
+        connection_pool = pool.ThreadedConnectionPool(
+            5, 20,
+            dbname=DB_NAME,
+            user=DB_USER,
+            host=DB_HOST,
+            port=DB_PORT,
+            password=DB_PASS,
+            connect_timeout=10,
+            options="-c statement_timeout=30000"
+        )
+        logger.info("✅ Database connection pool initialized (min=5, max=20) with ThreadedConnectionPool")
+    except Exception as e:
+        logger.error(f"❌ Failed to initialize connection pool: {e}")
 
 # Buat aplikasi FastAPI
 app = FastAPI()
@@ -158,14 +178,28 @@ def extract_user_id_from_verified_data(verified_data: dict) -> int | None:
 # ==========================================================
 
 def get_db_connection():
+    if not connection_pool:
+        logger.error("Database connection pool tidak tersedia!")
+        return None
     try:
-        conn = psycopg2.connect(conn_string)
+        conn = connection_pool.getconn()
         return conn
     except Exception as e:
-        logger.error(f"GAGAL KONEK KE DB: {e}")
+        logger.error(f"Gagal ambil connection dari pool: {e}")
         return None
 
+def return_db_connection(conn):
+    if conn and connection_pool:
+        try:
+            connection_pool.putconn(conn)
+        except Exception as e:
+            logger.error(f"Gagal return connection ke pool: {e}")
+
 def check_vip_status(telegram_id: int) -> bool:
+    """
+    Check VIP status with race condition protection using INSERT...ON CONFLICT...RETURNING.
+    This ensures atomicity and prevents race conditions when multiple requests come simultaneously.
+    """
     conn = get_db_connection()
     if not conn:
         return False
@@ -173,21 +207,33 @@ def check_vip_status(telegram_id: int) -> bool:
     is_vip = False
     try:
         cur = conn.cursor()
-        cur.execute("SELECT is_vip FROM users WHERE telegram_id = %s;", (telegram_id,))
-        user = cur.fetchone()
         
-        if user and user[0] is True:
+        cur.execute(
+            """
+            INSERT INTO users (telegram_id, is_vip) 
+            VALUES (%s, %s) 
+            ON CONFLICT (telegram_id) 
+            DO UPDATE SET telegram_id = EXCLUDED.telegram_id
+            RETURNING is_vip
+            """,
+            (telegram_id, False)
+        )
+        result = cur.fetchone()
+        conn.commit()
+        
+        if result and result[0] is True:
             is_vip = True
+        
         cur.close()
     except Exception as e:
         logger.error(f"Error cek VIP: {e}")
+        conn.rollback()
     finally:
-        if conn:
-            conn.close()
+        return_db_connection(conn)
     
     return is_vip
 
-def get_movie_details(movie_id: int) -> dict:
+def get_movie_details(movie_id: int) -> dict | None:
     conn = get_db_connection()
     if not conn:
         return None
@@ -203,8 +249,7 @@ def get_movie_details(movie_id: int) -> dict:
     except Exception as e:
         logger.error(f"Error ambil movie: {e}")
     finally:
-        if conn:
-            conn.close()
+        return_db_connection(conn)
     return movie
 
 def send_telegram_message(chat_id: int, text: str, reply_markup=None):
@@ -252,6 +297,173 @@ def send_telegram_video(chat_id: int, video_url: str, caption: str = ""):
         return False
 
 # ==========================================================
+# IDEMPOTENCY & PAYMENT TRACKING FUNCTIONS
+# ==========================================================
+
+def check_and_mark_webhook_processed(event_id: str, telegram_id: int, action: str, data: dict | None = None) -> bool:
+    """
+    Check if webhook event already processed. If not, mark it as processed.
+    Returns True if event is NEW (should be processed), False if already processed.
+    """
+    conn = get_db_connection()
+    if not conn:
+        logger.warning("⚠️ DB connection failed for idempotency check - allowing request")
+        return True
+    
+    try:
+        cur = conn.cursor()
+        
+        cur.execute(
+            """
+            INSERT INTO webhook_events (event_id, telegram_id, action, data)
+            VALUES (%s, %s, %s, %s)
+            ON CONFLICT (event_id) DO NOTHING
+            RETURNING id
+            """,
+            (event_id, telegram_id, action, json.dumps(data or {}))
+        )
+        
+        result = cur.fetchone()
+        conn.commit()
+        cur.close()
+        
+        if result:
+            logger.info(f"✅ New event {event_id} - akan diproses")
+            return True
+        else:
+            logger.info(f"⚠️ Duplicate event {event_id} - sudah diproses sebelumnya")
+            return False
+            
+    except Exception as e:
+        logger.error(f"Error checking idempotency: {e}")
+        conn.rollback()
+        return True
+    finally:
+        return_db_connection(conn)
+
+def save_payment_transaction(order_id: str, telegram_id: int, notification_data: dict) -> bool:
+    """
+    Save or update payment transaction from Midtrans notification.
+    """
+    conn = get_db_connection()
+    if not conn:
+        return False
+    
+    try:
+        cur = conn.cursor()
+        
+        cur.execute(
+            """
+            INSERT INTO payment_transactions 
+            (order_id, telegram_id, gross_amount, payment_type, transaction_status, 
+             transaction_id, fraud_status, midtrans_data)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (order_id) 
+            DO UPDATE SET
+                transaction_status = EXCLUDED.transaction_status,
+                fraud_status = EXCLUDED.fraud_status,
+                payment_type = EXCLUDED.payment_type,
+                transaction_id = EXCLUDED.transaction_id,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (
+                order_id,
+                telegram_id,
+                int(float(notification_data.get('gross_amount', 0))),
+                notification_data.get('payment_type'),
+                notification_data.get('transaction_status'),
+                notification_data.get('transaction_id'),
+                notification_data.get('fraud_status'),
+                json.dumps(notification_data)
+            )
+        )
+        
+        conn.commit()
+        cur.close()
+        logger.info(f"✅ Payment transaction {order_id} saved/updated")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error saving payment transaction: {e}")
+        conn.rollback()
+        return False
+    finally:
+        return_db_connection(conn)
+
+def activate_vip_status(telegram_id: int, order_id: str | None = None) -> bool:
+    """
+    Activate VIP status for user and log to VIP history.
+    """
+    conn = get_db_connection()
+    if not conn:
+        return False
+    
+    try:
+        cur = conn.cursor()
+        
+        cur.execute(
+            """
+            UPDATE users 
+            SET is_vip = TRUE 
+            WHERE telegram_id = %s
+            """,
+            (telegram_id,)
+        )
+        
+        if order_id:
+            cur.execute(
+                """
+                INSERT INTO vip_history (telegram_id, order_id)
+                VALUES (%s, %s)
+                """,
+                (telegram_id, order_id)
+            )
+        
+        conn.commit()
+        cur.close()
+        logger.info(f"✅ VIP activated for user {telegram_id}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error activating VIP: {e}")
+        conn.rollback()
+        return False
+    finally:
+        return_db_connection(conn)
+
+def verify_midtrans_signature(notification_data: dict) -> bool:
+    """
+    Verify Midtrans notification signature to prevent fraud.
+    """
+    if not MIDTRANS_SERVER_KEY:
+        logger.error("MIDTRANS_SERVER_KEY tidak tersedia!")
+        return False
+    
+    try:
+        order_id = notification_data.get('order_id')
+        status_code = notification_data.get('status_code')
+        gross_amount = notification_data.get('gross_amount')
+        signature_key = notification_data.get('signature_key')
+        
+        if not all([order_id, status_code, gross_amount, signature_key]):
+            logger.error("Missing required fields in notification")
+            return False
+        
+        string_to_hash = f"{order_id}{status_code}{gross_amount}{MIDTRANS_SERVER_KEY}"
+        calculated_signature = hashlib.sha512(string_to_hash.encode()).hexdigest()
+        
+        if calculated_signature == signature_key:
+            logger.info(f"✅ Midtrans signature valid for {order_id}")
+            return True
+        else:
+            logger.error(f"❌ Midtrans signature INVALID for {order_id}")
+            return False
+            
+    except Exception as e:
+        logger.error(f"Error verifying Midtrans signature: {e}")
+        return False
+
+# ==========================================================
 # PYDANTIC MODELS
 # ==========================================================
 
@@ -291,7 +503,6 @@ async def get_all_movies():
         cur.execute("SELECT id, title, description, poster_url, video_link FROM movies;")
         movies_raw = cur.fetchall()
         cur.close()
-        conn.close()
         
         movies_list = []
         for movie in movies_raw:
@@ -307,6 +518,8 @@ async def get_all_movies():
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        return_db_connection(conn)
 
 @app.get("/api/v1/user_status/{telegram_id}")
 async def get_user_status(telegram_id: int):
@@ -319,7 +532,6 @@ async def get_user_status(telegram_id: int):
         cur.execute("SELECT is_vip FROM users WHERE telegram_id = %s;", (telegram_id,))
         user = cur.fetchone()
         cur.close()
-        conn.close()
         
         if user:
             return {"telegram_id": telegram_id, "is_vip": user[0]}
@@ -328,6 +540,8 @@ async def get_user_status(telegram_id: int):
             
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        return_db_connection(conn)
 
 @app.get("/api/v1/referral_stats/{telegram_id}")
 async def get_referral_stats(telegram_id: int):
@@ -343,7 +557,6 @@ async def get_referral_stats(telegram_id: int):
         )
         user_stats = cur.fetchone()
         cur.close()
-        conn.close()
         
         if user_stats:
             return {
@@ -356,9 +569,14 @@ async def get_referral_stats(telegram_id: int):
             
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        return_db_connection(conn)
 
 @app.post("/api/v1/create_payment")
 async def create_payment_link(request: PaymentRequest):
+    if not midtrans_client:
+        raise HTTPException(status_code=500, detail="Midtrans belum dikonfigurasi. Set MIDTRANS_SERVER_KEY dan MIDTRANS_CLIENT_KEY.")
+    
     order_id = f"DRAMAMU-{request.telegram_id}-{int(time.time())}"
     
     transaction_details = {
@@ -398,6 +616,86 @@ async def create_payment_link(request: PaymentRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 # ==========================================================
+# 💳 MIDTRANS PAYMENT NOTIFICATION CALLBACK
+# ==========================================================
+
+@app.post("/api/v1/midtrans/notification")
+async def midtrans_payment_notification(request: Request):
+    """
+    Endpoint untuk menerima notifikasi pembayaran dari Midtrans.
+    Otomatis mengaktifkan VIP status setelah pembayaran berhasil.
+    """
+    try:
+        notification_data = await request.json()
+        logger.info(f"📬 Midtrans notification received: {notification_data.get('order_id')}")
+        
+        if not verify_midtrans_signature(notification_data):
+            logger.error("❌ Invalid Midtrans signature - request rejected")
+            raise HTTPException(status_code=403, detail="Invalid signature")
+        
+        order_id = notification_data.get('order_id', '')
+        transaction_status = notification_data.get('transaction_status')
+        fraud_status = notification_data.get('fraud_status')
+        
+        parts = order_id.split('-')
+        if len(parts) < 2 or not parts[1].isdigit():
+            logger.error(f"❌ Invalid order_id format: {order_id}")
+            raise HTTPException(status_code=400, detail="Invalid order_id format")
+        
+        telegram_id = int(parts[1])
+        
+        save_payment_transaction(order_id, telegram_id, notification_data)
+        
+        if transaction_status == 'capture':
+            if fraud_status == 'accept':
+                activate_vip_status(telegram_id, order_id)
+                send_telegram_message(
+                    telegram_id,
+                    "🎉 <b>Pembayaran Berhasil!</b>\n\n"
+                    "✅ Status VIP kamu sudah aktif!\n"
+                    "Sekarang kamu bisa nonton semua drama favorit tanpa batas.\n\n"
+                    "Selamat menikmati! 🍿"
+                )
+                logger.info(f"✅ Payment SUCCESS - VIP activated for {telegram_id}")
+            else:
+                logger.warning(f"⚠️ Payment captured but fraud_status={fraud_status}")
+        
+        elif transaction_status == 'settlement':
+            activate_vip_status(telegram_id, order_id)
+            send_telegram_message(
+                telegram_id,
+                "🎉 <b>Pembayaran Berhasil!</b>\n\n"
+                "✅ Status VIP kamu sudah aktif!\n"
+                "Sekarang kamu bisa nonton semua drama favorit tanpa batas.\n\n"
+                "Selamat menikmati! 🍿"
+            )
+            logger.info(f"✅ Payment SETTLED - VIP activated for {telegram_id}")
+        
+        elif transaction_status == 'pending':
+            send_telegram_message(
+                telegram_id,
+                "⏳ Pembayaran kamu sedang diproses.\n"
+                "Kami akan konfirmasi setelah pembayaran selesai."
+            )
+            logger.info(f"⏳ Payment PENDING for {telegram_id}")
+        
+        elif transaction_status in ['deny', 'expire', 'cancel']:
+            send_telegram_message(
+                telegram_id,
+                f"❌ Pembayaran {transaction_status}.\n"
+                "Silakan coba lagi atau hubungi admin jika ada masalah."
+            )
+            logger.info(f"❌ Payment {transaction_status.upper()} for {telegram_id}")
+        
+        return {"status": "ok"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error processing Midtrans notification: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==========================================================
 # 🚀 WEBHOOK ENDPOINT - INI YANG BARU!
 # ==========================================================
 
@@ -420,6 +718,19 @@ async def handle_webapp_webhook(request: WebhookRequest):
     if not telegram_id:
         logger.error("❌ User ID tidak ditemukan di verified data")
         raise HTTPException(status_code=400, detail="Bad Request: User ID not found")
+    
+    # ==========================================================
+    # 🔒 STEP 3: IDEMPOTENCY CHECK (PREVENT DUPLICATE PROCESSING)
+    # ==========================================================
+    event_id = hashlib.sha256(f"{telegram_id}-{action}-{request.init_data}".encode()).hexdigest()
+    
+    if not check_and_mark_webhook_processed(event_id, telegram_id, action, {
+        "movie_id": request.movie_id,
+        "judul": request.judul,
+        "apk": request.apk
+    }):
+        logger.info(f"⚠️ Duplicate request ignored - already processed: {event_id}")
+        return {"status": "success", "message": "Request already processed"}
     
     logger.info(f"📨 Webhook diterima dari VERIFIED user {telegram_id}: {action}")
     
