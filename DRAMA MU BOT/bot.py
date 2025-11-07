@@ -37,20 +37,22 @@ logging.basicConfig(
 logger = logging.getLogger("dramamu-bot")
 
 # ==========================================================
-# 📊 DATABASE CONNECTION POOL
+# 📊 DATABASE CONNECTION POOL (OPTIMIZED)
 # ==========================================================
 connection_pool = None
 if DB_NAME and DB_USER and DB_HOST and DB_PORT and DB_PASS:
     try:
-        connection_pool = pool.SimpleConnectionPool(
-            2, 10,
+        connection_pool = pool.ThreadedConnectionPool(
+            5, 20,
             dbname=DB_NAME,
             user=DB_USER,
             host=DB_HOST,
             port=DB_PORT,
-            password=DB_PASS
+            password=DB_PASS,
+            connect_timeout=10,
+            options="-c statement_timeout=30000"
         )
-        logger.info("✅ Database connection pool initialized (min=2, max=10)")
+        logger.info("✅ Database connection pool initialized (min=5, max=20) with ThreadedConnectionPool")
     except Exception as e:
         logger.error(f"❌ Failed to initialize connection pool: {e}")
 
@@ -78,9 +80,13 @@ def return_db_connection(conn):
 
 
 # ==========================================================
-# 💎 CEK STATUS VIP USER
+# 💎 CEK STATUS VIP USER (WITH RACE CONDITION PROTECTION)
 # ==========================================================
 def check_vip_status(telegram_id: int) -> bool:
+    """
+    Check VIP status with race condition protection using INSERT...ON CONFLICT...RETURNING.
+    This ensures atomicity and prevents race conditions when multiple requests come simultaneously.
+    """
     conn = get_db_connection()
     if not conn:
         return False
@@ -93,16 +99,16 @@ def check_vip_status(telegram_id: int) -> bool:
             """
             INSERT INTO users (telegram_id, is_vip) 
             VALUES (%s, %s) 
-            ON CONFLICT (telegram_id) DO NOTHING
+            ON CONFLICT (telegram_id) 
+            DO UPDATE SET telegram_id = EXCLUDED.telegram_id
+            RETURNING is_vip
             """,
             (telegram_id, False)
         )
+        result = cur.fetchone()
         conn.commit()
-        
-        cur.execute("SELECT is_vip FROM users WHERE telegram_id = %s;", (telegram_id,))
-        user = cur.fetchone()
 
-        if user and user[0] is True:
+        if result and result[0] is True:
             is_vip = True
         
         cur.close()
