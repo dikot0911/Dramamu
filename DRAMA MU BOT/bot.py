@@ -1,5 +1,6 @@
 import logging
 import psycopg2
+from psycopg2 import pool
 import json
 import os
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
@@ -9,7 +10,7 @@ from telegram.constants import ParseMode
 # ==========================================================
 # 🔧 KONFIGURASI DASAR
 # ==========================================================
-BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
 
 BASE_URL = "https://dramamuid.netlify.app"
 URL_CARI_JUDUL = f"{BASE_URL}/drama.html"
@@ -27,10 +28,6 @@ DB_NAME = os.environ.get("DB_NAME")
 DB_USER = os.environ.get("DB_USER")
 DB_PASS = os.environ.get("DB_PASS")
 
-conn_string = None
-if DB_NAME and DB_USER and DB_HOST and DB_PORT and DB_PASS:
-    conn_string = f"dbname='{DB_NAME}' user='{DB_USER}' host='{DB_HOST}' port='{DB_PORT}' password='{DB_PASS}'"
-
 # ==========================================================
 # 🪵 LOGGING
 # ==========================================================
@@ -39,20 +36,45 @@ logging.basicConfig(
 )
 logger = logging.getLogger("dramamu-bot")
 
+# ==========================================================
+# 📊 DATABASE CONNECTION POOL
+# ==========================================================
+connection_pool = None
+if DB_NAME and DB_USER and DB_HOST and DB_PORT and DB_PASS:
+    try:
+        connection_pool = pool.SimpleConnectionPool(
+            2, 10,
+            dbname=DB_NAME,
+            user=DB_USER,
+            host=DB_HOST,
+            port=DB_PORT,
+            password=DB_PASS
+        )
+        logger.info("✅ Database connection pool initialized (min=2, max=10)")
+    except Exception as e:
+        logger.error(f"❌ Failed to initialize connection pool: {e}")
+
 
 # ==========================================================
-# 🧩 HELPER: DATABASE CONNECTION
+# 🧩 HELPER: DATABASE CONNECTION FROM POOL
 # ==========================================================
 def get_db_connection():
-    if not conn_string:
-        logger.error("DB connection string belum lengkap!")
+    if not connection_pool:
+        logger.error("Database connection pool tidak tersedia!")
         return None
     try:
-        conn = psycopg2.connect(conn_string)
+        conn = connection_pool.getconn()
         return conn
     except Exception as e:
-        logger.error(f"Gagal konek DB: {e}")
+        logger.error(f"Gagal ambil connection dari pool: {e}")
         return None
+
+def return_db_connection(conn):
+    if conn and connection_pool:
+        try:
+            connection_pool.putconn(conn)
+        except Exception as e:
+            logger.error(f"Gagal return connection ke pool: {e}")
 
 
 # ==========================================================
@@ -66,23 +88,29 @@ def check_vip_status(telegram_id: int) -> bool:
     is_vip = False
     try:
         cur = conn.cursor()
+        
+        cur.execute(
+            """
+            INSERT INTO users (telegram_id, is_vip) 
+            VALUES (%s, %s) 
+            ON CONFLICT (telegram_id) DO NOTHING
+            """,
+            (telegram_id, False)
+        )
+        conn.commit()
+        
         cur.execute("SELECT is_vip FROM users WHERE telegram_id = %s;", (telegram_id,))
         user = cur.fetchone()
 
         if user and user[0] is True:
             is_vip = True
-        elif not user:
-            cur.execute(
-                "INSERT INTO users (telegram_id, is_vip) VALUES (%s, %s)",
-                (telegram_id, False),
-            )
-            conn.commit()
+        
         cur.close()
     except Exception as e:
         logger.error(f"Error cek VIP: {e}")
+        conn.rollback()
     finally:
-        if conn:
-            conn.close()
+        return_db_connection(conn)
 
     return is_vip
 
@@ -90,7 +118,7 @@ def check_vip_status(telegram_id: int) -> bool:
 # ==========================================================
 # 🎬 AMBIL DETAIL FILM
 # ==========================================================
-def get_movie_details(movie_id: int) -> dict:
+def get_movie_details(movie_id: int) -> dict | None:
     conn = get_db_connection()
     if not conn:
         return None
@@ -106,8 +134,7 @@ def get_movie_details(movie_id: int) -> dict:
     except Exception as e:
         logger.error(f"Error ambil movie: {e}")
     finally:
-        if conn:
-            conn.close()
+        return_db_connection(conn)
     return movie
 
 
@@ -115,6 +142,9 @@ def get_movie_details(movie_id: int) -> dict:
 # 🚀 HANDLER /start
 # ==========================================================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message:
+        return
+    
     keyboard = [
         [InlineKeyboardButton("⭐️ GRUP DRAMA MU OFFICIAL ⭐️", url="https://t.me/dramamuofficial")],
         [
@@ -156,12 +186,19 @@ async def handle_webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE)
     message = update.effective_message
     user_id = update.effective_user.id if update.effective_user else None
 
-    # (Logika lu udah bener)
+    if not user_id:
+        logger.warning("⚠️ User ID tidak ditemukan.")
+        return
+
     # cek apakah pesan mengandung web_app_data
     if not message or not getattr(message, "web_app_data", None):
         return
 
-    data_str = message.web_app_data.data
+    web_app_data = getattr(message, "web_app_data", None)
+    if not web_app_data:
+        return
+
+    data_str = web_app_data.data
     if not data_str:
         logger.warning("⚠️ WebApp data kosong.")
         return
@@ -247,16 +284,21 @@ async def handle_webapp_data(update: Update, context: ContextTypes.DEFAULT_TYPE)
 # ==========================================================
 async def ai_agent_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = update.effective_message
-    if not msg or not msg.text or msg.web_app_data:
+    if not msg or not msg.text or getattr(msg, "web_app_data", None):
         return
+    
+    chat_id = update.effective_chat.id if update.effective_chat else None
+    if not chat_id:
+        return
+    
     user_msg = msg.text
-    await context.bot.send_message(chat_id=update.effective_chat.id, text=f"🤖 AI belum aktif, bre. Pesan: {user_msg}")
+    await context.bot.send_message(chat_id=chat_id, text=f"🤖 AI belum aktif, bre. Pesan: {user_msg}")
 
 
 # ==========================================================
 # ⚠️ GLOBAL ERROR HANDLER
 # ==========================================================
-async def global_error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def global_error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
     logger.error(f"Global error: {context.error}", exc_info=context.error)
     admin_id = os.environ.get("ADMIN_ID")
     if admin_id:
@@ -293,4 +335,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
