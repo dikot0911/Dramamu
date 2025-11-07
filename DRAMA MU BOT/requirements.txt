@@ -4,14 +4,6 @@ psycopg2-binary
 midtransclient
 gunicorn
 aiohttp
-pyTelegramBotAPI
-supabase
 requests
-fastapi
-midtransclient
-psycopg2-binary
 pydantic
 python-telegram-bot
-requests
-telegram
-uvicorn
