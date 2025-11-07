@@ -9,7 +9,7 @@ from telegram.constants import ParseMode
 # ==========================================================
 # 🔧 KONFIGURASI DASAR
 # ==========================================================
-BOT_TOKEN = os.environ.get("BOT_TOKEN")
+BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 
 BASE_URL = "https://dramamuid.netlify.app"
 URL_CARI_JUDUL = f"{BASE_URL}/drama.html"
@@ -293,3 +293,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
