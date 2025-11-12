@@ -181,12 +181,12 @@ def init_db():
                 for movie in existing_movies:
                     if movie.category is None:
                         if 'fantasi' in movie.description.lower():
-                            movie.category = 'Fantasy'
+                            movie.category = 'Fantasy'  # type: ignore
                         else:
-                            movie.category = 'Romance'
+                            movie.category = 'Romance'  # type: ignore
                         updated = True
                     if movie.views is None:
-                        movie.views = 0
+                        movie.views = 0  # type: ignore
                         updated = True
                 
                 if updated:
