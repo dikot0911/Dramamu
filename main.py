@@ -171,10 +171,10 @@ class UserDataRequest(BaseModel):
 class PaymentCallback(BaseModel):
     order_id: str
     transaction_status: str
-    fraud_status: str = None
-    signature_key: str = None
-    status_code: str = None
-    gross_amount: str = None
+    fraud_status: str | None = None
+    signature_key: str | None = None
+    status_code: str | None = None
+    gross_amount: str | None = None
 
 @app.get("/")
 async def root():
@@ -187,7 +187,7 @@ async def api_health():
     return {"status": "ok", "message": "ready"}
 
 @app.get("/api/v1/movies")
-async def get_all_movies(sort: str = "terbaru", init_data: str = None):
+async def get_all_movies(sort: str = "terbaru", init_data: str | None = None):
     db = SessionLocal()
     try:
         telegram_id = None
@@ -244,8 +244,8 @@ async def get_all_movies(sort: str = "terbaru", init_data: str = None):
                 "description": description_text,
                 "poster_url": movie.poster_url,
                 "video_link": movie.video_link,
-                "category": movie.category or "",
-                "views": movie.views or 0,
+                "category": movie.category if movie.category is not None else "",
+                "views": movie.views if movie.views is not None else 0,
                 "like_count": like_count,
                 "favorite_count": favorite_count,
                 "is_liked": movie.id in user_likes if telegram_id else False,
@@ -577,12 +577,12 @@ async def get_favorites(request: UserDataRequest):
                 favorite_movies.append({
                     "id": movie.id,
                     "title": movie.title,
-                    "description": movie.description or "",
+                    "description": movie.description if movie.description is not None else "",
                     "poster_url": movie.poster_url,
                     "video_link": movie.video_link,
-                    "category": movie.category or "",
-                    "views": movie.views or 0,
-                    "favorited_at": fav.created_at.isoformat() if fav.created_at else None
+                    "category": movie.category if movie.category is not None else "",
+                    "views": movie.views if movie.views is not None else 0,
+                    "favorited_at": fav.created_at.isoformat() if fav.created_at is not None else None
                 })
         
         return {"favorites": favorite_movies}
@@ -661,8 +661,8 @@ async def add_watch_history(request: WatchHistoryRequest):
         
         movie = db.query(Movie).filter(Movie.id == request.movie_id).first()
         if movie:
-            current_views = movie.views or 0
-            movie.views = current_views + 1
+            current_views = movie.views if movie.views is not None else 0
+            movie.views = current_views + 1  # type: ignore
         
         db.commit()
         
@@ -693,12 +693,12 @@ async def get_watch_history(request: UserDataRequest, limit: int = 20):
                 watched_movies.append({
                     "id": movie.id,
                     "title": movie.title,
-                    "description": movie.description or "",
+                    "description": movie.description if movie.description is not None else "",
                     "poster_url": movie.poster_url,
                     "video_link": movie.video_link,
-                    "category": movie.category or "",
-                    "views": movie.views or 0,
-                    "watched_at": entry.watched_at.isoformat() if entry.watched_at else None
+                    "category": movie.category if movie.category is not None else "",
+                    "views": movie.views if movie.views is not None else 0,
+                    "watched_at": entry.watched_at.isoformat() if entry.watched_at is not None else None
                 })
         
         return {"watch_history": watched_movies}
@@ -745,11 +745,11 @@ async def get_movies_by_category(category: str):
             movies_list.append({
                 "id": movie.id,
                 "title": movie.title,
-                "description": movie.description or "",
+                "description": movie.description if movie.description is not None else "",
                 "poster_url": movie.poster_url,
                 "video_link": movie.video_link,
-                "category": movie.category or "",
-                "views": movie.views or 0
+                "category": movie.category if movie.category is not None else "",
+                "views": movie.views if movie.views is not None else 0
             })
         
         return {"movies": movies_list, "category": category}
@@ -784,11 +784,11 @@ async def search_movies(q: str = "", sort: str = "terbaru"):
             movies_list.append({
                 "id": movie.id,
                 "title": movie.title,
-                "description": movie.description or "",
+                "description": movie.description if movie.description is not None else "",
                 "poster_url": movie.poster_url,
                 "video_link": movie.video_link,
-                "category": movie.category or "",
-                "views": movie.views or 0
+                "category": movie.category if movie.category is not None else "",
+                "views": movie.views if movie.views is not None else 0
             })
         
         return {"movies": movies_list, "query": q, "sort": sort}
@@ -839,9 +839,9 @@ async def get_drama_requests(request: UserDataRequest):
             result.append({
                 "id": req.id,
                 "judul": req.judul,
-                "apk_source": req.apk_source or "",
+                "apk_source": req.apk_source if req.apk_source is not None else "",
                 "status": req.status,
-                "created_at": req.created_at.isoformat() if req.created_at else None
+                "created_at": req.created_at.isoformat() if req.created_at is not None else None
             })
         
         return {"requests": result}
@@ -865,7 +865,8 @@ async def submit_withdrawal(request: WithdrawalRequest):
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         
-        if user.commission_balance < request.amount:
+        commission_balance_value: int = cast(int, user.commission_balance)
+        if commission_balance_value < request.amount:
             raise HTTPException(status_code=400, detail="Insufficient balance")
         
         if request.amount < 50000:
@@ -911,8 +912,8 @@ async def get_withdrawals(request: UserDataRequest):
                 "account_number": wd.account_number,
                 "account_name": wd.account_name,
                 "status": wd.status,
-                "created_at": wd.created_at.isoformat() if wd.created_at else None,
-                "processed_at": wd.processed_at.isoformat() if wd.processed_at else None
+                "created_at": wd.created_at.isoformat() if wd.created_at is not None else None,
+                "processed_at": wd.processed_at.isoformat() if wd.processed_at is not None else None
             })
         
         return {"withdrawals": result}
@@ -948,15 +949,16 @@ async def get_user_profile(request: UserDataRequest):
         is_vip_active = False
         vip_expires_at_iso = None
         
-        if user.is_vip:
+        is_vip_col: bool = cast(bool, user.is_vip)
+        if is_vip_col:
             vip_expires_value: datetime | None = cast(datetime | None, user.vip_expires_at)
-            if vip_expires_value and vip_expires_value > datetime.now():
+            if vip_expires_value is not None and vip_expires_value > datetime.now():
                 is_vip_active = True
                 vip_expires_at_iso = vip_expires_value.isoformat()
         
         return {
             "telegram_id": telegram_id,
-            "username": user.username or "",
+            "username": user.username if user.username is not None else "",
             "ref_code": user.ref_code,
             "is_vip": is_vip_active,
             "vip_expires_at": vip_expires_at_iso,
@@ -964,7 +966,7 @@ async def get_user_profile(request: UserDataRequest):
             "total_referrals": user.total_referrals,
             "total_watched": watched_count,
             "total_favorites": favorites_count,
-            "created_at": user.created_at.isoformat() if user.created_at else None
+            "created_at": user.created_at.isoformat() if user.created_at is not None else None
         }
     except HTTPException:
         raise
@@ -993,8 +995,8 @@ async def get_payment_history(request: UserDataRequest):
                 "package_name": payment.package_name,
                 "amount": payment.amount,
                 "status": payment.status,
-                "created_at": payment.created_at.isoformat() if payment.created_at else None,
-                "paid_at": payment.paid_at.isoformat() if payment.paid_at else None
+                "created_at": payment.created_at.isoformat() if payment.created_at is not None else None,
+                "paid_at": payment.paid_at.isoformat() if payment.paid_at is not None else None
             })
         
         return {"payments": result}
@@ -1044,8 +1046,8 @@ async def payment_callback(callback: PaymentCallback):
             if callback.fraud_status != 'deny':
                 from datetime import datetime, timedelta
                 
-                payment.status = 'success'
-                payment.paid_at = datetime.now()
+                payment.status = 'success'  # type: ignore
+                payment.paid_at = datetime.now()  # type: ignore
                 
                 user = db.query(User).filter(User.telegram_id == payment.telegram_id).first()
                 if user:
@@ -1054,23 +1056,26 @@ async def payment_callback(callback: PaymentCallback):
                         "VIP 3 Hari": 3,
                         "VIP 7 Hari": 7
                     }
-                    days = days_map.get(payment.package_name, 1)
+                    package_name_str = str(payment.package_name)
+                    days = days_map.get(package_name_str, 1)
                     
-                    user.is_vip = True
-                    current_expiry = user.vip_expires_at
+                    user.is_vip = True  # type: ignore
+                    current_expiry_col = user.vip_expires_at
+                    current_expiry: datetime | None = cast(datetime | None, current_expiry_col)
                     
-                    if current_expiry and current_expiry > datetime.now():
-                        user.vip_expires_at = current_expiry + timedelta(days=days)
+                    if current_expiry is not None and current_expiry > datetime.now():
+                        user.vip_expires_at = current_expiry + timedelta(days=days)  # type: ignore
                     else:
-                        user.vip_expires_at = datetime.now() + timedelta(days=days)
+                        user.vip_expires_at = datetime.now() + timedelta(days=days)  # type: ignore
                     
                     logger.info(f"VIP activated for user {payment.telegram_id} for {days} days")
                 
                 db.commit()
                 
                 try:
+                    telegram_id_str = str(payment.telegram_id)
                     bot.send_message(
-                        int(payment.telegram_id),
+                        int(telegram_id_str),
                         f"✅ <b>Pembayaran Berhasil!</b>\n\n"
                         f"Paket: {payment.package_name}\n"
                         f"Status VIP kamu sudah aktif!\n\n"
@@ -1083,12 +1088,12 @@ async def payment_callback(callback: PaymentCallback):
                 return {"status": "success", "message": "Payment processed"}
         
         elif callback.transaction_status == 'pending':
-            payment.status = 'pending'
+            payment.status = 'pending'  # type: ignore
             db.commit()
             return {"status": "pending", "message": "Payment pending"}
         
         elif callback.transaction_status in ['deny', 'cancel', 'expire']:
-            payment.status = 'failed'
+            payment.status = 'failed'  # type: ignore
             db.commit()
             return {"status": "failed", "message": "Payment failed"}
         
