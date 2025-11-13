@@ -1,0 +1,61 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Database (JANGAN upload database lokal!)
+*.db
+*.sqlite
+*.sqlite3
+dramamu.db
+
+# Environment variables (RAHASIA - jangan upload!)
+.env
+.env.local
+.env.production
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Replit-specific files (jangan deploy ke production)
+.replit
+.upm
+replit.nix
+.pythonlibs/
+
+# NOTE: replit.md adalah dokumentasi penting, TIDAK di-exclude!

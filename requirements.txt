@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+gunicorn
+pyTelegramBotAPI
+requests
+midtransclient
+python-multipart
+sqlalchemy
+psycopg2-binary
+pydantic
+bcrypt<4.0.0
+passlib[bcrypt]
+python-jose[cryptography]
