@@ -51,11 +51,3 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
-
-# Replit-specific files (jangan deploy ke production)
-.replit
-.upm
-replit.nix
-.pythonlibs/
-
-# NOTE: replit.md adalah dokumentasi penting, TIDAK di-exclude!
