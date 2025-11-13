@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <base href="/panel/">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Users Management - Admin Panel</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="admin-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">🎬</div>
+                <h2>Dramamu Admin</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="dashboard.html" class="nav-item">
+                    <span class="nav-icon">📊</span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="users.html" class="nav-item active">
+                    <span class="nav-icon">👥</span>
+                    <span>Users</span>
+                </a>
+                <a href="movies.html" class="nav-item">
+                    <span class="nav-icon">🎬</span>
+                    <span>Movies</span>
+                </a>
+                <a href="requests.html" class="nav-item">
+                    <span class="nav-icon">📝</span>
+                    <span>Requests</span>
+                </a>
+                <a href="withdrawals.html" class="nav-item">
+                    <span class="nav-icon">💰</span>
+                    <span>Withdrawals</span>
+                </a>
+                <a href="payments.html" class="nav-item">
+                    <span class="nav-icon">💳</span>
+                    <span>Payments</span>
+                </a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="header">
+                <div class="breadcrumb">
+                    <span>Users Management</span>
+                </div>
+                <div class="header-actions">
+                    <div class="user-info">
+                        <span id="adminUsername">Admin</span>
+                    </div>
+                    <button class="btn btn-secondary" onclick="AdminPanel.logout()">Logout</button>
+                </div>
+            </header>
+
+            <div class="content">
+                <h1 class="page-title">Users Management</h1>
+
+                <div class="table-container">
+                    <div class="table-header">
+                        <div class="search-box">
+                            <input type="text" id="searchInput" placeholder="Search by username or Telegram ID...">
+                            <button class="btn btn-primary" onclick="searchUsers()">Search</button>
+                        </div>
+                    </div>
+
+                    <div id="tableContent">
+                        <div class="loading">Loading users...</div>
+                    </div>
+
+                    <div id="paginationContainer"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="vipModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Update VIP Status</h2>
+                <button class="modal-close" onclick="closeVIPModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>VIP Status</label>
+                    <select id="vipStatus">
+                        <option value="true">VIP</option>
+                        <option value="false">Regular</option>
+                    </select>
+                </div>
+                <div class="form-group" id="vipDaysGroup">
+                    <label>VIP Duration (days)</label>
+                    <input type="number" id="vipDays" min="1" value="30">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeVIPModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveVIPStatus()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+    <script>
+        let currentPage = 1;
+        let currentUserId = null;
+
+        async function loadUsers(page = 1) {
+            const user = await AdminPanel.checkAuth();
+            if (!user) return;
+
+            document.getElementById('adminUsername').textContent = user.username;
+
+            const search = document.getElementById('searchInput').value;
+            const params = new URLSearchParams({ page, limit: 20 });
+            if (search) params.append('search', search);
+
+            try {
+                const data = await AdminPanel.apiCall(`/admin/users?${params}`);
+                
+                const tableContent = document.getElementById('tableContent');
+                if (data.users.length === 0) {
+                    tableContent.innerHTML = '<div class="empty-state">No users found</div>';
+                    document.getElementById('paginationContainer').innerHTML = '';
+                    return;
+                }
+
+                tableContent.innerHTML = `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Username</th>
+                                <th>Telegram ID</th>
+                                <th>Status</th>
+                                <th>VIP Expires</th>
+                                <th>Balance</th>
+                                <th>Referrals</th>
+                                <th>Joined</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.users.map(u => `
+                                <tr>
+                                    <td>${u.id}</td>
+                                    <td>${u.username || '-'}</td>
+                                    <td>${u.telegram_id}</td>
+                                    <td>
+                                        <span class="badge ${u.is_vip ? 'badge-success' : 'badge-secondary'}">
+                                            ${u.is_vip ? 'VIP' : 'Regular'}
+                                        </span>
+                                    </td>
+                                    <td>${AdminPanel.formatDate(u.vip_expires_at)}</td>
+                                    <td>${AdminPanel.formatCurrency(u.commission_balance)}</td>
+                                    <td>${u.total_referrals}</td>
+                                    <td>${AdminPanel.formatDate(u.created_at)}</td>
+                                    <td>
+                                        <div class="actions">
+                                            <button class="btn btn-sm btn-primary" onclick="openVIPModal(${u.id}, ${u.is_vip})">
+                                                VIP
+                                            </button>
+                                            <button class="btn btn-sm btn-danger" onclick="deleteUser(${u.id})">
+                                                Delete
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+
+                currentPage = page;
+                const paginationEl = AdminPanel.createPagination(data.page, data.total_pages, loadUsers);
+                document.getElementById('paginationContainer').innerHTML = '';
+                document.getElementById('paginationContainer').appendChild(paginationEl);
+
+            } catch (error) {
+                AdminPanel.showToast(error.message, 'error');
+            }
+        }
+
+        function searchUsers() {
+            loadUsers(1);
+        }
+
+        document.getElementById('searchInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchUsers();
+        });
+
+        function openVIPModal(userId, isVip) {
+            currentUserId = userId;
+            document.getElementById('vipStatus').value = isVip.toString();
+            document.getElementById('vipDays').value = '30';
+            document.getElementById('vipModal').classList.add('show');
+            updateVIPDaysVisibility();
+        }
+
+        function closeVIPModal() {
+            document.getElementById('vipModal').classList.remove('show');
+            currentUserId = null;
+        }
+
+        document.getElementById('vipStatus').addEventListener('change', updateVIPDaysVisibility);
+
+        function updateVIPDaysVisibility() {
+            const isVip = document.getElementById('vipStatus').value === 'true';
+            document.getElementById('vipDaysGroup').style.display = isVip ? 'flex' : 'none';
+        }
+
+        async function saveVIPStatus() {
+            if (!currentUserId) return;
+
+            const isVip = document.getElementById('vipStatus').value === 'true';
+            const vipDays = isVip ? parseInt(document.getElementById('vipDays').value) : null;
+
+            try {
+                await AdminPanel.apiCall(`/admin/users/${currentUserId}/vip`, {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        is_vip: isVip,
+                        vip_days: vipDays
+                    })
+                });
+
+                AdminPanel.showToast('VIP status updated successfully', 'success');
+                closeVIPModal();
+                loadUsers(currentPage);
+            } catch (error) {
+                AdminPanel.showToast(error.message, 'error');
+            }
+        }
+
+        async function deleteUser(userId) {
+            if (!AdminPanel.confirmAction('Are you sure you want to delete this user?')) return;
+
+            try {
+                await AdminPanel.apiCall(`/admin/users/${userId}`, { method: 'DELETE' });
+                AdminPanel.showToast('User deleted successfully', 'success');
+                loadUsers(currentPage);
+            } catch (error) {
+                AdminPanel.showToast(error.message, 'error');
+            }
+        }
+
+        loadUsers();
+    </script>
+</body>
+</html>

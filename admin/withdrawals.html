@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <base href="/panel/">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Withdrawals - Admin Panel</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="admin-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">🎬</div>
+                <h2>Dramamu Admin</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="dashboard.html" class="nav-item">
+                    <span class="nav-icon">📊</span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="users.html" class="nav-item">
+                    <span class="nav-icon">👥</span>
+                    <span>Users</span>
+                </a>
+                <a href="movies.html" class="nav-item">
+                    <span class="nav-icon">🎬</span>
+                    <span>Movies</span>
+                </a>
+                <a href="requests.html" class="nav-item">
+                    <span class="nav-icon">📝</span>
+                    <span>Requests</span>
+                </a>
+                <a href="withdrawals.html" class="nav-item active">
+                    <span class="nav-icon">💰</span>
+                    <span>Withdrawals</span>
+                </a>
+                <a href="payments.html" class="nav-item">
+                    <span class="nav-icon">💳</span>
+                    <span>Payments</span>
+                </a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="header">
+                <div class="breadcrumb">
+                    <span>Withdrawals</span>
+                </div>
+                <div class="header-actions">
+                    <div class="user-info">
+                        <span id="adminUsername">Admin</span>
+                    </div>
+                    <button class="btn btn-secondary" onclick="AdminPanel.logout()">Logout</button>
+                </div>
+            </header>
+
+            <div class="content">
+                <h1 class="page-title">Withdrawals Management</h1>
+
+                <div class="table-container">
+                    <div class="table-header">
+                        <div class="filter-group">
+                            <select id="statusFilter" onchange="filterWithdrawals()">
+                                <option value="">All Status</option>
+                                <option value="pending">Pending</option>
+                                <option value="approved">Approved</option>
+                                <option value="rejected">Rejected</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="tableContent">
+                        <div class="loading">Loading withdrawals...</div>
+                    </div>
+
+                    <div id="paginationContainer"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="detailModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Withdrawal Details</h2>
+                <button class="modal-close" onclick="closeDetailModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="withdrawalDetails"></div>
+            </div>
+            <div class="modal-footer" id="modalActions">
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+    <script>
+        let currentPage = 1;
+        let currentWithdrawalId = null;
+        let currentWithdrawal = null;
+
+        async function loadWithdrawals(page = 1) {
+            const user = await AdminPanel.checkAuth();
+            if (!user) return;
+
+            document.getElementById('adminUsername').textContent = user.username;
+
+            const status = document.getElementById('statusFilter').value;
+            const params = new URLSearchParams({ page, limit: 20 });
+            if (status) params.append('status', status);
+
+            try {
+                const data = await AdminPanel.apiCall(`/admin/withdrawals?${params}`);
+                
+                const tableContent = document.getElementById('tableContent');
+                if (data.withdrawals.length === 0) {
+                    tableContent.innerHTML = '<div class="empty-state">No withdrawals found</div>';
+                    document.getElementById('paginationContainer').innerHTML = '';
+                    return;
+                }
+
+                tableContent.innerHTML = `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Telegram ID</th>
+                                <th>Amount</th>
+                                <th>Payment Method</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                                <th>Processed</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.withdrawals.map(w => `
+                                <tr>
+                                    <td>${w.id}</td>
+                                    <td>${w.telegram_id}</td>
+                                    <td><strong>${AdminPanel.formatCurrency(w.amount)}</strong></td>
+                                    <td>${w.payment_method}</td>
+                                    <td>
+                                        <span class="badge ${getStatusBadge(w.status)}">
+                                            ${w.status}
+                                        </span>
+                                    </td>
+                                    <td>${AdminPanel.formatDate(w.created_at)}</td>
+                                    <td>${AdminPanel.formatDate(w.processed_at)}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-primary" onclick='openDetailModal(${JSON.stringify(w).replace(/'/g, "&apos;")})'>
+                                            Details
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+
+                currentPage = page;
+                const paginationEl = AdminPanel.createPagination(data.page, data.total_pages, loadWithdrawals);
+                document.getElementById('paginationContainer').innerHTML = '';
+                document.getElementById('paginationContainer').appendChild(paginationEl);
+
+            } catch (error) {
+                AdminPanel.showToast(error.message, 'error');
+            }
+        }
+
+        function getStatusBadge(status) {
+            const badges = {
+                'pending': 'badge-warning',
+                'approved': 'badge-success',
+                'rejected': 'badge-danger'
+            };
+            return badges[status] || 'badge-secondary';
+        }
+
+        function filterWithdrawals() {
+            loadWithdrawals(1);
+        }
+
+        function openDetailModal(withdrawal) {
+            currentWithdrawal = withdrawal;
+            currentWithdrawalId = withdrawal.id;
+
+            document.getElementById('withdrawalDetails').innerHTML = `
+                <div style="display: grid; gap: 15px;">
+                    <div>
+                        <strong>Withdrawal ID:</strong> ${withdrawal.id}
+                    </div>
+                    <div>
+                        <strong>Telegram ID:</strong> ${withdrawal.telegram_id}
+                    </div>
+                    <div>
+                        <strong>Amount:</strong> ${AdminPanel.formatCurrency(withdrawal.amount)}
+                    </div>
+                    <div>
+                        <strong>Payment Method:</strong> ${withdrawal.payment_method}
+                    </div>
+                    <div>
+                        <strong>Account Number:</strong> ${withdrawal.account_number}
+                    </div>
+                    <div>
+                        <strong>Account Name:</strong> ${withdrawal.account_name}
+                    </div>
+                    <div>
+                        <strong>Status:</strong> 
+                        <span class="badge ${getStatusBadge(withdrawal.status)}">
+                            ${withdrawal.status}
+                        </span>
+                    </div>
+                    <div>
+                        <strong>Created:</strong> ${AdminPanel.formatDate(withdrawal.created_at)}
+                    </div>
+                    ${withdrawal.processed_at ? `
+                        <div>
+                            <strong>Processed:</strong> ${AdminPanel.formatDate(withdrawal.processed_at)}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+
+            const modalActions = document.getElementById('modalActions');
+            if (withdrawal.status === 'pending') {
+                modalActions.innerHTML = `
+                    <button class="btn btn-secondary" onclick="closeDetailModal()">Close</button>
+                    <button class="btn btn-danger" onclick="updateWithdrawalStatus('rejected')">Reject</button>
+                    <button class="btn btn-success" onclick="updateWithdrawalStatus('approved')">Approve</button>
+                `;
+            } else {
+                modalActions.innerHTML = `
+                    <button class="btn btn-secondary" onclick="closeDetailModal()">Close</button>
+                `;
+            }
+
+            document.getElementById('detailModal').classList.add('show');
+        }
+
+        function closeDetailModal() {
+            document.getElementById('detailModal').classList.remove('show');
+            currentWithdrawalId = null;
+            currentWithdrawal = null;
+        }
+
+        async function updateWithdrawalStatus(status) {
+            if (!currentWithdrawalId) return;
+
+            const action = status === 'approved' ? 'approve' : 'reject';
+            if (!AdminPanel.confirmAction(`Are you sure you want to ${action} this withdrawal?`)) return;
+
+            try {
+                await AdminPanel.apiCall(`/admin/withdrawals/${currentWithdrawalId}/status`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ status })
+                });
+
+                AdminPanel.showToast(`Withdrawal ${action}d successfully`, 'success');
+                closeDetailModal();
+                loadWithdrawals(currentPage);
+            } catch (error) {
+                AdminPanel.showToast(error.message, 'error');
+            }
+        }
+
+        loadWithdrawals();
+    </script>
+</body>
+</html>

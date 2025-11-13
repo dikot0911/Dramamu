@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <base href="/panel/">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Admin Panel</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="admin-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">🎬</div>
+                <h2>Dramamu Admin</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="dashboard.html" class="nav-item active">
+                    <span class="nav-icon">📊</span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="users.html" class="nav-item">
+                    <span class="nav-icon">👥</span>
+                    <span>Users</span>
+                </a>
+                <a href="movies.html" class="nav-item">
+                    <span class="nav-icon">🎬</span>
+                    <span>Movies</span>
+                </a>
+                <a href="requests.html" class="nav-item">
+                    <span class="nav-icon">📝</span>
+                    <span>Requests</span>
+                </a>
+                <a href="withdrawals.html" class="nav-item">
+                    <span class="nav-icon">💰</span>
+                    <span>Withdrawals</span>
+                </a>
+                <a href="payments.html" class="nav-item">
+                    <span class="nav-icon">💳</span>
+                    <span>Payments</span>
+                </a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="header">
+                <div class="breadcrumb">
+                    <span>Dashboard</span>
+                </div>
+                <div class="header-actions">
+                    <div class="user-info">
+                        <span id="adminUsername">Admin</span>
+                    </div>
+                    <button class="btn btn-secondary" onclick="AdminPanel.logout()">Logout</button>
+                </div>
+            </header>
+
+            <div class="content">
+                <h1 class="page-title">Dashboard</h1>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #667eea, #764ba2)">👥</div>
+                        <div class="stat-content">
+                            <h3 id="totalUsers">-</h3>
+                            <p>Total Users</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb, #f5576c)">⭐</div>
+                        <div class="stat-content">
+                            <h3 id="vipUsers">-</h3>
+                            <p>VIP Users</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe, #00f2fe)">🎬</div>
+                        <div class="stat-content">
+                            <h3 id="totalMovies">-</h3>
+                            <p>Total Movies</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #43e97b, #38f9d7)">📝</div>
+                        <div class="stat-content">
+                            <h3 id="pendingRequests">-</h3>
+                            <p>Pending Requests</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #fa709a, #fee140)">💰</div>
+                        <div class="stat-content">
+                            <h3 id="pendingWithdrawals">-</h3>
+                            <p>Pending Withdrawals</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #30cfd0, #330867)">💵</div>
+                        <div class="stat-content">
+                            <h3 id="totalRevenue">-</h3>
+                            <p>Total Revenue</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2>Recent Users</h2>
+                        </div>
+                        <div class="card-body">
+                            <div id="recentUsers" class="loading">Loading...</div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h2>Recent Payments</h2>
+                        </div>
+                        <div class="card-body">
+                            <div id="recentPayments" class="loading">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="admin.js"></script>
+    <script>
+        async function loadDashboard() {
+            const user = await AdminPanel.checkAuth();
+            if (!user) return;
+
+            document.getElementById('adminUsername').textContent = user.username;
+
+            try {
+                const data = await AdminPanel.apiCall('/admin/dashboard/stats');
+
+                document.getElementById('totalUsers').textContent = data.stats.total_users.toLocaleString();
+                document.getElementById('vipUsers').textContent = data.stats.vip_users.toLocaleString();
+                document.getElementById('totalMovies').textContent = data.stats.total_movies.toLocaleString();
+                document.getElementById('pendingRequests').textContent = data.stats.pending_requests.toLocaleString();
+                document.getElementById('pendingWithdrawals').textContent = data.stats.pending_withdrawals.toLocaleString();
+                document.getElementById('totalRevenue').textContent = AdminPanel.formatCurrency(data.stats.total_revenue);
+
+                const recentUsersEl = document.getElementById('recentUsers');
+                if (data.recent_users.length === 0) {
+                    recentUsersEl.innerHTML = '<p class="empty-state">No users yet</p>';
+                } else {
+                    recentUsersEl.innerHTML = `
+                        <div class="list">
+                            ${data.recent_users.map(u => `
+                                <div class="list-item">
+                                    <div>
+                                        <strong>${u.username || 'Unknown'}</strong>
+                                        <small>${u.telegram_id}</small>
+                                    </div>
+                                    <span class="badge ${u.is_vip ? 'badge-success' : 'badge-secondary'}">
+                                        ${u.is_vip ? 'VIP' : 'Regular'}
+                                    </span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+
+                const recentPaymentsEl = document.getElementById('recentPayments');
+                if (data.recent_payments.length === 0) {
+                    recentPaymentsEl.innerHTML = '<p class="empty-state">No payments yet</p>';
+                } else {
+                    recentPaymentsEl.innerHTML = `
+                        <div class="list">
+                            ${data.recent_payments.map(p => `
+                                <div class="list-item">
+                                    <div>
+                                        <strong>${p.order_id}</strong>
+                                        <small>${AdminPanel.formatCurrency(p.amount)}</small>
+                                    </div>
+                                    <span class="badge ${p.status === 'settlement' ? 'badge-success' : 'badge-warning'}">
+                                        ${p.status}
+                                    </span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                AdminPanel.showToast(error.message, 'error');
+            }
+        }
+
+        loadDashboard();
+    </script>
+</body>
+</html>

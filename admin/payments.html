@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <base href="/panel/">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payments - Admin Panel</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="admin-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">🎬</div>
+                <h2>Dramamu Admin</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="dashboard.html" class="nav-item">
+                    <span class="nav-icon">📊</span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="users.html" class="nav-item">
+                    <span class="nav-icon">👥</span>
+                    <span>Users</span>
+                </a>
+                <a href="movies.html" class="nav-item">
+                    <span class="nav-icon">🎬</span>
+                    <span>Movies</span>
+                </a>
+                <a href="requests.html" class="nav-item">
+                    <span class="nav-icon">📝</span>
+                    <span>Requests</span>
+                </a>
+                <a href="withdrawals.html" class="nav-item">
+                    <span class="nav-icon">💰</span>
+                    <span>Withdrawals</span>
+                </a>
+                <a href="payments.html" class="nav-item active">
+                    <span class="nav-icon">💳</span>
+                    <span>Payments</span>
+                </a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="header">
+                <div class="breadcrumb">
+                    <span>Payments</span>
+                </div>
+                <div class="header-actions">
+                    <div class="user-info">
+                        <span id="adminUsername">Admin</span>
+                    </div>
+                    <button class="btn btn-secondary" onclick="AdminPanel.logout()">Logout</button>
+                </div>
+            </header>
+
+            <div class="content">
+                <h1 class="page-title">Payments Management</h1>
+
+                <div class="table-container">
+                    <div class="table-header">
+                        <div class="filter-group">
+                            <select id="statusFilter" onchange="filterPayments()">
+                                <option value="">All Status</option>
+                                <option value="pending">Pending</option>
+                                <option value="settlement">Settlement</option>
+                                <option value="expire">Expired</option>
+                                <option value="cancel">Cancelled</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="tableContent">
+                        <div class="loading">Loading payments...</div>
+                    </div>
+
+                    <div id="paginationContainer"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="admin.js"></script>
+    <script>
+        let currentPage = 1;
+
+        async function loadPayments(page = 1) {
+            const user = await AdminPanel.checkAuth();
+            if (!user) return;
+
+            document.getElementById('adminUsername').textContent = user.username;
+
+            const status = document.getElementById('statusFilter').value;
+            const params = new URLSearchParams({ page, limit: 20 });
+            if (status) params.append('status', status);
+
+            try {
+                const data = await AdminPanel.apiCall(`/admin/payments?${params}`);
+                
+                const tableContent = document.getElementById('tableContent');
+                if (data.payments.length === 0) {
+                    tableContent.innerHTML = '<div class="empty-state">No payments found</div>';
+                    document.getElementById('paginationContainer').innerHTML = '';
+                    return;
+                }
+
+                tableContent.innerHTML = `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Order ID</th>
+                                <th>Telegram ID</th>
+                                <th>Package</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                                <th>Paid At</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.payments.map(p => `
+                                <tr>
+                                    <td>${p.id}</td>
+                                    <td><code>${p.order_id}</code></td>
+                                    <td>${p.telegram_id}</td>
+                                    <td><strong>${p.package_name}</strong></td>
+                                    <td><strong>${AdminPanel.formatCurrency(p.amount)}</strong></td>
+                                    <td>
+                                        <span class="badge ${getStatusBadge(p.status)}">
+                                            ${p.status}
+                                        </span>
+                                    </td>
+                                    <td>${AdminPanel.formatDate(p.created_at)}</td>
+                                    <td>${AdminPanel.formatDate(p.paid_at)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+
+                currentPage = page;
+                const paginationEl = AdminPanel.createPagination(data.page, data.total_pages, loadPayments);
+                document.getElementById('paginationContainer').innerHTML = '';
+                document.getElementById('paginationContainer').appendChild(paginationEl);
+
+            } catch (error) {
+                AdminPanel.showToast(error.message, 'error');
+            }
+        }
+
+        function getStatusBadge(status) {
+            const badges = {
+                'pending': 'badge-warning',
+                'settlement': 'badge-success',
+                'expire': 'badge-secondary',
+                'cancel': 'badge-danger'
+            };
+            return badges[status] || 'badge-secondary';
+        }
+
+        function filterPayments() {
+            loadPayments(1);
+        }
+
+        loadPayments();
+    </script>
+</body>
+</html>
