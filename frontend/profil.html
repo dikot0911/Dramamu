@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Dramamu - Profil</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="config.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Manrope', sans-serif;
+            background-color: #050505;
+            color: #E5E7EB;
+        }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-[#050505]">
+
+    <div class="w-full h-screen bg-[#050505] overflow-hidden relative flex flex-col">
+
+        <header class="w-full bg-[#0d0d0d] z-20 py-3 text-center border-b border-gray-800">
+            <h1 class="text-xl font-bold tracking-wide text-white">Profil Saya</h1>
+        </header>
+
+        <main class="flex-1 overflow-y-auto scrollbar-hide p-4 pb-24">
+            
+            <div class="bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl p-6 mb-4 text-center">
+                <div class="w-20 h-20 bg-white rounded-full mx-auto mb-3 flex items-center justify-center text-4xl" id="avatar-container">
+                    👤
+                </div>
+                <h2 class="text-white font-bold text-xl mb-1" id="user-name">Loading...</h2>
+                <p class="text-purple-100 text-sm" id="username">@username</p>
+            </div>
+
+            <div class="bg-[#161a23] border border-gray-700/50 rounded-xl p-4 mb-4" id="vip-status">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="text-3xl">💎</div>
+                        <div>
+                            <h3 class="text-white font-bold">Status VIP</h3>
+                            <p class="text-sm text-gray-400" id="vip-info">Memuat...</p>
+                        </div>
+                    </div>
+                    <a href="payment.html" class="bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-bold py-2 px-4 rounded-lg hover:from-yellow-600 hover:to-orange-600 transition-all text-sm">
+                        Upgrade
+                    </a>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3 mb-4">
+                <div class="bg-[#161a23] border border-gray-700/50 rounded-xl p-4 text-center">
+                    <div class="text-2xl mb-2">🎬</div>
+                    <p class="text-2xl font-bold text-white" id="total-watched">0</p>
+                    <p class="text-xs text-gray-400 mt-1">Ditonton</p>
+                </div>
+                <div class="bg-[#161a23] border border-gray-700/50 rounded-xl p-4 text-center">
+                    <div class="text-2xl mb-2">❤️</div>
+                    <p class="text-2xl font-bold text-white" id="total-favorites">0</p>
+                    <p class="text-xs text-gray-400 mt-1">Favorit</p>
+                </div>
+                <div class="bg-[#161a23] border border-gray-700/50 rounded-xl p-4 text-center">
+                    <div class="text-2xl mb-2">👥</div>
+                    <p class="text-2xl font-bold text-white" id="total-referrals">0</p>
+                    <p class="text-xs text-gray-400 mt-1">Referral</p>
+                </div>
+            </div>
+
+            <div class="bg-[#161a23] border border-gray-700/50 rounded-xl p-4 mb-3">
+                <h3 class="text-white font-bold mb-3 flex items-center">
+                    <span class="text-xl mr-2">💰</span>
+                    Komisi Referral
+                </h3>
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-400">Saldo Komisi</p>
+                        <p class="text-2xl font-bold text-green-400" id="commission-balance">Rp 0</p>
+                    </div>
+                    <a href="referal.html" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-700 transition-colors text-sm">
+                        Tarik Saldo
+                    </a>
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <a href="referal.html" class="block bg-[#161a23] border border-gray-700/50 rounded-xl p-4 hover:border-gray-600 transition-colors">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="text-2xl">🔗</div>
+                            <span class="text-white font-medium">Referral & Penarikan</span>
+                        </div>
+                        <svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                </a>
+
+                <a href="request.html" class="block bg-[#161a23] border border-gray-700/50 rounded-xl p-4 hover:border-gray-600 transition-colors">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="text-2xl">📽</div>
+                            <span class="text-white font-medium">Request Drama</span>
+                        </div>
+                        <svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                </a>
+
+                <a href="contact.html" class="block bg-[#161a23] border border-gray-700/50 rounded-xl p-4 hover:border-gray-600 transition-colors">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="text-2xl">💬</div>
+                            <span class="text-white font-medium">Hubungi Kami</span>
+                        </div>
+                        <svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                </a>
+            </div>
+
+        </main>
+        
+        <nav class="absolute bottom-0 left-0 w-full h-20 bg-gradient-to-t from-black via-black/80 to-transparent backdrop-blur-md z-30">
+            <div class="flex justify-around items-center h-full pt-2">
+                <a href="home.html" class="flex flex-col items-center space-y-1 text-gray-400 hover:text-white transition-colors">
+                    <svg class="w-7 h-7" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
+                    </svg>
+                    <span class="text-xs">Home</span>
+                </a>
+                <a href="drama.html" class="flex flex-col items-center space-y-1 text-gray-400 hover:text-white transition-colors">
+                    <svg class="w-7 h-7" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"></path>
+                    </svg>
+                    <span class="text-xs">Cari</span>
+                </a>
+                <a href="kategori.html" class="flex flex-col items-center space-y-1 text-gray-400 hover:text-white transition-colors">
+                    <svg class="w-7 h-7" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z"></path>
+                    </svg>
+                    <span class="text-xs">Kategori</span>
+                </a>
+                <a href="favorit.html" class="flex flex-col items-center space-y-1 text-gray-400 hover:text-white transition-colors">
+                    <svg class="w-7 h-7" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"></path>
+                    </svg>
+                    <span class="text-xs">Favorit</span>
+                </a>
+                <a href="profil.html" class="flex flex-col items-center space-y-1 text-white transition-colors">
+                    <svg class="w-7 h-7" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
+                    </svg>
+                    <span class="text-xs font-bold">Profil</span>
+                </a>
+            </div>
+        </nav>
+    </div>
+
+    <script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const tg = window.Telegram?.WebApp;
+        
+        if (tg) {
+            console.log("✅ Telegram WebApp SDK aktif");
+            tg.ready();
+            tg.expand();
+            tg.enableClosingConfirmation();
+            window.tg = tg;
+            
+            const user = tg.initDataUnsafe?.user;
+            if (user) {
+                loadUserProfile(user);
+            }
+        } else {
+            console.warn("⚠️ Bukan dibuka lewat Telegram Mini App");
+            window.tg = null;
+            loadDemoProfile();
+        }
+    });
+    
+    window.addEventListener('pageshow', (event) => {
+        if (event.persisted || performance.navigation.type === 2) {
+            console.log('🔄 Page shown from cache, refreshing profile data...');
+            const tg = window.Telegram?.WebApp;
+            if (tg && tg.initDataUnsafe?.user) {
+                const user = tg.initDataUnsafe.user;
+                fetchUserStats(user.id);
+            }
+        }
+    });
+    
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            console.log('🔄 Page became visible, refreshing profile data...');
+            const tg = window.Telegram?.WebApp;
+            if (tg && tg.initDataUnsafe?.user) {
+                const user = tg.initDataUnsafe.user;
+                fetchUserStats(user.id);
+            }
+        }
+    });
+
+    async function loadUserProfile(user) {
+        const userName = document.getElementById('user-name');
+        const username = document.getElementById('username');
+        const avatarContainer = document.getElementById('avatar-container');
+        
+        if (user.first_name) {
+            userName.textContent = user.first_name + (user.last_name ? ' ' + user.last_name : '');
+        }
+        
+        if (user.username) {
+            username.textContent = '@' + user.username;
+        } else {
+            username.textContent = 'ID: ' + user.id;
+        }
+        
+        if (user.photo_url) {
+            avatarContainer.innerHTML = `<img src="${user.photo_url}" class="w-full h-full rounded-full object-cover" alt="Avatar">`;
+        } else {
+            const initial = user.first_name ? user.first_name.charAt(0).toUpperCase() : '👤';
+            avatarContainer.textContent = initial;
+        }
+        
+        await fetchUserStats(user.id);
+    }
+
+    function loadDemoProfile() {
+        document.getElementById('user-name').textContent = 'Demo User';
+        document.getElementById('username').textContent = '@demo';
+        fetchUserStats('demo');
+    }
+
+    async function fetchUserStats(userId) {
+        try {
+            if (!window.tg || !window.tg.initData) {
+                console.error('❌ Cannot get Telegram initData!');
+                document.getElementById('vip-info').innerHTML = '<span class="text-gray-400">Belum berlangganan</span>';
+                return;
+            }
+
+            const apiUrl = window.API_BASE_URL + '/api/v1/user_profile';
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    init_data: window.tg.initData
+                })
+            });
+            
+            if (!response.ok) {
+                if (response.status === 401) {
+                    console.error('❌ Unauthorized - Invalid Telegram data');
+                    alert('Session tidak valid. Silakan tutup dan buka kembali aplikasi.');
+                }
+                throw new Error('Failed to fetch user stats');
+            }
+            
+            const data = await response.json();
+            
+            document.getElementById('total-watched').textContent = data.total_watched || 0;
+            document.getElementById('total-favorites').textContent = data.total_favorites || 0;
+            document.getElementById('total-referrals').textContent = data.total_referrals || 0;
+            document.getElementById('commission-balance').textContent = `Rp ${data.commission_balance || 0}`;
+            
+            const vipInfo = document.getElementById('vip-info');
+            if (data.is_vip && data.vip_expires_at) {
+                vipInfo.innerHTML = `<span class="text-green-400">✓ Aktif hingga ${formatDate(data.vip_expires_at)}</span>`;
+            } else {
+                vipInfo.innerHTML = '<span class="text-gray-400">Belum berlangganan</span>';
+            }
+            
+        } catch (error) {
+            console.error('Error fetching user stats:', error);
+            document.getElementById('vip-info').innerHTML = '<span class="text-gray-400">Belum berlangganan</span>';
+        }
+    }
+
+    function formatDate(dateString) {
+        const date = new Date(dateString);
+        const options = { year: 'numeric', month: 'long', day: 'numeric' };
+        return date.toLocaleDateString('id-ID', options);
+    }
+    </script>
+</body>
+</html>

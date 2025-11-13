@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Dramamu - Favorit</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="config.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Manrope', sans-serif;
+            background-color: #050505;
+            color: #E5E7EB;
+        }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .delete-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            z-index: 10;
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .delete-btn:hover {
+            transform: scale(1.1) rotate(10deg);
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.6);
+            background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
+        }
+        
+        .delete-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .delete-btn svg {
+            width: 18px;
+            height: 18px;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-5deg); }
+            75% { transform: rotate(5deg); }
+        }
+        
+        .delete-btn:hover svg {
+            animation: shake 0.5s ease infinite;
+        }
+        
+        /* Confirmation Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 9998;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+        }
+        
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal-card {
+            background: rgba(17, 17, 17, 0.98);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 320px;
+            width: 90%;
+            text-align: center;
+            transform: translateY(8px);
+            opacity: 0;
+            transition: transform 0.2s ease, opacity 0.2s ease;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        }
+        
+        .modal-overlay.active .modal-card {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        
+        .modal-icon {
+            width: 56px;
+            height: 56px;
+            margin: 0 auto 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(239, 68, 68, 0.2);
+            border-radius: 50%;
+        }
+        
+        .modal-icon svg {
+            width: 32px;
+            height: 32px;
+        }
+        
+        .modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+        
+        .modal-message {
+            font-size: 14px;
+            color: #9CA3AF;
+            line-height: 1.5;
+            margin-bottom: 24px;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+        }
+        
+        .modal-button {
+            flex: 1;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .modal-button-cancel {
+            background: rgba(255, 255, 255, 0.1);
+            color: #E5E7EB;
+        }
+        
+        .modal-button-cancel:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        .modal-button-delete {
+            background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+            color: #fff;
+        }
+        
+        .modal-button-delete:hover {
+            background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
+        }
+        
+        .modal-button:active {
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+<body class="bg-[#050505]">
+
+    <div class="w-full h-screen bg-[#050505] overflow-hidden relative flex flex-col">
+
+        <header class="w-full bg-[#0d0d0d] z-20 py-3 text-center border-b border-gray-800">
+            <h1 class="text-xl font-bold tracking-wide text-white">Film Favorit</h1>
+        </header>
+
+        <main class="flex-1 overflow-y-auto scrollbar-hide p-4 pb-24">
+            
+            <div class="mb-4 bg-gradient-to-r from-red-600/20 to-pink-600/20 border border-red-500/30 rounded-lg p-4">
+                <div class="flex items-center space-x-3">
+                    <div class="text-3xl">❤️</div>
+                    <div>
+                        <h2 class="text-white font-bold">Koleksi Favorit Kamu</h2>
+                        <p class="text-sm text-gray-400">Simpan drama favorit untuk ditonton nanti</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-x-3 gap-y-4" id="favorit-list-container">
+            </div>
+
+        </main>
+        
+        <nav class="absolute bottom-0 left-0 w-full h-20 bg-gradient-to-t from-black via-black/80 to-transparent backdrop-blur-md z-30">
+            <div class="flex justify-around items-center h-full pt-2">
+                <a href="home.html" class="flex flex-col items-center space-y-1 text-gray-400 hover:text-white transition-colors">
+                    <svg class="w-7 h-7" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
+                    </svg>
+                    <span class="text-xs">Home</span>
+                </a>
+                <a href="drama.html" class="flex flex-col items-center space-y-1 text-gray-400 hover:text-white transition-colors">
+                    <svg class="w-7 h-7" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"></path>
+                    </svg>
+                    <span class="text-xs">Cari</span>
+                </a>
+                <a href="kategori.html" class="flex flex-col items-center space-y-1 text-gray-400 hover:text-white transition-colors">
+                    <svg class="w-7 h-7" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z"></path>
+                    </svg>
+                    <span class="text-xs">Kategori</span>
+                </a>
+                <a href="favorit.html" class="flex flex-col items-center space-y-1 text-white transition-colors">
+                    <svg class="w-7 h-7" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"></path>
+                    </svg>
+                    <span class="text-xs font-bold">Favorit</span>
+                </a>
+                <a href="profil.html" class="flex flex-col items-center space-y-1 text-gray-400 hover:text-white transition-colors">
+                    <svg class="w-7 h-7" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
+                    </svg>
+                    <span class="text-xs">Profil</span>
+                </a>
+            </div>
+        </nav>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-icon">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" stroke="#EF4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+            <div class="modal-title">Hapus dari Favorit?</div>
+            <div class="modal-message" id="confirmMessage">Apakah Anda yakin ingin menghapus film ini dari favorit?</div>
+            <div class="modal-buttons">
+                <button class="modal-button modal-button-cancel" onclick="closeConfirmModal()">Batal</button>
+                <button class="modal-button modal-button-delete" id="confirmDeleteBtn">Hapus</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    let favoritMovies = [];
+    
+    document.addEventListener("DOMContentLoaded", () => {
+        const tg = window.Telegram?.WebApp;
+        
+        if (tg) {
+            console.log("✅ Telegram WebApp SDK aktif");
+            tg.ready();
+            tg.expand();
+            tg.enableClosingConfirmation();
+            window.tg = tg;
+            fetchFavorites();
+        } else {
+            console.warn("⚠️ Bukan dibuka lewat Telegram Mini App");
+            window.tg = null;
+            fetchFavorites();
+        }
+    });
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    async function fetchFavorites() {
+        console.log('Fetching favorite movies...');
+        const container = document.getElementById('favorit-list-container');
+        if (!container) {
+            console.error('❌ Container not found!');
+            return;
+        }
+
+        container.innerHTML = `
+            <div class="col-span-2 flex flex-col items-center justify-center py-8">
+                <div class="loading-spinner"></div>
+                <p class="text-gray-400 mt-4">Memuat favorit...</p>
+            </div>
+        `;
+
+        try {
+            if (!window.tg || !window.tg.initData) {
+                console.error('❌ Cannot get Telegram initData!');
+                throw new Error('Telegram data tidak tersedia');
+            }
+
+            const apiUrl = window.API_BASE_URL + '/api/v1/favorites/list';
+            console.log(`API URL: ${apiUrl}`);
+            
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    init_data: window.tg.initData
+                })
+            });
+            console.log(`API Response status: ${response.status}`);
+            
+            if (!response.ok) {
+                if (response.status === 401) {
+                    console.error('❌ Unauthorized - Invalid Telegram data');
+                    alert('Session tidak valid. Silakan tutup dan buka kembali aplikasi.');
+                }
+                throw new Error(`API error: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const favorites = data.favorites || [];
+            
+            console.log(`Received ${favorites.length} favorite movies`);
+
+            if (favorites.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-2 text-center py-12">
+                        <div class="text-6xl mb-4">💔</div>
+                        <p class="text-gray-400 mb-2">Belum ada film favorit</p>
+                        <p class="text-sm text-gray-500 mb-4">Tambahkan film ke favorit dari halaman pencarian</p>
+                        <a href="drama.html" class="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                            Cari Film
+                        </a>
+                    </div>
+                `;
+                return;
+            }
+            
+            favoritMovies = favorites;
+            renderFavorites(favorites);
+            console.log('✅ Favorites rendered successfully');
+
+        } catch (error) {
+            console.error('❌ Error fetching favorites:', error);
+            container.innerHTML = `
+                <div class="col-span-2 text-center py-8">
+                    <div class="text-4xl mb-3">😢</div>
+                    <p class="text-red-500 mb-2">Gagal memuat favorit</p>
+                    <button onclick="fetchFavorites()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                        Coba Lagi
+                    </button>
+                </div>
+            `;
+        }
+    }
+
+    function renderFavorites(favorites) {
+        const container = document.getElementById('favorit-list-container');
+        if (!container) return;
+        
+        container.innerHTML = '';
+
+        favorites.forEach(movie => {
+            const movieCard = document.createElement('div');
+            movieCard.className = 'bg-[#161a23] border border-gray-700/50 rounded-xl p-2.5 cursor-pointer group hover:border-red-600 transition-all duration-300 relative';
+            movieCard.onclick = () => handleMovieClick(movie.id);
+            
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.onclick = (e) => {
+                e.stopPropagation();
+                removeFavorite(movie.id, movie.title);
+            };
+            deleteBtn.innerHTML = `
+                <svg viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3 6h18M8 6V4c0-1.1.9-2 2-2h4c1.1 0 2 .9 2 2v2m3 0v14c0 1.1-.9 2-2 2H7c-1.1 0-2-.9-2-2V6h14zM10 11v6m4-6v6" 
+                          stroke="white" 
+                          stroke-width="2" 
+                          stroke-linecap="round" 
+                          stroke-linejoin="round" 
+                          fill="none"/>
+                </svg>
+            `;
+            
+            const posterDiv = document.createElement('div');
+            posterDiv.className = 'w-full aspect-[2/3] bg-gray-900 rounded-lg overflow-hidden mb-2';
+            
+            const img = document.createElement('img');
+            img.src = movie.poster_url;
+            img.alt = escapeHtml(movie.title);
+            img.className = 'w-full h-full object-cover group-hover:scale-105 transition-transform duration-300';
+            img.onerror = function() {
+                this.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="300"%3E%3Crect fill="%23374151" width="200" height="300"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" fill="%239CA3AF" font-size="20"%3ENo Image%3C/text%3E%3C/svg%3E';
+            };
+            
+            posterDiv.appendChild(img);
+            
+            const title = document.createElement('p');
+            title.className = 'text-sm text-white font-semibold leading-snug';
+            title.style.display = '-webkit-box';
+            title.style.webkitLineClamp = '2';
+            title.style.webkitBoxOrient = 'vertical';
+            title.style.overflow = 'hidden';
+            title.textContent = movie.title;
+            
+            movieCard.appendChild(deleteBtn);
+            movieCard.appendChild(posterDiv);
+            movieCard.appendChild(title);
+            container.appendChild(movieCard);
+        });
+    }
+
+    function showConfirmModal(movieId, movieTitle) {
+        const modal = document.getElementById('confirmModal');
+        const confirmMessage = document.getElementById('confirmMessage');
+        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+        
+        confirmMessage.innerHTML = `Apakah Anda yakin ingin menghapus<br><strong>"${movieTitle}"</strong><br>dari favorit?`;
+        
+        modal.classList.add('active');
+        
+        confirmDeleteBtn.onclick = () => {
+            closeConfirmModal();
+            executeRemoveFavorite(movieId);
+        };
+    }
+    
+    function closeConfirmModal() {
+        const modal = document.getElementById('confirmModal');
+        modal.classList.remove('active');
+    }
+    
+    function removeFavorite(movieId, movieTitle) {
+        showConfirmModal(movieId, movieTitle);
+    }
+    
+    async function executeRemoveFavorite(movieId) {
+        try {
+            if (!window.tg || !window.tg.initData) {
+                console.error('❌ Cannot get Telegram initData!');
+                alert('Telegram data tidak tersedia');
+                return;
+            }
+
+            const apiUrl = window.API_BASE_URL + '/api/v1/favorites/remove';
+            
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    init_data: window.tg.initData,
+                    movie_id: movieId
+                })
+            });
+            
+            if (response.ok) {
+                if (window.tg && window.tg.showAlert) {
+                    window.tg.showAlert('Dihapus dari favorit');
+                }
+                fetchFavorites();
+            } else if (response.status === 401) {
+                console.error('❌ Unauthorized - Invalid Telegram data');
+                alert('Session tidak valid. Silakan tutup dan buka kembali aplikasi.');
+            }
+        } catch (error) {
+            console.error('Error removing favorite:', error);
+            alert('Gagal menghapus favorit');
+        }
+    }
+
+    function handleMovieClick(movieId) {
+        console.log("🎬 Film favorit diklik! ID:", movieId);
+        window.location.href = `drama.html?movie=${movieId}`;
+    }
+    </script>
+</body>
+</html>
