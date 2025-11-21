@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Test</title>
+</head>
+<body>
+    <h1>Test API Connection</h1>
+    <div id="result"></div>
+    <script>
+        async function testAPI() {
+            const result = document.getElementById('result');
+            result.innerHTML = 'Testing...';
+            
+            try {
+                const response = await fetch(window.location.origin + '/api/v1/movies?sort=populer');
+                const data = await response.json();
+                
+                result.innerHTML = `
+                    <p>Status: ${response.status}</p>
+                    <p>Movies count: ${data.movies ? data.movies.length : 0}</p>
+                    <p>First movie: ${data.movies && data.movies[0] ? data.movies[0].title : 'none'}</p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                result.innerHTML = `Error: ${error.message}`;
+            }
+        }
+        testAPI();
+    </script>
+</body>
+</html>

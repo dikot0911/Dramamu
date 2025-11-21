@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="id" translate="no">
+<head>
+    <base href="/panel/">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <meta name="google" content="notranslate">
+    <title>Permintaan Drama - Admin Panel</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles-mobile.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="icons.js"></script>
+    <script src="themeToggle.js"></script>
+    <script src="sidebar.js"></script>
+    <script src="expand.js"></script>
+</head>
+<body data-page="requests">
+    <div class="admin-layout">
+        <!-- Desktop Sidebar - Static (tidak reload) -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <img src="assets/logo-dramamu.jpg" alt="Dramamu Logo">
+                </div>
+                <h2>Dramamu Admin</h2>
+                <p class="admin-subtitle">Panel Kontrol</p>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="dashboard.html" class="nav-item" data-page="dashboard">
+                    <span class="nav-icon" data-icon="dashboard" data-icon-size="md"></span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="analytics.html" class="nav-item" data-page="analytics">
+                    <span class="nav-icon" data-icon="barChart" data-icon-size="md"></span>
+                    <span>Analytics</span>
+                </a>
+                <a href="users.html" class="nav-item" data-page="users">
+                    <span class="nav-icon" data-icon="users" data-icon-size="md"></span>
+                    <span>Pengguna</span>
+                </a>
+                <a href="movies.html" class="nav-item" data-page="movies">
+                    <span class="nav-icon" data-icon="movie" data-icon-size="md"></span>
+                    <span>Drama</span>
+                </a>
+                <a href="requests.html" class="nav-item" data-page="requests">
+                    <span class="nav-icon" data-icon="fileText" data-icon-size="md"></span>
+                    <span>Permintaan</span>
+                    <span class="request-notification-badge notification-badge"></span>
+                </a>
+                <a href="withdrawals.html" class="nav-item" data-page="withdrawals">
+                    <span class="nav-icon" data-icon="dollarSign" data-icon-size="md"></span>
+                    <span>Penarikan</span>
+                    <span class="withdrawal-notification-badge notification-badge"></span>
+                </a>
+                <a href="payments.html" class="nav-item" data-page="payments">
+                    <span class="nav-icon" data-icon="creditCard" data-icon-size="md"></span>
+                    <span>Pembayaran</span>
+                </a>
+                <a href="settings.html" class="nav-item" data-page="settings">
+                    <span class="nav-icon" data-icon="settings" data-icon-size="md"></span>
+                    <span>Pengaturan</span>
+                </a>
+                <a href="admin-users.html" class="nav-item" data-page="admin-users" style="display: none;">
+                    <span class="nav-icon" data-icon="shield" data-icon-size="md"></span>
+                    <span>Admin Users</span>
+                </a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="header">
+                <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <div class="breadcrumb">
+                    <span>Permintaan Drama</span>
+                </div>
+                <div class="header-actions">
+                    <div id="themeToggleContainer"></div>
+                    <div class="user-info">
+                        <span data-icon="user" data-icon-size="sm" style="margin-right: 6px;"></span>
+                        <span id="adminUsername">Admin</span>
+                    </div>
+                    <button class="btn btn-secondary" onclick="AdminPanel.logout()">
+                        <span data-icon="logOut" data-icon-size="sm"></span>
+                        <span>Logout</span>
+                    </button>
+                </div>
+            </header>
+
+            <div class="content">
+                <h1 class="page-title">Manajemen Permintaan Drama</h1>
+
+                <div class="card" style="margin-bottom: 20px;">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                        <h2 style="margin: 0;">
+                            <span data-icon="calendar" data-icon-size="sm" style="margin-right: 8px;"></span>
+                            Filter Periode Permintaan
+                        </h2>
+                        <div class="date-filter-group" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button class="btn btn-sm btn-filter" onclick="setRequestsDateFilter('7days')" data-filter="7days">7 Hari</button>
+                            <button class="btn btn-sm btn-filter" onclick="setRequestsDateFilter('14days')" data-filter="14days">14 Hari</button>
+                            <button class="btn btn-sm btn-filter active" onclick="setRequestsDateFilter('30days')" data-filter="30days">30 Hari</button>
+                            <button class="btn btn-sm btn-filter" onclick="setRequestsDateFilter('60days')" data-filter="60days">60 Hari</button>
+                            <button class="btn btn-sm btn-secondary" onclick="openRequestsCustomDateModal()">
+                                <span data-icon="calendar" data-icon-size="sm"></span>
+                                <span>Custom</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #667eea, #764ba2)">
+                            <span data-icon="fileText" data-icon-size="md"></span>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="totalRequestsCount">-</h3>
+                            <p>Total Permintaan</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb, #f5576c)">
+                            <span data-icon="clock" data-icon-size="md"></span>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="pendingRequestsCount">-</h3>
+                            <p>Pending</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe, #00f2fe)">
+                            <span data-icon="check" data-icon-size="md"></span>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="approvedRequestsCount">-</h3>
+                            <p>Disetujui</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #43e97b, #38f9d7)">
+                            <span data-icon="checkCircle" data-icon-size="md"></span>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="completedRequestsCount">-</h3>
+                            <p>Selesai</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-grid" style="margin-bottom: 30px;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2>
+                                <span data-icon="pieChart" data-icon-size="sm" style="margin-right: 8px;"></span>
+                                Distribusi Status Permintaan
+                            </h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="requestStatusChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h2>
+                                <span data-icon="trendingUp" data-icon-size="sm" style="margin-right: 8px;"></span>
+                                Timeline Permintaan (7 Hari)
+                            </h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="requestsTimelineChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <div class="table-header">
+                        <div class="filter-group">
+                            <select id="statusFilter" onchange="filterRequests()">
+                                <option value="">Semua Status</option>
+                                <option value="pending">Pending</option>
+                                <option value="approved">Disetujui</option>
+                                <option value="rejected">Ditolak</option>
+                                <option value="completed">Selesai</option>
+                            </select>
+                            <button class="btn btn-secondary" onclick="loadRequests(currentPage); loadRequestStats();" title="Refresh data">
+                                <span data-icon="refreshCw" data-icon-size="sm"></span>
+                                <span>Refresh</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="tableContent">
+                        <div class="loading">Memuat permintaan...</div>
+                    </div>
+
+                    <div id="paginationContainer"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="statusModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Update Status Permintaan</h2>
+                <button class="modal-close" onclick="closeStatusModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="requestStatus">
+                        <option value="pending">Pending</option>
+                        <option value="approved">Disetujui</option>
+                        <option value="rejected">Ditolak</option>
+                        <option value="completed">Selesai</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeStatusModal()">Batal</button>
+                <button class="btn btn-primary" onclick="saveRequestStatus()">Update</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="requestsCustomDateModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Pilih Periode Custom</h2>
+                <button class="modal-close" onclick="closeRequestsCustomDateModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Dari Tanggal</label>
+                    <input type="date" id="requestsCustomStartDate" max="">
+                </div>
+                <div class="form-group">
+                    <label>Sampai Tanggal</label>
+                    <input type="date" id="requestsCustomEndDate" max="">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeRequestsCustomDateModal()">Batal</button>
+                <button class="btn btn-primary" onclick="applyRequestsCustomDateFilter()">Terapkan</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+    <script>
+        let currentPage = 1;
+        let currentRequestId = null;
+        let requestStatusChart = null;
+        let requestsTimelineChart = null;
+        let currentRequestsDateFilter = '30days';
+        let currentRequestsCustomDates = null;
+
+        function setRequestsDateFilter(filter) {
+            currentRequestsDateFilter = filter;
+            currentRequestsCustomDates = null;
+            
+            document.querySelectorAll('.btn-filter').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-filter="${filter}"]`)?.classList.add('active');
+            
+            loadRequestStats();
+        }
+
+        function openRequestsCustomDateModal() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('requestsCustomStartDate').max = today;
+            document.getElementById('requestsCustomEndDate').max = today;
+            
+            if (currentRequestsCustomDates) {
+                document.getElementById('requestsCustomStartDate').value = currentRequestsCustomDates.start;
+                document.getElementById('requestsCustomEndDate').value = currentRequestsCustomDates.end;
+            }
+            
+            document.getElementById('requestsCustomDateModal').classList.add('show');
+        }
+
+        function closeRequestsCustomDateModal() {
+            document.getElementById('requestsCustomDateModal').classList.remove('show');
+        }
+
+        function applyRequestsCustomDateFilter() {
+            const startDate = document.getElementById('requestsCustomStartDate').value;
+            const endDate = document.getElementById('requestsCustomEndDate').value;
+            
+            if (!startDate || !endDate) {
+                AdminPanel.showToast('Mohon pilih tanggal mulai dan akhir', 'error');
+                return;
+            }
+            
+            if (new Date(startDate) > new Date(endDate)) {
+                AdminPanel.showToast('Tanggal mulai tidak boleh lebih dari tanggal akhir', 'error');
+                return;
+            }
+            
+            currentRequestsCustomDates = { start: startDate, end: endDate };
+            currentRequestsDateFilter = 'custom';
+            
+            document.querySelectorAll('.btn-filter').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            closeRequestsCustomDateModal();
+            loadRequestStats();
+        }
+
+        function getRequestsDays() {
+            if (currentRequestsDateFilter === 'custom' && currentRequestsCustomDates) {
+                const start = new Date(currentRequestsCustomDates.start);
+                const end = new Date(currentRequestsCustomDates.end);
+                const diffTime = Math.abs(end - start);
+                return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+            }
+            
+            const daysMap = {
+                '7days': 7,
+                '14days': 14,
+                '30days': 30,
+                '60days': 60
+            };
+            return daysMap[currentRequestsDateFilter] || 30;
+        }
+
+        function generateRequestsDays() {
+            const numDays = getRequestsDays();
+            const days = [];
+            const today = new Date();
+            for (let i = numDays - 1; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                days.push(date.toLocaleDateString('id-ID', { month: 'short', day: 'numeric' }));
+            }
+            return days;
+        }
+
+        async function loadRequestStats() {
+            try {
+                const allRequests = await AdminPanel.apiCall('/admin/drama-requests?page=1&limit=1000');
+                const requests = allRequests.requests || [];
+                
+                document.getElementById('totalRequestsCount').textContent = requests.length.toLocaleString();
+                
+                const statusCount = {
+                    pending: 0,
+                    approved: 0,
+                    rejected: 0,
+                    completed: 0
+                };
+                
+                requests.forEach(r => {
+                    if (r.status && statusCount.hasOwnProperty(r.status)) {
+                        statusCount[r.status]++;
+                    }
+                });
+                
+                document.getElementById('pendingRequestsCount').textContent = statusCount.pending.toLocaleString();
+                document.getElementById('approvedRequestsCount').textContent = statusCount.approved.toLocaleString();
+                document.getElementById('completedRequestsCount').textContent = statusCount.completed.toLocaleString();
+                
+                initRequestCharts(requests, statusCount);
+            } catch (error) {
+                AdminPanel.showToast(error.message, 'error');
+            }
+        }
+
+        function initRequestCharts(requests, statusCount) {
+            const isDark = AdminPanel.getCurrentTheme() === 'dark';
+            const chartConfig = AdminPanel.getChartConfig(isDark);
+            
+            if (requestStatusChart) requestStatusChart.destroy();
+            requestStatusChart = new Chart(document.getElementById('requestStatusChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Pending', 'Disetujui', 'Ditolak', 'Selesai'],
+                    datasets: [{
+                        data: [
+                            statusCount.pending,
+                            statusCount.approved,
+                            statusCount.rejected,
+                            statusCount.completed
+                        ],
+                        backgroundColor: [
+                            isDark ? '#feca57' : 'rgba(254, 202, 87, 0.8)',
+                            isDark ? '#60a5fa' : 'rgba(96, 165, 250, 0.8)',
+                            isDark ? '#f87171' : 'rgba(248, 113, 113, 0.8)',
+                            isDark ? '#4ade80' : 'rgba(74, 222, 128, 0.8)'
+                        ],
+                        borderWidth: isDark ? 2 : 0,
+                        borderColor: isDark ? '#1e293b' : 'transparent'
+                    }]
+                },
+                options: {
+                    ...chartConfig,
+                    plugins: {
+                        ...chartConfig.plugins,
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                ...chartConfig.plugins.legend.labels,
+                                padding: 15,
+                                usePointStyle: true,
+                                pointStyle: 'circle'
+                            }
+                        }
+                    }
+                }
+            });
+            
+            const days = generateRequestsDays();
+            const numDays = getRequestsDays();
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const datesList = [];
+            for (let i = numDays - 1; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                datesList.push(date);
+            }
+            
+            const requestsByDay = new Array(numDays).fill(0);
+            requests.forEach(request => {
+                if (!request?.created_at) return;
+                
+                try {
+                    const requestDate = AdminPanel.toWIBDate(request.created_at);
+                    if (!requestDate) return;
+                    
+                    for (let i = 0; i < numDays; i++) {
+                        if (requestDate.getTime() === datesList[i].getTime()) {
+                            requestsByDay[i]++;
+                            break;
+                        }
+                    }
+                } catch (e) {}
+            });
+            
+            if (requestsTimelineChart) requestsTimelineChart.destroy();
+            requestsTimelineChart = new Chart(document.getElementById('requestsTimelineChart'), {
+                type: 'bar',
+                data: {
+                    labels: days,
+                    datasets: [{
+                        label: 'Permintaan',
+                        data: requestsByDay,
+                        backgroundColor: isDark ? 'rgba(96, 165, 250, 0.7)' : 'rgba(102, 126, 234, 0.7)',
+                        borderColor: isDark ? '#60a5fa' : '#667eea',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    ...chartConfig,
+                    plugins: {
+                        ...chartConfig.plugins,
+                        legend: { display: false }
+                    },
+                    scales: {
+                        ...chartConfig.scales,
+                        y: {
+                            ...chartConfig.scales.y,
+                            beginAtZero: true,
+                            ticks: {
+                                ...chartConfig.scales.y.ticks,
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function generateLast7Days() {
+            const days = [];
+            const today = new Date();
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                days.push(date.toLocaleDateString('id-ID', { month: 'short', day: 'numeric' }));
+            }
+            return days;
+        }
+
+        async function loadRequests(page = 1) {
+            const user = await AdminPanel.checkAuth();
+            if (!user) return;
+
+            document.getElementById('adminUsername').textContent = user.username;
+
+            const status = document.getElementById('statusFilter').value;
+            const params = new URLSearchParams({ page, limit: 20 });
+            if (status) params.append('status', status);
+
+            try {
+                const data = await AdminPanel.apiCall(`/admin/drama-requests?${params}`);
+                
+                const tableContent = document.getElementById('tableContent');
+                if (data.requests.length === 0) {
+                    tableContent.innerHTML = '<div class="empty-state">Tidak ada permintaan</div>';
+                    document.getElementById('paginationContainer').innerHTML = '';
+                    return;
+                }
+
+                tableContent.innerHTML = `
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Telegram ID</th>
+                                    <th>Judul</th>
+                                    <th>APK Source</th>
+                                    <th>Status</th>
+                                    <th>Dibuat</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.requests.map(r => `
+                                    <tr>
+                                        <td>${r.id}</td>
+                                        <td>${AdminPanel.formatIdWithCopy(r.telegram_id)}</td>
+                                        <td><strong>${r.judul}</strong></td>
+                                        <td>${r.apk_source || '-'}</td>
+                                        <td>
+                                            <span class="badge ${getStatusBadge(r.status)}">
+                                                ${r.status}
+                                            </span>
+                                        </td>
+                                        <td>${AdminPanel.formatDate(r.created_at)}</td>
+                                        <td>
+                                            <div class="actions">
+                                                <button class="btn btn-sm btn-primary" onclick="openStatusModal(${r.id}, '${r.status}')">
+                                                    Update
+                                                </button>
+                                                <button class="btn btn-sm btn-danger" onclick="deleteRequest(${r.id})">
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+
+                currentPage = page;
+                const paginationEl = AdminPanel.createPagination(data.page, data.total_pages, loadRequests);
+                document.getElementById('paginationContainer').innerHTML = '';
+                document.getElementById('paginationContainer').appendChild(paginationEl);
+
+            } catch (error) {
+                AdminPanel.showToast(error.message, 'error');
+            }
+        }
+
+        function getStatusBadge(status) {
+            const badges = {
+                'pending': 'badge-warning',
+                'approved': 'badge-primary',
+                'rejected': 'badge-danger',
+                'completed': 'badge-success'
+            };
+            return badges[status] || 'badge-secondary';
+        }
+
+        function filterRequests() {
+            loadRequests(1);
+        }
+
+        function openStatusModal(requestId, currentStatus) {
+            currentRequestId = requestId;
+            document.getElementById('requestStatus').value = currentStatus;
+            document.getElementById('statusModal').classList.add('show');
+        }
+
+        function closeStatusModal() {
+            document.getElementById('statusModal').classList.remove('show');
+            currentRequestId = null;
+        }
+
+        async function saveRequestStatus() {
+            if (!currentRequestId) return;
+
+            const status = document.getElementById('requestStatus').value;
+
+            try {
+                await AdminPanel.apiCall(`/admin/drama-requests/${currentRequestId}/status`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ status })
+                });
+
+                AdminPanel.showToast('Status permintaan berhasil diupdate', 'success');
+                closeStatusModal();
+                loadRequests(currentPage);
+            } catch (error) {
+                AdminPanel.showToast(error.message, 'error');
+            }
+        }
+
+        async function deleteRequest(requestId) {
+            if (!AdminPanel.confirmAction('Apakah Anda yakin ingin menghapus permintaan ini?')) return;
+
+            try {
+                await AdminPanel.apiCall(`/admin/drama-requests/${requestId}`, { method: 'DELETE' });
+                AdminPanel.showToast('Permintaan berhasil dihapus', 'success');
+                loadRequests(currentPage);
+            } catch (error) {
+                AdminPanel.showToast(error.message, 'error');
+            }
+        }
+
+        function toggleTheme() {
+            AdminPanel.toggleTheme();
+            updateThemeIcon();
+            
+            if (requestStatusChart || requestsTimelineChart) {
+                loadRequestStats();
+            }
+        }
+
+        function updateThemeIcon() {
+            const currentTheme = AdminPanel.getCurrentTheme();
+            const themeToggle = document.getElementById('themeToggle');
+            const icon = currentTheme === 'dark' ? 'sun' : 'moon';
+            themeToggle.innerHTML = `<span data-icon="${icon}" data-icon-size="md"></span>`;
+            if (window.Icons && window.Icons.renderIcons) {
+                window.Icons.renderIcons();
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', function() {
+            updateThemeIcon();
+            AdminPanel.initSidebarUserInfo();
+            AdminPanel.initMobileSidebarAdminUsers();
+            AdminPanel.init();
+            loadRequestStats();
+            loadRequests();
+        });
+    </script>
+
+    <!-- Bottom Navigation for Mobile -->
+    <nav class="bottom-nav">
+        <div class="bottom-nav-items">
+            <a href="dashboard.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="dashboard" data-icon-size="md"></span>
+            </a>
+            <a href="users.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="users" data-icon-size="md"></span>
+            </a>
+            <a href="movies.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="movie" data-icon-size="md"></span>
+            </a>
+            <a href="requests.html" class="bottom-nav-item active">
+                <span class="nav-icon" data-icon="fileText" data-icon-size="md"></span>
+            </a>
+            <a href="withdrawals.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="dollarSign" data-icon-size="md"></span>
+            </a>
+            <a href="payments.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="creditCard" data-icon-size="md"></span>
+            </a>
+        </div>
+    </nav>
+    <script>
+        // Start auto-refresh untuk update real-time
+        AdminPanel.startAutoRefresh();
+    </script>
+</html>
+
+<!-- MOBILE SIDEBAR -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<aside class="sidebar-mobile" id="sidebarMobile">
+    <div class="sidebar-header">
+        <div class="logo">
+            <img src="assets/logo-dramamu.jpg" alt="Dramamu Logo">
+        </div>
+        <h2>Dramamu Admin</h2>
+        <p class="admin-subtitle">Panel Kontrol</p>
+        <button class="sidebar-close" id="sidebarMobileClose" aria-label="Close Menu">
+            <span data-icon="x" data-icon-size="md"></span>
+        </button>
+    </div>
+    <nav class="sidebar-nav">
+        <a href="dashboard.html" class="nav-item" data-page="dashboard"><span class="nav-icon" data-icon="dashboard" data-icon-size="md"></span><span>Dashboard</span></a>
+        <a href="analytics.html" class="nav-item" data-page="analytics"><span class="nav-icon" data-icon="barChart" data-icon-size="md"></span><span>Analytics</span></a>
+        <a href="users.html" class="nav-item" data-page="users"><span class="nav-icon" data-icon="users" data-icon-size="md"></span><span>Pengguna</span></a>
+        <a href="movies.html" class="nav-item" data-page="movies"><span class="nav-icon" data-icon="movie" data-icon-size="md"></span><span>Drama</span></a>
+        <a href="requests.html" class="nav-item" data-page="requests"><span class="nav-icon" data-icon="fileText" data-icon-size="md"></span><span>Permintaan</span></a>
+        <a href="withdrawals.html" class="nav-item" data-page="withdrawals"><span class="nav-icon" data-icon="dollarSign" data-icon-size="md"></span><span>Penarikan</span></a>
+        <a href="payments.html" class="nav-item" data-page="payments"><span class="nav-icon" data-icon="creditCard" data-icon-size="md"></span><span>Pembayaran</span></a>
+        <a href="settings.html" class="nav-item" data-page="settings"><span class="nav-icon" data-icon="settings" data-icon-size="md"></span><span>Pengaturan</span></a>
+        <a href="admin-users.html" class="nav-item" data-page="admin-users" style="display: none;"><span class="nav-icon" data-icon="shield" data-icon-size="md"></span><span>Admin Users</span></a>
+    </nav>
+    <div id="sidebarMobileAdminUsers" class="sidebar-mobile-content"><div class="loading-message">Memuat...</div></div>
+</aside>
+</body>

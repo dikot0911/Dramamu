@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="id" translate="no">
+<head>
+    <base href="/panel/">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <meta name="google" content="notranslate">
+    <title>Admin Users Management - Admin Panel</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles-mobile.css">
+    <script src="icons.js"></script>
+    <script src="themeToggle.js"></script>
+    <script src="sidebar.js"></script>
+    <script src="expand.js"></script>
+</head>
+<body data-page="admin-users">
+    <div class="admin-layout">
+        <!-- Desktop Sidebar - Static (tidak reload) -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <img src="assets/logo-dramamu.jpg" alt="Dramamu Logo">
+                </div>
+                <h2>Dramamu Admin</h2>
+                <p class="admin-subtitle">Panel Kontrol</p>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="dashboard.html" class="nav-item" data-page="dashboard">
+                    <span class="nav-icon" data-icon="dashboard" data-icon-size="md"></span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="analytics.html" class="nav-item" data-page="analytics">
+                    <span class="nav-icon" data-icon="barChart" data-icon-size="md"></span>
+                    <span>Analytics</span>
+                </a>
+                <a href="users.html" class="nav-item" data-page="users">
+                    <span class="nav-icon" data-icon="users" data-icon-size="md"></span>
+                    <span>Pengguna</span>
+                </a>
+                <a href="movies.html" class="nav-item" data-page="movies">
+                    <span class="nav-icon" data-icon="movie" data-icon-size="md"></span>
+                    <span>Drama</span>
+                </a>
+                <a href="requests.html" class="nav-item" data-page="requests">
+                    <span class="nav-icon" data-icon="fileText" data-icon-size="md"></span>
+                    <span>Permintaan</span>
+                    <span class="request-notification-badge notification-badge"></span>
+                </a>
+                <a href="withdrawals.html" class="nav-item" data-page="withdrawals">
+                    <span class="nav-icon" data-icon="dollarSign" data-icon-size="md"></span>
+                    <span>Penarikan</span>
+                    <span class="withdrawal-notification-badge notification-badge"></span>
+                </a>
+                <a href="payments.html" class="nav-item" data-page="payments">
+                    <span class="nav-icon" data-icon="creditCard" data-icon-size="md"></span>
+                    <span>Pembayaran</span>
+                </a>
+                <a href="settings.html" class="nav-item" data-page="settings">
+                    <span class="nav-icon" data-icon="settings" data-icon-size="md"></span>
+                    <span>Pengaturan</span>
+                </a>
+                <a href="admin-users.html" class="nav-item" data-page="admin-users" style="display: none;">
+                    <span class="nav-icon" data-icon="shield" data-icon-size="md"></span>
+                    <span>Admin Users</span>
+                </a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="header">
+                <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <div class="breadcrumb">
+                    <span>Admin Users Management</span>
+                </div>
+                <div class="header-actions">
+                    <div id="themeToggleContainer"></div>
+                    <div class="user-info">
+                        <span data-icon="user" data-icon-size="sm" style="margin-right: 6px;"></span>
+                        <span id="adminUsername">Admin</span>
+                    </div>
+                    <button class="btn btn-secondary" onclick="AdminPanel.logout()">
+                        <span data-icon="logOut" data-icon-size="sm"></span>
+                        <span>Logout</span>
+                    </button>
+                </div>
+            </header>
+
+            <div class="content">
+                <div class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h1 class="page-title">Admin Users Management</h1>
+                    <button class="btn btn-primary" onclick="openCreateAdminModal()">
+                        <span data-icon="plus" data-icon-size="sm"></span>
+                        <span>Create Admin</span>
+                    </button>
+                </div>
+
+                <div class="table-container">
+                    <div id="tableContent">
+                        <div class="loading">Loading admin users...</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Create/Edit Admin Modal -->
+    <div id="adminModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Create Admin User</h2>
+                <button class="modal-close" onclick="closeAdminModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Username *</label>
+                    <input type="text" id="adminUsernameInput" placeholder="Enter username" required>
+                </div>
+                <div class="form-group">
+                    <label>Display Name *</label>
+                    <input type="text" id="adminDisplayNameInput" placeholder="Enter display name" required>
+                </div>
+                <div class="form-group" id="passwordGroup">
+                    <label>Password *</label>
+                    <input type="password" id="adminPasswordInput" placeholder="Enter password" required>
+                </div>
+                <div class="form-group">
+                    <label>Super Admin</label>
+                    <select id="adminIsSuperAdminInput">
+                        <option value="false">No</option>
+                        <option value="true">Yes</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeAdminModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveAdmin()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+    <script>
+        let currentAdminId = null;
+        let isEditMode = false;
+
+        async function loadAdmins() {
+            try {
+                const admins = await AdminPanel.apiCall('/admin/admin-users');
+                
+                const tableHtml = `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Username</th>
+                                <th>Display Name</th>
+                                <th>Super Admin</th>
+                                <th>Last Login</th>
+                                <th>Active Sessions</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${admins.map(admin => `
+                                <tr>
+                                    <td>${AdminPanel.formatIdWithCopy(admin.id)}</td>
+                                    <td>${AdminPanel.escapeHtml(admin.username)}</td>
+                                    <td>${AdminPanel.escapeHtml(admin.display_name || '-')}</td>
+                                    <td>
+                                        <span class="badge ${admin.is_super_admin ? 'badge-success' : 'badge-secondary'}">
+                                            ${admin.is_super_admin ? 'Yes' : 'No'}
+                                        </span>
+                                    </td>
+                                    <td>${admin.last_login ? AdminPanel.formatDate(admin.last_login) : 'Never'}</td>
+                                    <td>${admin.active_sessions || 0}</td>
+                                    <td>
+                                        <div class="actions">
+                                            <button class="btn btn-sm btn-primary" onclick="openEditAdminModal('${admin.id}', '${AdminPanel.escapeAttribute(admin.username)}', '${AdminPanel.escapeAttribute(admin.display_name || '')}', ${admin.is_super_admin})">
+                                                <span data-icon="edit" data-icon-size="sm"></span>
+                                                Edit
+                                            </button>
+                                            ${admin.active_sessions > 0 ? `
+                                                <button class="btn btn-sm btn-warning" onclick="kickAdmin('${admin.id}')">
+                                                    <span data-icon="logOut" data-icon-size="sm"></span>
+                                                    Kick
+                                                </button>
+                                            ` : ''}
+                                            <button class="btn btn-sm btn-danger" onclick="deleteAdmin('${admin.id}')">
+                                                <span data-icon="trash" data-icon-size="sm"></span>
+                                                Delete
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+                
+                document.getElementById('tableContent').innerHTML = tableHtml;
+                
+                if (window.initIcons) {
+                    initIcons();
+                }
+            } catch (error) {
+                document.getElementById('tableContent').innerHTML = `
+                    <div class="error-state">
+                        <p>${error.message}</p>
+                        <button class="btn btn-primary" onclick="loadAdmins()">Retry</button>
+                    </div>
+                `;
+            }
+        }
+
+        function openCreateAdminModal() {
+            isEditMode = false;
+            currentAdminId = null;
+            document.getElementById('modalTitle').textContent = 'Create Admin User';
+            document.getElementById('adminUsernameInput').value = '';
+            document.getElementById('adminDisplayNameInput').value = '';
+            document.getElementById('adminPasswordInput').value = '';
+            document.getElementById('adminIsSuperAdminInput').value = 'false';
+            document.getElementById('passwordGroup').style.display = 'block';
+            document.getElementById('adminModal').classList.add('show');
+        }
+
+        function openEditAdminModal(id, username, displayName, isSuperAdmin) {
+            isEditMode = true;
+            currentAdminId = id;
+            document.getElementById('modalTitle').textContent = 'Edit Admin User';
+            
+            // Decode the escaped values
+            const decodedUsername = AdminPanel.unescapeAttribute(username);
+            const decodedDisplayName = AdminPanel.unescapeAttribute(displayName);
+            
+            document.getElementById('adminUsernameInput').value = decodedUsername;
+            document.getElementById('adminDisplayNameInput').value = decodedDisplayName;
+            document.getElementById('adminIsSuperAdminInput').value = isSuperAdmin.toString();
+            document.getElementById('passwordGroup').style.display = 'none';
+            document.getElementById('adminModal').classList.add('show');
+        }
+
+        function closeAdminModal() {
+            document.getElementById('adminModal').classList.remove('show');
+        }
+
+        async function saveAdmin() {
+            const username = document.getElementById('adminUsernameInput').value.trim();
+            const displayName = document.getElementById('adminDisplayNameInput').value.trim();
+            const password = document.getElementById('adminPasswordInput').value;
+            const isSuperAdmin = document.getElementById('adminIsSuperAdminInput').value === 'true';
+
+            if (!username || !displayName) {
+                AdminPanel.showToast('Username and Display Name are required', 'error');
+                return;
+            }
+
+            if (!isEditMode && !password) {
+                AdminPanel.showToast('Password is required for new admin', 'error');
+                return;
+            }
+
+            try {
+                const payload = {
+                    username,
+                    display_name: displayName,
+                    is_super_admin: isSuperAdmin
+                };
+
+                if (!isEditMode) {
+                    payload.password = password;
+                    await AdminPanel.apiCall('/admin/admin-users', {
+                        method: 'POST',
+                        body: JSON.stringify(payload)
+                    });
+                    AdminPanel.showToast('Admin user created successfully', 'success');
+                } else {
+                    await AdminPanel.apiCall(`/admin/admin-users/${currentAdminId}`, {
+                        method: 'PUT',
+                        body: JSON.stringify(payload)
+                    });
+                    AdminPanel.showToast('Admin user updated successfully', 'success');
+                }
+
+                closeAdminModal();
+                loadAdmins();
+            } catch (error) {
+                AdminPanel.showToast(error.message, 'error');
+            }
+        }
+
+        async function deleteAdmin(id) {
+            if (!AdminPanel.confirmAction('Are you sure you want to delete this admin user? This action cannot be undone.')) {
+                return;
+            }
+
+            try {
+                await AdminPanel.apiCall(`/admin/admin-users/${id}`, {
+                    method: 'DELETE'
+                });
+                AdminPanel.showToast('Admin user deleted successfully', 'success');
+                loadAdmins();
+            } catch (error) {
+                AdminPanel.showToast(error.message, 'error');
+            }
+        }
+
+        async function kickAdmin(id) {
+            if (!AdminPanel.confirmAction('Are you sure you want to kick all active sessions for this admin?')) {
+                return;
+            }
+
+            try {
+                await AdminPanel.apiCall(`/admin/admin-users/${id}/kick`, {
+                    method: 'POST'
+                });
+                AdminPanel.showToast('Admin sessions kicked successfully', 'success');
+                loadAdmins();
+            } catch (error) {
+                AdminPanel.showToast(error.message, 'error');
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', function() {
+            updateThemeIcon();
+            AdminPanel.initSidebarUserInfo();
+            AdminPanel.initMobileSidebarAdminUsers();
+            AdminPanel.init();
+            
+            // Check if user is super admin
+            AdminPanel.checkAuth().then(user => {
+                if (!user || !user.is_super_admin) {
+                    AdminPanel.showToast('Access denied: Super admin only', 'error');
+                    setTimeout(() => {
+                        window.location.href = '/panel/dashboard.html';
+                    }, 2000);
+                    return;
+                }
+                
+                // Update navbar username
+                document.getElementById('adminUsername').textContent = user.username;
+                
+                loadAdmins();
+            });
+        });
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('adminModal');
+            if (event.target === modal) {
+                closeAdminModal();
+            }
+        }
+    </script>
+
+    <nav class="bottom-nav">
+        <div class="bottom-nav-items">
+            <a href="dashboard.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="dashboard" data-icon-size="md"></span>
+            </a>
+            <a href="users.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="users" data-icon-size="md"></span>
+            </a>
+            <a href="movies.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="movie" data-icon-size="md"></span>
+            </a>
+            <a href="requests.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="fileText" data-icon-size="md"></span>
+            </a>
+            <a href="withdrawals.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="dollarSign" data-icon-size="md"></span>
+            </a>
+            <a href="payments.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="creditCard" data-icon-size="md"></span>
+            </a>
+        </div>
+    </nav>
+    <script>
+        // Start auto-refresh untuk update real-time
+        AdminPanel.startAutoRefresh(10000);
+    </script>
+</html>
+
+<!-- MOBILE SIDEBAR -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<aside class="sidebar-mobile" id="sidebarMobile">
+    <div class="sidebar-header">
+        <div class="logo">
+            <img src="assets/logo-dramamu.jpg" alt="Dramamu Logo">
+        </div>
+        <h2>Dramamu Admin</h2>
+        <p class="admin-subtitle">Panel Kontrol</p>
+        <button class="sidebar-close" id="sidebarMobileClose" aria-label="Close Menu">
+            <span data-icon="x" data-icon-size="md"></span>
+        </button>
+    </div>
+    <nav class="sidebar-nav">
+        <a href="dashboard.html" class="nav-item" data-page="dashboard"><span class="nav-icon" data-icon="dashboard" data-icon-size="md"></span><span>Dashboard</span></a>
+        <a href="analytics.html" class="nav-item" data-page="analytics"><span class="nav-icon" data-icon="barChart" data-icon-size="md"></span><span>Analytics</span></a>
+        <a href="users.html" class="nav-item" data-page="users"><span class="nav-icon" data-icon="users" data-icon-size="md"></span><span>Pengguna</span></a>
+        <a href="movies.html" class="nav-item" data-page="movies"><span class="nav-icon" data-icon="movie" data-icon-size="md"></span><span>Drama</span></a>
+        <a href="requests.html" class="nav-item" data-page="requests"><span class="nav-icon" data-icon="fileText" data-icon-size="md"></span><span>Permintaan</span></a>
+        <a href="withdrawals.html" class="nav-item" data-page="withdrawals"><span class="nav-icon" data-icon="dollarSign" data-icon-size="md"></span><span>Penarikan</span></a>
+        <a href="payments.html" class="nav-item" data-page="payments"><span class="nav-icon" data-icon="creditCard" data-icon-size="md"></span><span>Pembayaran</span></a>
+        <a href="settings.html" class="nav-item" data-page="settings"><span class="nav-icon" data-icon="settings" data-icon-size="md"></span><span>Pengaturan</span></a>
+        <a href="admin-users.html" class="nav-item" data-page="admin-users" style="display: none;"><span class="nav-icon" data-icon="shield" data-icon-size="md"></span><span>Admin Users</span></a>
+    </nav>
+    <div id="sidebarMobileAdminUsers" class="sidebar-mobile-content"><div class="loading-message">Memuat...</div></div>
+</aside>
+</body>

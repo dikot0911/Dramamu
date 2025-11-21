@@ -1,0 +1,10 @@
+# Redirect index.html to home
+/index.html /home.html 200
+
+# Root redirect to home
+/ /home.html 200
+
+# SPA fallback - handle all deep links (untuk direct access seperti /drama.html?id=123)
+# CRITICAL untuk production: Semua URL yang ga match ke file static akan fallback ke halaman yang sesuai
+# Ini prevent 404 errors saat user refresh atau share direct link
+/* /home.html 200
