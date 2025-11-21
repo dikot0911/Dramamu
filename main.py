@@ -656,6 +656,10 @@ async def create_payment_link(request: PaymentRequest):
         raise HTTPException(status_code=500, detail="DOKU payment gateway belum dikonfigurasi")
     
     import requests
+    import json
+    import base64
+    import uuid
+    from datetime import datetime
     from config import DOKU_API_URL
     
     order_id = f"DRAMAMU-{request.telegram_id}-{int(time.time())}"
@@ -679,46 +683,82 @@ async def create_payment_link(request: PaymentRequest):
         finally:
             db.close()
         
-        # Prepare DOKU payment request
-        payment_data = {
-            "client_id": DOKU_CLIENT_ID,
-            "order_id": order_id,
-            "amount": request.gross_amount,
-            "description": f"VIP {request.nama_paket}",
+        # Prepare DOKU payment request body
+        payment_body = {
+            "order": {
+                "invoice_number": order_id,
+                "amount": request.gross_amount
+            },
+            "customer": {
+                "name": f"User {request.telegram_id}",
+                "email": f"{request.telegram_id}@telegram.user"
+            }
         }
         
-        # Generate signature
-        request_body = str(payment_data).replace("'", '"')
-        signature_string = f"{DOKU_CLIENT_ID}{order_id}{request.gross_amount}{DOKU_SECRET_KEY}"
-        signature = hmac.new(
-            DOKU_SECRET_KEY.encode(),
-            signature_string.encode(),
-            hashlib.sha256
-        ).hexdigest()
+        request_body_json = json.dumps(payment_body, separators=(',', ':'))
         
-        # Call DOKU API
+        # Generate Request-Id (UUID)
+        request_id = str(uuid.uuid4())
+        
+        # Generate Request-Timestamp (ISO8601 UTC)
+        request_timestamp = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+        
+        # Generate Digest (SHA256 hash of request body, then base64)
+        body_hash = hashlib.sha256(request_body_json.encode('utf-8')).digest()
+        digest = base64.b64encode(body_hash).decode('utf-8')
+        
+        # Request-Target (API path)
+        request_target = "/checkout/v1/payment"
+        
+        # Build component signature string
+        component_signature = f"Client-Id:{DOKU_CLIENT_ID}\n"
+        component_signature += f"Request-Id:{request_id}\n"
+        component_signature += f"Request-Timestamp:{request_timestamp}\n"
+        component_signature += f"Request-Target:{request_target}\n"
+        component_signature += f"Digest:{digest}"
+        
+        # Generate HMAC-SHA256 signature
+        hmac_signature = hmac.new(
+            DOKU_SECRET_KEY.encode('utf-8'),
+            component_signature.encode('utf-8'),
+            hashlib.sha256
+        ).digest()
+        
+        signature = "HMACSHA256=" + base64.b64encode(hmac_signature).decode('utf-8')
+        
+        # Prepare headers
         headers = {
             "Content-Type": "application/json",
             "Client-Id": DOKU_CLIENT_ID,
+            "Request-Id": request_id,
+            "Request-Timestamp": request_timestamp,
             "Signature": signature
         }
         
+        logger.info(f"Calling DOKU API for order {order_id}")
+        logger.info(f"Headers: Client-Id={DOKU_CLIENT_ID}, Request-Id={request_id}")
+        
+        # Call DOKU API
         response = requests.post(
-            f"{DOKU_API_URL}/checkout/v1/payment",
-            json=payment_data,
+            f"{DOKU_API_URL}{request_target}",
+            data=request_body_json,
             headers=headers,
-            timeout=10
+            timeout=15
         )
+        
+        logger.info(f"DOKU API response status: {response.status_code}")
         
         if response.status_code != 200:
             logger.error(f"DOKU API error: {response.status_code} - {response.text}")
             raise HTTPException(status_code=500, detail=f"DOKU API error: {response.text}")
         
         doku_response = response.json()
-        payment_url = doku_response.get("payment_url")
+        logger.info(f"DOKU response: {doku_response}")
+        
+        payment_url = doku_response.get("payment", {}).get("url")
         
         if not payment_url:
-            logger.error(f"No payment_url in DOKU response: {doku_response}")
+            logger.error(f"No payment URL in DOKU response: {doku_response}")
             raise HTTPException(status_code=500, detail="Gagal mendapatkan payment URL dari DOKU")
         
         return {"payment_url": payment_url, "order_id": order_id}
@@ -727,6 +767,7 @@ async def create_payment_link(request: PaymentRequest):
         raise
     except Exception as e:
         logger.error(f"Error waktu bikin pembayaran: {e}")
+        logger.exception("Full error traceback:")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/v1/favorites")
