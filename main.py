@@ -655,15 +655,10 @@ async def create_payment_link(request: PaymentRequest):
     if not (DOKU_CLIENT_ID and DOKU_SECRET_KEY):
         raise HTTPException(status_code=500, detail="DOKU payment gateway belum dikonfigurasi")
     
-    order_id = f"DRAMAMU-{request.telegram_id}-{int(time.time())}"
+    import requests
+    from config import DOKU_API_URL
     
-    # DOKU payment request
-    payment_data = {
-        "client_id": DOKU_CLIENT_ID,
-        "order_id": order_id,
-        "amount": request.gross_amount,
-        "description": f"VIP {request.nama_paket}",
-    }
+    order_id = f"DRAMAMU-{request.telegram_id}-{int(time.time())}"
     
     try:
         db = SessionLocal()
@@ -684,8 +679,49 @@ async def create_payment_link(request: PaymentRequest):
         finally:
             db.close()
         
-        # Return DOKU payment data (frontend akan handle DOKU API)
-        return {"order_id": order_id, "amount": request.gross_amount, "client_id": DOKU_CLIENT_ID}
+        # Prepare DOKU payment request
+        payment_data = {
+            "client_id": DOKU_CLIENT_ID,
+            "order_id": order_id,
+            "amount": request.gross_amount,
+            "description": f"VIP {request.nama_paket}",
+        }
+        
+        # Generate signature
+        request_body = str(payment_data).replace("'", '"')
+        signature_string = f"{DOKU_CLIENT_ID}{order_id}{request.gross_amount}{DOKU_SECRET_KEY}"
+        signature = hmac.new(
+            DOKU_SECRET_KEY.encode(),
+            signature_string.encode(),
+            hashlib.sha256
+        ).hexdigest()
+        
+        # Call DOKU API
+        headers = {
+            "Content-Type": "application/json",
+            "Client-Id": DOKU_CLIENT_ID,
+            "Signature": signature
+        }
+        
+        response = requests.post(
+            f"{DOKU_API_URL}/checkout/v1/payment",
+            json=payment_data,
+            headers=headers,
+            timeout=10
+        )
+        
+        if response.status_code != 200:
+            logger.error(f"DOKU API error: {response.status_code} - {response.text}")
+            raise HTTPException(status_code=500, detail=f"DOKU API error: {response.text}")
+        
+        doku_response = response.json()
+        payment_url = doku_response.get("payment_url")
+        
+        if not payment_url:
+            logger.error(f"No payment_url in DOKU response: {doku_response}")
+            raise HTTPException(status_code=500, detail="Gagal mendapatkan payment URL dari DOKU")
+        
+        return {"payment_url": payment_url, "order_id": order_id}
     
     except HTTPException:
         raise
