@@ -289,6 +289,94 @@ body::before {
     outline: none;
 }
 
+/* ===== PREMIUM SEARCH BAR ===== */
+.premium-search-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: rgba(31, 41, 55, 0.95);
+    border-radius: 9999px;
+    padding: 2px;
+    overflow: hidden;
+}
+
+/* Animated gradient border using box-shadow */
+.premium-search-wrapper::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 9999px;
+    padding: 2px;
+    background: linear-gradient(
+        135deg,
+        #d4af37 0%,
+        #8b5cf6 25%,
+        #d4af37 50%,
+        #8b5cf6 75%,
+        #d4af37 100%
+    );
+    background-size: 200% 200%;
+    animation: borderFlow 8s linear infinite;
+    opacity: 0.4;
+    filter: blur(8px);
+    z-index: -1;
+    pointer-events: none;
+}
+
+@keyframes borderFlow {
+    0% {
+        background-position: 0% 0%;
+    }
+    100% {
+        background-position: 200% 0%;
+    }
+}
+
+.premium-search-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: white;
+    padding: 10px 16px;
+    font-size: 0.9375rem;
+    font-family: 'Manrope', sans-serif;
+    font-weight: 500;
+    outline: none;
+    border-radius: 9999px;
+}
+
+.premium-search-input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.premium-search-input:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+.premium-search-btn {
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    color: white;
+    border: none;
+    border-radius: 9999px;
+    padding: 8px 16px;
+    font-size: 0.875rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-right: 2px;
+    white-space: nowrap;
+}
+
+.premium-search-btn:hover {
+    background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+    transform: scale(1.02);
+}
+
+.premium-search-btn:active {
+    transform: scale(0.98);
+}
+
 /* ===== SHIMMER LOADING (only for loading states) ===== */
 .shimmer-card {
     background: rgba(30, 41, 59, 0.7);
@@ -608,4 +696,5 @@ body::before {
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
     }
-}
+    }
+    
