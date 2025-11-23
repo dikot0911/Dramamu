@@ -58,14 +58,6 @@ package-lock.json
 # Development folder - local development only
 development/
 
-# Replit temporary assets
-attached_assets/
-
 # Documentation files
 *.md
 !README.md
-
-# Replit config - DO NOT IGNORE
-.replit
-replit.md
-.replit.json
