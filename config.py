@@ -194,12 +194,12 @@ else:
 
 # Backend URL (API)
 # Auto-detect production environment atau manual configuration
-# Priority: API_BASE_URL > RENDER_EXTERNAL_URL > REPLIT_DEV_DOMAIN > localhost
-replit_domain = get_env('REPLIT_DEV_DOMAIN')
+# Priority: API_BASE_URL > RENDER_EXTERNAL_URL > DEV_DOMAIN > localhost
+dev_domain = get_env('REPLIT_DEV_DOMAIN') or get_env('DEV_DOMAIN')
 BASE_URL = (
     get_env('API_BASE_URL') or 
     get_env('RENDER_EXTERNAL_URL') or 
-    (f"https://{replit_domain}" if replit_domain else None) or 
+    (f"https://{dev_domain}" if dev_domain else None) or 
     "http://localhost:5000"
 )
 
@@ -207,8 +207,8 @@ if os.getenv('API_BASE_URL'):
     print(f"API_BASE_URL: {BASE_URL}")
 elif os.getenv('RENDER_EXTERNAL_URL'):
     print(f"✅ Auto-detected Render URL: {BASE_URL}")
-elif replit_domain:
-    print(f"✅ Auto-detected Replit URL: {BASE_URL}")
+elif dev_domain:
+    print(f"✅ Auto-detected Development URL: {BASE_URL}")
 else:
     print("⚠️  Pake localhost (development mode) - Telegram Mini App buttons TIDAK akan jalan!")
     print("   Telegram requires HTTPS for Web App buttons")

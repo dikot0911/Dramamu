@@ -25,9 +25,9 @@ function getApiBaseUrl() {
         return API_CONFIG.DEVELOPMENT_API_URL;
     }
     
-    // Cek apakah kita di Replit environment
+    // Cek apakah kita di environment development
     if (hostname.includes('replit.dev')) {
-        console.log('✅ Auto-detected Replit environment');
+        console.log('✅ Auto-detected Development environment');
         return `https://${hostname}`;
     }
     
