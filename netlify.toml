@@ -1,0 +1,19 @@
+# Netlify Configuration untuk Dramamu Frontend
+# File ini harus di root repository
+
+[build]
+  base = "frontend"
+  publish = "."
+  command = "chmod +x build-config.sh && ./build-config.sh"
+
+[[redirects]]
+  from = "/"
+  to = "/home.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "ALLOW"
+    X-Content-Type-Options = "nosniff"
+    Cache-Control = "no-cache, no-store, must-revalidate"

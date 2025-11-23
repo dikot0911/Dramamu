@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Dramamu - Favorit</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="config.js?v=222222222"></script>
+    <link rel="stylesheet" href="premium-styles.css?v=222222222">
+    <script src="premium-icons.js?v=222222222"></script>
+    <script src="premium-init.js?v=222222222"></script>
+    <script src="shimmer-observer.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Manrope', sans-serif;
+            background: linear-gradient(180deg, #0f0f1e 0%, #1a1a2e 100%);
+            color: #E5E7EB;
+            position: relative;
+            min-height: 100vh;
+        }
+        
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Shimmer Loading Animation */
+        .shimmer-card {
+            background: rgba(30, 41, 59, 0.6);
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            height: 280px;
+        }
+        
+        .shimmer-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent 0%,
+                rgba(212, 175, 55, 0.3) 25%,
+                rgba(139, 92, 246, 0.3) 50%,
+                rgba(212, 175, 55, 0.3) 75%,
+                transparent 100%
+            );
+            animation: shimmer 2s infinite;
+            animation-play-state: paused;
+        }
+        
+        .shimmer-card.shimmer-visible::before {
+            animation-play-state: running;
+        }
+        
+        @keyframes shimmer {
+            0% {
+                transform: translateX(-100%);
+            }
+            100% {
+                transform: translateX(100%);
+            }
+        }
+        
+        .shimmer-poster {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(
+                135deg,
+                rgba(30, 41, 59, 0.8) 0%,
+                rgba(45, 55, 72, 0.8) 50%,
+                rgba(30, 41, 59, 0.8) 100%
+            );
+            border-radius: 8px 8px 0 0;
+        }
+        
+        .shimmer-title {
+            width: 80%;
+            height: 16px;
+            background: linear-gradient(
+                135deg,
+                rgba(45, 55, 72, 0.8) 0%,
+                rgba(55, 65, 81, 0.8) 50%,
+                rgba(45, 55, 72, 0.8) 100%
+            );
+            border-radius: 4px;
+            margin: 12px auto 8px;
+        }
+        
+        .shimmer-meta {
+            width: 60%;
+            height: 12px;
+            background: linear-gradient(
+                135deg,
+                rgba(45, 55, 72, 0.6) 0%,
+                rgba(55, 65, 81, 0.6) 50%,
+                rgba(45, 55, 72, 0.6) 100%
+            );
+            border-radius: 4px;
+            margin: 0 auto;
+        }
+        
+        .delete-btn {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            z-index: 10;
+            width: auto;
+            height: auto;
+            background: none;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            padding: 0;
+        }
+        
+        .delete-btn:hover {
+            transform: scale(1.1);
+        }
+        
+        .delete-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .delete-btn svg {
+            width: 14px;
+            height: 14px;
+            stroke: #EF4444;
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+            transition: all 0.2s ease;
+        }
+
+        .delete-btn:hover svg {
+            stroke: #FF6B6B;
+            filter: drop-shadow(0 2px 4px rgba(239, 68, 68, 0.6));
+        }
+        
+        /* Confirmation Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 9998;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+        }
+        
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal-card {
+            background: rgba(30, 41, 59, 0.98);
+            border: 2px solid rgba(212, 175, 55, 0.3);
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 320px;
+            width: 90%;
+            text-align: center;
+            transform: translateY(8px);
+            opacity: 0;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(3px);
+        }
+        
+        .modal-overlay.active .modal-card {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        
+        .modal-icon {
+            width: 56px;
+            height: 56px;
+            margin: 0 auto 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(239, 68, 68, 0.2);
+            border-radius: 50%;
+        }
+        
+        .modal-icon svg {
+            width: 32px;
+            height: 32px;
+        }
+        
+        .modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+        
+        .modal-message {
+            font-size: 14px;
+            color: #9CA3AF;
+            line-height: 1.5;
+            margin-bottom: 24px;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+        }
+        
+        .modal-button {
+            flex: 1;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .modal-button-cancel {
+            background: rgba(255, 255, 255, 0.1);
+            color: #E5E7EB;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .modal-button-cancel:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+        
+        .modal-button-delete {
+            background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+            color: #fff;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .modal-button-delete:hover {
+            background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.5);
+        }
+        
+        .modal-button:active {
+            transform: scale(0.98);
+        }
+
+        /* Smooth Luxury Card Border - Flowing Effect */
+        .movie-card-premium {
+            position: relative;
+            background: rgba(20, 20, 35, 0.8);
+            border-radius: 16px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            box-shadow: 
+                0 0 20px rgba(212, 175, 55, 0.15),
+                0 0 40px rgba(139, 92, 246, 0.08),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            border: 1px solid transparent;
+            background-clip: padding-box;
+        }
+        
+        /* Triangle background for delete button */
+        .movie-card-premium::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 0;
+            height: 0;
+            border-left: 40px solid transparent;
+            border-top: 40px solid rgba(0, 0, 0, 0.4);
+            z-index: 5;
+        }
+
+        .movie-card-premium::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 16px;
+            padding: 1px;
+            background: linear-gradient(135deg, 
+                rgba(212, 175, 55, 0.4) 0%,
+                rgba(212, 175, 55, 0.15) 25%,
+                rgba(139, 92, 246, 0.15) 50%,
+                rgba(212, 175, 55, 0.15) 75%,
+                rgba(212, 175, 55, 0.4) 100%);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+        }
+
+        @keyframes borderFlow {
+            0% {
+                transform: translateX(0%) translateZ(0);
+            }
+            100% {
+                transform: translateX(50%) translateZ(0);
+            }
+        }
+
+        .movie-card-premium:hover {
+            box-shadow: 
+                0 0 30px rgba(212, 175, 55, 0.25),
+                0 0 60px rgba(139, 92, 246, 0.12),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
+            transform: translateY(-4px);
+        }
+
+        .movie-card-premium:active {
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="w-full h-screen overflow-hidden relative flex flex-col" style="position: relative; z-index: 1;">
+
+        <header class="w-full z-20 py-3 text-center border-b" style="background: rgba(26, 26, 46, 0.95); border-color: rgba(212, 175, 55, 0.2); border-width: 1px;">
+            <h1 class="text-xl font-bold tracking-wide">Film Favorit</h1>
+        </header>
+
+        <main class="flex-1 overflow-y-auto scrollbar-hide p-4 pb-24">
+            
+            <div class="mb-4 premium-card rounded-lg p-4" style="background: linear-gradient(135deg, rgba(212, 175, 55, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%); border: 2px solid rgba(212, 175, 55, 0.3);">
+                <div class="flex items-center space-x-3">
+                    <div class="text-3xl">❤️</div>
+                    <div>
+                        <h2 class="text-white font-bold">Koleksi Favorit Kamu</h2>
+                        <p class="text-sm" style="color: rgba(212, 175, 55, 0.9);">Simpan drama favorit untuk ditonton nanti</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-x-3 gap-y-4" id="favorit-list-container">
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-icon">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" stroke="#EF4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+            <div class="modal-title">Hapus dari Favorit?</div>
+            <div class="modal-message" id="confirmMessage">Apakah Anda yakin ingin menghapus film ini dari favorit?</div>
+            <div class="modal-buttons">
+                <button class="modal-button modal-button-cancel" onclick="closeConfirmModal()">Batal</button>
+                <button class="modal-button modal-button-delete" id="confirmDeleteBtn">Hapus</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    let favoritMovies = [];
+    
+    // Cached DOM elements (performance optimization)
+    let cachedElements = {};
+    
+    function getCachedElement(id) {
+        if (!cachedElements[id]) {
+            cachedElements[id] = document.getElementById(id);
+        }
+        return cachedElements[id];
+    }
+    
+    document.addEventListener("DOMContentLoaded", () => {
+        const tg = window.Telegram?.WebApp;
+        
+        if (tg) {
+            console.log("✅ Telegram WebApp SDK aktif");
+            tg.ready();
+            tg.expand();
+            tg.enableClosingConfirmation();
+            
+            tg.disableVerticalSwipes();
+            console.log("🔒 Vertical swipes disabled - mini app tidak akan close saat scroll");
+            
+            window.tg = tg;
+            fetchFavorites();
+        } else {
+            console.warn("⚠️ Bukan dibuka lewat Telegram Mini App");
+            window.tg = null;
+            fetchFavorites();
+        }
+    });
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    async function fetchFavorites() {
+        console.log('Fetching favorite movies...');
+        const container = getCachedElement('favorit-list-container');
+        if (!container) {
+            console.error('❌ Container not found!');
+            return;
+        }
+
+        container.innerHTML = `
+            <div class="shimmer-card">
+                <div class="shimmer-poster"></div>
+                <div class="shimmer-title"></div>
+                <div class="shimmer-meta"></div>
+            </div>
+            <div class="shimmer-card">
+                <div class="shimmer-poster"></div>
+                <div class="shimmer-title"></div>
+                <div class="shimmer-meta"></div>
+            </div>
+            <div class="shimmer-card">
+                <div class="shimmer-poster"></div>
+                <div class="shimmer-title"></div>
+                <div class="shimmer-meta"></div>
+            </div>
+            <div class="shimmer-card">
+                <div class="shimmer-poster"></div>
+                <div class="shimmer-title"></div>
+                <div class="shimmer-meta"></div>
+            </div>
+        `;
+
+        try {
+            if (!window.tg || !window.tg.initData) {
+                console.error('❌ Cannot get Telegram initData!');
+                throw new Error('Telegram data tidak tersedia');
+            }
+
+            const apiUrl = window.API_BASE_URL + '/api/v1/favorites/list';
+            console.log(`API URL: ${apiUrl}`);
+            
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    init_data: window.tg.initData
+                })
+            });
+            console.log(`API Response status: ${response.status}`);
+            
+            if (!response.ok) {
+                if (response.status === 401) {
+                    console.error('❌ Unauthorized - Invalid Telegram data');
+                    alert('Session tidak valid. Silakan tutup dan buka kembali aplikasi.');
+                }
+                throw new Error(`API error: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const favorites = data.favorites || [];
+            
+            console.log(`Received ${favorites.length} favorite movies`);
+
+            if (favorites.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-2 text-center py-12">
+                        <div class="text-6xl mb-4">💔</div>
+                        <p class="text-gray-400 mb-2">Belum ada film favorit</p>
+                        <p class="text-sm text-gray-500 mb-4">Tambahkan film ke favorit dari halaman pencarian</p>
+                        <a href="drama.html" class="inline-block px-6 py-2 rounded-lg text-white font-medium transition-all duration-300" style="background: linear-gradient(135deg, #d4af37 0%, #f0d266 100%); box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);" onmouseover="this.style.background='linear-gradient(135deg, #f0d266 0%, #d4af37 100%)'; this.style.boxShadow='0 6px 20px rgba(212, 175, 55, 0.6)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.background='linear-gradient(135deg, #d4af37 0%, #f0d266 100%)'; this.style.boxShadow='0 4px 15px rgba(212, 175, 55, 0.4)'; this.style.transform='translateY(0)';">
+                            Cari Film
+                        </a>
+                    </div>
+                `;
+                return;
+            }
+            
+            favoritMovies = favorites;
+            renderFavorites(favorites);
+            console.log('✅ Favorites rendered successfully');
+
+        } catch (error) {
+            console.error('❌ Error fetching favorites:', error);
+            container.innerHTML = `
+                <div class="col-span-2 text-center py-8">
+                    <div class="text-4xl mb-3">😢</div>
+                    <p class="text-red-500 mb-2">Gagal memuat favorit</p>
+                    <button onclick="fetchFavorites()" class="px-4 py-2 rounded-lg text-white font-medium transition-all duration-300" style="background: linear-gradient(135deg, #d4af37 0%, #f0d266 100%); box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);" onmouseover="this.style.background='linear-gradient(135deg, #f0d266 0%, #d4af37 100%)'; this.style.boxShadow='0 6px 20px rgba(212, 175, 55, 0.6)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.background='linear-gradient(135deg, #d4af37 0%, #f0d266 100%)'; this.style.boxShadow='0 4px 15px rgba(212, 175, 55, 0.4)'; this.style.transform='translateY(0)';">
+                        Coba Lagi
+                    </button>
+                </div>
+            `;
+        }
+    }
+
+    function renderFavorites(favorites) {
+        const container = getCachedElement('favorit-list-container');
+        if (!container) return;
+        
+        container.innerHTML = '';
+        
+        // Use DocumentFragment for batch DOM writes
+        const fragment = document.createDocumentFragment();
+
+        favorites.forEach(movie => {
+            const movieCard = document.createElement('div');
+            movieCard.className = 'rounded-xl p-2.5 cursor-pointer group relative movie-card-premium';
+            movieCard.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+            movieCard.onclick = () => handleMovieClick(movie.id);
+            
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.onclick = (e) => {
+                e.stopPropagation();
+                removeFavorite(movie.id, movie.title);
+            };
+            deleteBtn.innerHTML = `
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3 6h18M8 6V4c0-1.1.9-2 2-2h4c1.1 0 2 .9 2 2v2m3 0v14c0 1.1-.9 2-2 2H7c-1.1 0-2-.9-2-2V6h14zM10 11v6m4-6v6" 
+                          stroke="white" 
+                          stroke-width="2" 
+                          stroke-linecap="round" 
+                          stroke-linejoin="round" 
+                          fill="none"/>
+                </svg>
+            `;
+            
+            const posterDiv = document.createElement('div');
+            posterDiv.className = 'w-full aspect-[2/3] bg-gray-900 rounded-lg overflow-hidden mb-2';
+            
+            const img = document.createElement('img');
+            img.alt = escapeHtml(movie.title);
+            img.className = 'w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 poster-img img-loading';
+            img.loading = 'lazy';
+            
+            img.onload = function() {
+                this.classList.remove('img-loading');
+                this.classList.add('img-loaded');
+            };
+            
+            img.onerror = function() {
+                this.classList.remove('img-loading');
+                this.classList.add('img-error');
+                this.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="300"%3E%3Crect fill="%23374151" width="200" height="300"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" fill="%239CA3AF" font-size="20"%3ENo Image%3C/text%3E%3C/svg%3E';
+            };
+            
+            // Prioritas: pakai Telegram File ID jika ada, fallback ke poster_url
+            if (movie.poster_file_id) {
+                img.src = `${window.API_BASE_URL}/api/poster/${movie.poster_file_id}`;
+            } else if (movie.poster_url) {
+                // Jika poster_url adalah path relatif (dimulai dengan /), prepend dengan API_BASE_URL
+                if (movie.poster_url.startsWith('/')) {
+                    img.src = `${window.API_BASE_URL}${movie.poster_url}`;
+                } else {
+                    img.src = movie.poster_url;
+                }
+            } else {
+                img.src = '';
+            }
+            
+            posterDiv.appendChild(img);
+            
+            const title = document.createElement('p');
+            title.className = 'text-sm text-white font-semibold leading-snug';
+            title.style.display = '-webkit-box';
+            title.style.webkitLineClamp = '2';
+            title.style.webkitBoxOrient = 'vertical';
+            title.style.overflow = 'hidden';
+            title.textContent = movie.title;
+            
+            movieCard.appendChild(deleteBtn);
+            movieCard.appendChild(posterDiv);
+            movieCard.appendChild(title);
+            fragment.appendChild(movieCard);
+        });
+        
+        // Batch append all movie cards at once
+        container.appendChild(fragment);
+    }
+
+    function showConfirmModal(movieId, movieTitle) {
+        const modal = getCachedElement('confirmModal');
+        const confirmMessage = getCachedElement('confirmMessage');
+        const confirmDeleteBtn = getCachedElement('confirmDeleteBtn');
+        
+        confirmMessage.innerHTML = `Apakah Anda yakin ingin menghapus<br><strong>"${movieTitle}"</strong><br>dari favorit?`;
+        
+        modal.classList.add('active');
+        
+        confirmDeleteBtn.onclick = () => {
+            closeConfirmModal();
+            executeRemoveFavorite(movieId);
+        };
+    }
+    
+    function closeConfirmModal() {
+        const modal = getCachedElement('confirmModal');
+        const confirmMessage = getCachedElement('confirmMessage');
+        const confirmDeleteBtn = getCachedElement('confirmDeleteBtn');
+        
+        modal.classList.remove('active');
+        
+        if (confirmMessage) confirmMessage.innerHTML = '';
+        if (confirmDeleteBtn) confirmDeleteBtn.onclick = null;
+    }
+    
+    function removeFavorite(movieId, movieTitle) {
+        showConfirmModal(movieId, movieTitle);
+    }
+    
+    async function executeRemoveFavorite(movieId) {
+        try {
+            if (!window.tg || !window.tg.initData) {
+                console.error('❌ Cannot get Telegram initData!');
+                alert('Telegram data tidak tersedia');
+                return;
+            }
+
+            const apiUrl = window.API_BASE_URL + '/api/v1/favorites/remove';
+            
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    init_data: window.tg.initData,
+                    movie_id: movieId
+                })
+            });
+            
+            if (response.ok) {
+                if (window.tg && window.tg.showAlert) {
+                    window.tg.showAlert('Dihapus dari favorit');
+                }
+                fetchFavorites();
+            } else if (response.status === 401) {
+                console.error('❌ Unauthorized - Invalid Telegram data');
+                alert('Session tidak valid. Silakan tutup dan buka kembali aplikasi.');
+            }
+        } catch (error) {
+            console.error('Error removing favorite:', error);
+            alert('Gagal menghapus favorit');
+        }
+    }
+
+    function handleMovieClick(movieId) {
+        console.log("🎬 Film favorit diklik! ID:", movieId);
+        window.location.href = `drama.html?movie=${movieId}`;
+    }
+    
+    // Cleanup function to prevent memory leaks
+    function cleanup() {
+        console.log('🧹 Cleaning up resources...');
+        
+        // Clear modal and detach DOM references
+        const modal = getCachedElement('confirmModal');
+        if (modal) {
+            modal.classList.remove('active');
+            const confirmMessage = getCachedElement('confirmMessage');
+            const confirmDeleteBtn = getCachedElement('confirmDeleteBtn');
+            if (confirmMessage) confirmMessage.innerHTML = '';
+            if (confirmDeleteBtn) confirmDeleteBtn.onclick = null;
+        }
+        
+        // Clear cached elements
+        cachedElements = {};
+        
+        console.log('✅ Cleanup complete');
+    }
+    
+    // Add cleanup on page unload
+    window.addEventListener('beforeunload', cleanup);
+    window.addEventListener('pagehide', cleanup);
+    </script>
+    <script src="navbar.js?v=222222222"></script>
+</body>
+</html>

@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="id" translate="no">
+<head>
+    <base href="/panel/">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <meta name="google" content="notranslate">
+    <title>Pembayaran - Admin Panel</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles-mobile.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="icons.js"></script>
+    <script src="themeToggle.js"></script>
+    <script src="sidebar.js"></script>
+    <script src="expand.js"></script>
+</head>
+<body data-page="payments">
+    <div class="admin-layout">
+        <!-- Desktop Sidebar - Static (tidak reload) -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <img src="assets/logo-dramamu.jpg" alt="Dramamu Logo">
+                </div>
+                <h2>Dramamu Admin</h2>
+                <p class="admin-subtitle">Panel Kontrol</p>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="dashboard.html" class="nav-item" data-page="dashboard">
+                    <span class="nav-icon" data-icon="dashboard" data-icon-size="md"></span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="analytics.html" class="nav-item" data-page="analytics">
+                    <span class="nav-icon" data-icon="barChart" data-icon-size="md"></span>
+                    <span>Analytics</span>
+                </a>
+                <a href="users.html" class="nav-item" data-page="users">
+                    <span class="nav-icon" data-icon="users" data-icon-size="md"></span>
+                    <span>Pengguna</span>
+                </a>
+                <a href="movies.html" class="nav-item" data-page="movies">
+                    <span class="nav-icon" data-icon="movie" data-icon-size="md"></span>
+                    <span>Drama</span>
+                </a>
+                <a href="requests.html" class="nav-item" data-page="requests">
+                    <span class="nav-icon" data-icon="fileText" data-icon-size="md"></span>
+                    <span>Permintaan</span>
+                    <span class="request-notification-badge notification-badge"></span>
+                </a>
+                <a href="withdrawals.html" class="nav-item" data-page="withdrawals">
+                    <span class="nav-icon" data-icon="dollarSign" data-icon-size="md"></span>
+                    <span>Penarikan</span>
+                    <span class="withdrawal-notification-badge notification-badge"></span>
+                </a>
+                <a href="payments.html" class="nav-item" data-page="payments">
+                    <span class="nav-icon" data-icon="creditCard" data-icon-size="md"></span>
+                    <span>Pembayaran</span>
+                </a>
+                <a href="settings.html" class="nav-item" data-page="settings">
+                    <span class="nav-icon" data-icon="settings" data-icon-size="md"></span>
+                    <span>Pengaturan</span>
+                </a>
+                <a href="admin-users.html" class="nav-item" data-page="admin-users" style="display: none;">
+                    <span class="nav-icon" data-icon="shield" data-icon-size="md"></span>
+                    <span>Admin Users</span>
+                </a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="header">
+                <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <div class="breadcrumb">
+                    <span>Pembayaran</span>
+                </div>
+                <div class="header-actions">
+                    <div id="themeToggleContainer"></div>
+                    <div class="user-info">
+                        <span data-icon="user" data-icon-size="sm" style="margin-right: 6px;"></span>
+                        <span id="adminUsername">Admin</span>
+                    </div>
+                    <button class="btn btn-secondary" onclick="AdminPanel.logout()">
+                        <span data-icon="logOut" data-icon-size="sm"></span>
+                        <span>Logout</span>
+                    </button>
+                </div>
+            </header>
+
+            <div class="content">
+                <h1 class="page-title">Manajemen Pembayaran</h1>
+
+                <div class="card" style="margin-bottom: 20px;">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                        <h2 style="margin: 0;">
+                            <span data-icon="calendar" data-icon-size="sm" style="margin-right: 8px;"></span>
+                            Filter Periode Pembayaran
+                        </h2>
+                        <div class="date-filter-group" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button class="btn btn-sm btn-filter" onclick="setPaymentsDateFilter('7days')" data-filter="7days">7 Hari</button>
+                            <button class="btn btn-sm btn-filter" onclick="setPaymentsDateFilter('14days')" data-filter="14days">14 Hari</button>
+                            <button class="btn btn-sm btn-filter active" onclick="setPaymentsDateFilter('30days')" data-filter="30days">30 Hari</button>
+                            <button class="btn btn-sm btn-filter" onclick="setPaymentsDateFilter('60days')" data-filter="60days">60 Hari</button>
+                            <button class="btn btn-sm btn-secondary" onclick="openPaymentsCustomDateModal()">
+                                <span data-icon="calendar" data-icon-size="sm"></span>
+                                <span>Custom</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #667eea, #764ba2)">
+                            <span data-icon="creditCard" data-icon-size="md"></span>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="totalPaymentsCount">-</h3>
+                            <p>Total Pembayaran</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb, #f5576c)">
+                            <span data-icon="checkCircle" data-icon-size="md"></span>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="successfulPayments">-</h3>
+                            <p>Berhasil</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe, #00f2fe)">
+                            <span data-icon="clock" data-icon-size="md"></span>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="pendingPayments">-</h3>
+                            <p>Pending</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #43e97b, #38f9d7)">
+                            <span data-icon="dollarSign" data-icon-size="md"></span>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="totalRevenue">-</h3>
+                            <p>Total Revenue</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-grid" style="margin-bottom: 30px;">
+                    <div class="card card-expandable" data-chart="payment-status">
+                        <button class="card-expand-btn" onclick="toggleCardExpand(this); event.stopPropagation();">&times;</button>
+                        <div class="card-header">
+                            <h2>
+                                <span data-icon="pieChart" data-icon-size="sm" style="margin-right: 8px;"></span>
+                                Status Pembayaran
+                            </h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container" id="paymentStatusChartContainer">
+                                <canvas id="paymentStatusChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card card-expandable" data-chart="payment-trend">
+                        <button class="card-expand-btn" onclick="toggleCardExpand(this); event.stopPropagation();">&times;</button>
+                        <div class="card-header">
+                            <h2>
+                                <span data-icon="trendingUp" data-icon-size="sm" style="margin-right: 8px;"></span>
+                                Payment Trend (7 Days)
+                            </h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container" id="paymentTrendChartContainer">
+                                <canvas id="paymentTrendChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <div class="table-header">
+                        <div class="filter-group">
+                            <select id="statusFilter" onchange="filterPayments()">
+                                <option value="">Semua Status</option>
+                                <option value="pending">Pending</option>
+                                <option value="settlement">Settlement</option>
+                                <option value="expire">Expired</option>
+                                <option value="cancel">Cancelled</option>
+                            </select>
+                            <button class="btn btn-secondary" onclick="loadPayments(currentPage); loadPaymentStats();" title="Refresh data">
+                                <span data-icon="refreshCw" data-icon-size="sm"></span>
+                                <span>Refresh</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="tableContent">
+                        <div class="loading">Memuat pembayaran...</div>
+                    </div>
+
+                    <div id="paginationContainer"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="paymentsCustomDateModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Pilih Periode Custom</h2>
+                <button class="modal-close" onclick="closePaymentsCustomDateModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Dari Tanggal</label>
+                    <input type="date" id="paymentsCustomStartDate" max="">
+                </div>
+                <div class="form-group">
+                    <label>Sampai Tanggal</label>
+                    <input type="date" id="paymentsCustomEndDate" max="">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closePaymentsCustomDateModal()">Batal</button>
+                <button class="btn btn-primary" onclick="applyPaymentsCustomDateFilter()">Terapkan</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+    <script>
+        let currentPage = 1;
+        let paymentStatusChart = null;
+        let paymentTrendChart = null;
+        let currentPaymentsDateFilter = '30days';
+        let currentPaymentsCustomDates = null;
+
+        function setPaymentsDateFilter(filter) {
+            currentPaymentsDateFilter = filter;
+            currentPaymentsCustomDates = null;
+            
+            document.querySelectorAll('.btn-filter').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-filter="${filter}"]`)?.classList.add('active');
+            
+            loadPaymentStats();
+        }
+
+        function openPaymentsCustomDateModal() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('paymentsCustomStartDate').max = today;
+            document.getElementById('paymentsCustomEndDate').max = today;
+            
+            if (currentPaymentsCustomDates) {
+                document.getElementById('paymentsCustomStartDate').value = currentPaymentsCustomDates.start;
+                document.getElementById('paymentsCustomEndDate').value = currentPaymentsCustomDates.end;
+            }
+            
+            document.getElementById('paymentsCustomDateModal').classList.add('show');
+        }
+
+        function closePaymentsCustomDateModal() {
+            document.getElementById('paymentsCustomDateModal').classList.remove('show');
+        }
+
+        function applyPaymentsCustomDateFilter() {
+            const startDate = document.getElementById('paymentsCustomStartDate').value;
+            const endDate = document.getElementById('paymentsCustomEndDate').value;
+            
+            if (!startDate || !endDate) {
+                AdminPanel.showToast('Mohon pilih tanggal mulai dan akhir', 'error');
+                return;
+            }
+            
+            if (new Date(startDate) > new Date(endDate)) {
+                AdminPanel.showToast('Tanggal mulai tidak boleh lebih dari tanggal akhir', 'error');
+                return;
+            }
+            
+            currentPaymentsCustomDates = { start: startDate, end: endDate };
+            currentPaymentsDateFilter = 'custom';
+            
+            document.querySelectorAll('.btn-filter').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            closePaymentsCustomDateModal();
+            loadPaymentStats();
+        }
+
+        function getPaymentsDays() {
+            if (currentPaymentsDateFilter === 'custom' && currentPaymentsCustomDates) {
+                const start = new Date(currentPaymentsCustomDates.start);
+                const end = new Date(currentPaymentsCustomDates.end);
+                const diffTime = Math.abs(end - start);
+                return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+            }
+            
+            const daysMap = {
+                '7days': 7,
+                '14days': 14,
+                '30days': 30,
+                '60days': 60
+            };
+            return daysMap[currentPaymentsDateFilter] || 30;
+        }
+
+        function generatePaymentsDays() {
+            const numDays = getPaymentsDays();
+            const days = [];
+            const today = new Date();
+            for (let i = numDays - 1; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                days.push(date.toLocaleDateString('id-ID', { month: 'short', day: 'numeric' }));
+            }
+            return days;
+        }
+
+        async function loadPaymentStats() {
+            try {
+                const allPayments = await AdminPanel.apiCall('/admin/payments?page=1&limit=1000');
+                const payments = allPayments.payments || [];
+                
+                document.getElementById('totalPaymentsCount').textContent = payments.length.toLocaleString();
+                
+                const statusCount = {
+                    settlement: 0,
+                    pending: 0,
+                    expire: 0,
+                    cancel: 0
+                };
+                
+                let totalRevenue = 0;
+                
+                payments.forEach(p => {
+                    if (p.status && statusCount.hasOwnProperty(p.status)) {
+                        statusCount[p.status]++;
+                    }
+                    if (p.status === 'settlement') {
+                        totalRevenue += p.amount || 0;
+                    }
+                });
+                
+                document.getElementById('successfulPayments').textContent = statusCount.settlement.toLocaleString();
+                document.getElementById('pendingPayments').textContent = statusCount.pending.toLocaleString();
+                document.getElementById('totalRevenue').textContent = AdminPanel.formatCurrency(totalRevenue);
+                
+                initPaymentCharts(payments, statusCount);
+            } catch (error) {
+                AdminPanel.showToast(error.message, 'error');
+            }
+        }
+
+        function initPaymentCharts(payments, statusCount) {
+            const isDark = AdminPanel.getCurrentTheme() === 'dark';
+            const chartConfig = AdminPanel.getChartConfig(isDark);
+            
+            if (paymentStatusChart) paymentStatusChart.destroy();
+            paymentStatusChart = new Chart(document.getElementById('paymentStatusChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Settlement', 'Pending', 'Expired', 'Cancelled'],
+                    datasets: [{
+                        data: [
+                            statusCount.settlement,
+                            statusCount.pending,
+                            statusCount.expire,
+                            statusCount.cancel
+                        ],
+                        backgroundColor: [
+                            isDark ? '#4ade80' : 'rgba(74, 222, 128, 0.8)',
+                            isDark ? '#feca57' : 'rgba(254, 202, 87, 0.8)',
+                            isDark ? '#94a3b8' : 'rgba(148, 163, 184, 0.8)',
+                            isDark ? '#f87171' : 'rgba(248, 113, 113, 0.8)'
+                        ],
+                        borderWidth: isDark ? 2 : 0,
+                        borderColor: isDark ? '#1e293b' : 'transparent'
+                    }]
+                },
+                options: {
+                    ...chartConfig,
+                    plugins: {
+                        ...chartConfig.plugins,
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                ...chartConfig.plugins.legend.labels,
+                                padding: 15,
+                                usePointStyle: true,
+                                pointStyle: 'circle'
+                            }
+                        }
+                    }
+                }
+            });
+            
+            const days = generatePaymentsDays();
+            const numDays = getPaymentsDays();
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const datesList = [];
+            for (let i = numDays - 1; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                datesList.push(date);
+            }
+            
+            const paymentsByDay = new Array(numDays).fill(0);
+            payments.forEach(payment => {
+                if (!payment?.created_at) return;
+                
+                try {
+                    const paymentDate = AdminPanel.toWIBDate(payment.created_at);
+                    if (!paymentDate) return;
+                    
+                    for (let i = 0; i < numDays; i++) {
+                        if (paymentDate.getTime() === datesList[i].getTime()) {
+                            paymentsByDay[i]++;
+                            break;
+                        }
+                    }
+                } catch (e) {}
+            });
+            
+            if (paymentTrendChart) paymentTrendChart.destroy();
+            paymentTrendChart = new Chart(document.getElementById('paymentTrendChart'), {
+                type: 'line',
+                data: {
+                    labels: days,
+                    datasets: [{
+                        label: 'Pembayaran',
+                        data: paymentsByDay,
+                        borderColor: isDark ? '#60a5fa' : '#667eea',
+                        backgroundColor: isDark ? 'rgba(96, 165, 250, 0.1)' : 'rgba(102, 126, 234, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    ...chartConfig,
+                    plugins: {
+                        ...chartConfig.plugins,
+                        legend: { display: false }
+                    },
+                    scales: {
+                        ...chartConfig.scales,
+                        y: {
+                            ...chartConfig.scales.y,
+                            beginAtZero: true,
+                            ticks: {
+                                ...chartConfig.scales.y.ticks,
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function generateLast7Days() {
+            const days = [];
+            const today = new Date();
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                days.push(date.toLocaleDateString('id-ID', { month: 'short', day: 'numeric' }));
+            }
+            return days;
+        }
+
+        async function loadPayments(page = 1) {
+            const user = await AdminPanel.checkAuth();
+            if (!user) return;
+
+            document.getElementById('adminUsername').textContent = user.username;
+
+            const status = document.getElementById('statusFilter').value;
+            const params = new URLSearchParams({ page, limit: 20 });
+            if (status) params.append('status', status);
+
+            try {
+                const data = await AdminPanel.apiCall(`/admin/payments?${params}`);
+                
+                const tableContent = document.getElementById('tableContent');
+                if (data.payments.length === 0) {
+                    tableContent.innerHTML = '<div class="empty-state">Tidak ada pembayaran</div>';
+                    document.getElementById('paginationContainer').innerHTML = '';
+                    return;
+                }
+
+                tableContent.innerHTML = `
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Order ID</th>
+                                    <th>Telegram ID</th>
+                                    <th>Package</th>
+                                    <th>Jumlah</th>
+                                    <th>Status</th>
+                                    <th>Dibuat</th>
+                                    <th>Paid At</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.payments.map(p => `
+                                    <tr>
+                                        <td>${p.id}</td>
+                                        <td><code>${AdminPanel.formatIdWithCopy(p.order_id, 12)}</code></td>
+                                        <td>${AdminPanel.formatIdWithCopy(p.telegram_id)}</td>
+                                        <td><strong>${p.package_name}</strong></td>
+                                        <td><strong>${AdminPanel.formatCurrency(p.amount)}</strong></td>
+                                        <td>
+                                            <span class="badge ${getStatusBadge(p.status)}">
+                                                ${p.status}
+                                            </span>
+                                        </td>
+                                        <td>${AdminPanel.formatDate(p.created_at)}</td>
+                                        <td>${AdminPanel.formatDate(p.paid_at)}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+
+                currentPage = page;
+                const paginationEl = AdminPanel.createPagination(data.page, data.total_pages, loadPayments);
+                document.getElementById('paginationContainer').innerHTML = '';
+                document.getElementById('paginationContainer').appendChild(paginationEl);
+
+            } catch (error) {
+                AdminPanel.showToast(error.message, 'error');
+            }
+        }
+
+        function getStatusBadge(status) {
+            const badges = {
+                'pending': 'badge-warning',
+                'settlement': 'badge-success',
+                'expire': 'badge-secondary',
+                'cancel': 'badge-danger'
+            };
+            return badges[status] || 'badge-secondary';
+        }
+
+        function filterPayments() {
+            loadPayments(1);
+        }
+
+        function toggleTheme() {
+            AdminPanel.toggleTheme();
+            updateThemeIcon();
+            
+            if (paymentStatusChart || paymentTrendChart) {
+                loadPaymentStats();
+            }
+        }
+
+        function updateThemeIcon() {
+            const currentTheme = AdminPanel.getCurrentTheme();
+            const themeToggle = document.getElementById('themeToggle');
+            const icon = currentTheme === 'dark' ? 'sun' : 'moon';
+            themeToggle.innerHTML = `<span data-icon="${icon}" data-icon-size="md"></span>`;
+            if (window.Icons && window.Icons.renderIcons) {
+                window.Icons.renderIcons();
+            }
+        }
+
+        // Card Expand/Collapse Functionality - Horizontal Expansion
+        let expandedCard = null;
+
+        function toggleCardExpand(button) {
+            const card = button.closest('.card-expandable');
+            if (card.classList.contains('card-expanded')) {
+                collapseCard(card);
+            } else {
+                expandCard(card);
+            }
+        }
+
+        function handleCardClick(e) {
+            // Jangan expand jika klik di button close atau sedang expanded
+            if (e.target.closest('.card-expand-btn')) {
+                return;
+            }
+
+            const card = e.currentTarget;
+            
+            // Jika card belum expanded, expand
+            if (!card.classList.contains('card-expanded')) {
+                expandCard(card);
+            }
+        }
+
+        function expandCard(card) {
+            // Tutup card yang sedang expanded (jika ada)
+            if (expandedCard && expandedCard !== card) {
+                collapseCard(expandedCard);
+            }
+
+            // Dapatkan parent grid container
+            const gridContainer = card.closest('.dashboard-grid');
+            
+            // Tambahkan class untuk menandai ada card yang expanded
+            if (gridContainer) {
+                gridContainer.classList.add('has-expanded');
+            }
+
+            // Expand card ini
+            card.classList.add('card-expanded');
+            expandedCard = card;
+
+            // Tambahkan expanded class ke chart container
+            const chartContainer = card.querySelector('.chart-container');
+            if (chartContainer) {
+                chartContainer.classList.add('expanded');
+            }
+
+            // Update chart size dengan delay untuk animasi smooth
+            setTimeout(() => {
+                updateExpandedChart(card);
+            }, 500);
+        }
+
+        function collapseCard(card) {
+            if (!card) return;
+            
+            // Dapatkan parent grid container
+            const gridContainer = card.closest('.dashboard-grid');
+            
+            // Hapus class has-expanded dari grid container
+            if (gridContainer) {
+                gridContainer.classList.remove('has-expanded');
+            }
+            
+            card.classList.remove('card-expanded');
+            expandedCard = null;
+
+            // Hapus expanded class dari chart container
+            const chartContainer = card.querySelector('.chart-container');
+            if (chartContainer) {
+                chartContainer.classList.remove('expanded');
+            }
+
+            // Update chart size kembali ke normal dengan delay
+            setTimeout(() => {
+                updateExpandedChart(card);
+            }, 100);
+        }
+
+        function updateExpandedChart(card) {
+            if (!card) return;
+            
+            const chartType = card.getAttribute('data-chart');
+            
+            if (chartType === 'payment-status' && paymentStatusChart) {
+                paymentStatusChart.resize();
+            } else if (chartType === 'payment-trend' && paymentTrendChart) {
+                paymentTrendChart.resize();
+            }
+        }
+
+        function initCardExpandFeature() {
+            const expandableCards = document.querySelectorAll('.card-expandable');
+            expandableCards.forEach(card => {
+                card.addEventListener('click', handleCardClick);
+            });
+
+            // Tutup dengan tombol ESC
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && expandedCard) {
+                    collapseCard(expandedCard);
+                }
+            });
+
+            // Tutup saat klik di luar card yang expanded
+            document.addEventListener('click', (e) => {
+                if (expandedCard && !e.target.closest('.card-expandable')) {
+                    collapseCard(expandedCard);
+                }
+            });
+        }
+
+        window.addEventListener('DOMContentLoaded', function() {
+            updateThemeIcon();
+            AdminPanel.initSidebarUserInfo();
+            AdminPanel.initMobileSidebarAdminUsers();
+            AdminPanel.init();
+            loadPaymentStats();
+            loadPayments();
+            initCardExpandFeature();
+        });
+    </script>
+
+    <!-- Bottom Navigation for Mobile -->
+    <nav class="bottom-nav">
+        <div class="bottom-nav-items">
+            <a href="dashboard.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="dashboard" data-icon-size="md"></span>
+            </a>
+            <a href="users.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="users" data-icon-size="md"></span>
+            </a>
+            <a href="movies.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="movie" data-icon-size="md"></span>
+            </a>
+            <a href="requests.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="fileText" data-icon-size="md"></span>
+            </a>
+            <a href="withdrawals.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="dollarSign" data-icon-size="md"></span>
+            </a>
+            <a href="payments.html" class="bottom-nav-item active">
+                <span class="nav-icon" data-icon="creditCard" data-icon-size="md"></span>
+            </a>
+        </div>
+    </nav>
+    <script>
+        // Start auto-refresh untuk update real-time
+        AdminPanel.startAutoRefresh();
+    </script>
+</html>
+
+<!-- MOBILE SIDEBAR -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<aside class="sidebar-mobile" id="sidebarMobile">
+    <div class="sidebar-header">
+        <div class="logo">
+            <img src="assets/logo-dramamu.jpg" alt="Dramamu Logo">
+        </div>
+        <h2>Dramamu Admin</h2>
+        <p class="admin-subtitle">Panel Kontrol</p>
+        <button class="sidebar-close" id="sidebarMobileClose" aria-label="Close Menu">
+            <span data-icon="x" data-icon-size="md"></span>
+        </button>
+    </div>
+    <nav class="sidebar-nav">
+        <a href="dashboard.html" class="nav-item" data-page="dashboard"><span class="nav-icon" data-icon="dashboard" data-icon-size="md"></span><span>Dashboard</span></a>
+        <a href="analytics.html" class="nav-item" data-page="analytics"><span class="nav-icon" data-icon="barChart" data-icon-size="md"></span><span>Analytics</span></a>
+        <a href="users.html" class="nav-item" data-page="users"><span class="nav-icon" data-icon="users" data-icon-size="md"></span><span>Pengguna</span></a>
+        <a href="movies.html" class="nav-item" data-page="movies"><span class="nav-icon" data-icon="movie" data-icon-size="md"></span><span>Drama</span></a>
+        <a href="requests.html" class="nav-item" data-page="requests"><span class="nav-icon" data-icon="fileText" data-icon-size="md"></span><span>Permintaan</span></a>
+        <a href="withdrawals.html" class="nav-item" data-page="withdrawals"><span class="nav-icon" data-icon="dollarSign" data-icon-size="md"></span><span>Penarikan</span></a>
+        <a href="payments.html" class="nav-item" data-page="payments"><span class="nav-icon" data-icon="creditCard" data-icon-size="md"></span><span>Pembayaran</span></a>
+        <a href="settings.html" class="nav-item" data-page="settings"><span class="nav-icon" data-icon="settings" data-icon-size="md"></span><span>Pengaturan</span></a>
+        <a href="admin-users.html" class="nav-item" data-page="admin-users" style="display: none;"><span class="nav-icon" data-icon="shield" data-icon-size="md"></span><span>Admin Users</span></a>
+    </nav>
+    <div id="sidebarMobileAdminUsers" class="sidebar-mobile-content"><div class="loading-message">Memuat...</div></div>
+</aside>
+</body>

@@ -1,0 +1,2750 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Dramamu - Cari Judul</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="config.js?v=222222222"></script>
+    <link rel="stylesheet" href="premium-styles.css?v=222222222">
+    <script src="premium-icons.js?v=222222222"></script>
+    <script src="premium-init.js?v=222222222"></script>
+    <script src="shimmer-observer.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Manrope', sans-serif;
+            background: linear-gradient(180deg, #0f0f1e 0%, #1a1a2e 100%);
+            min-height: 100vh;
+            color: #E5E7EB;
+            position: relative;
+        }
+        
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        input[type="text"]:focus {
+            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.3);
+            border-color: #d4af37 !important;
+        }
+        
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Simple Toast Notification */
+        .toast-notification {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%) translateY(8px);
+            background: rgba(30, 41, 59, 0.98);
+            border: 2px solid rgba(212, 175, 55, 0.4);
+            border-radius: 12px;
+            padding: 16px 20px;
+            max-width: 280px;
+            width: auto;
+            text-align: center;
+            z-index: 9999;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+        }
+        
+        .toast-notification.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0);
+        }
+        
+        .toast-icon {
+            width: 32px;
+            height: 32px;
+            margin: 0 auto 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .toast-icon svg {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .toast-message {
+            font-size: 14px;
+            color: #E5E7EB;
+            line-height: 1.4;
+        }
+        
+        .toast-success { border-color: rgba(34, 197, 94, 0.3); }
+        .toast-error { border-color: rgba(239, 68, 68, 0.3); }
+        
+        /* Modal Overlay for Film Selection */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 9998;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            backdrop-filter: blur(3px);
+        }
+        
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal-card {
+            background: rgba(26, 35, 52, 0.98);
+            border: 2px solid rgba(212, 175, 55, 0.4);
+            border-radius: 16px;
+            padding: 32px 24px;
+            max-width: 320px;
+            width: 88%;
+            text-align: center;
+            transform: scale(0.95) translateY(10px);
+            opacity: 0;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7);
+            position: relative;
+        }
+        
+        .modal-overlay.active .modal-card {
+            transform: scale(1) translateY(0);
+            opacity: 1;
+        }
+        
+        .modal-close-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 32px;
+            height: 32px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            z-index: 10;
+        }
+        
+        .modal-close-btn:hover {
+            background: rgba(212, 175, 55, 0.2);
+            border-color: rgba(212, 175, 55, 0.5);
+            transform: scale(1.1);
+        }
+        
+        .modal-close-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .modal-close-btn svg {
+            width: 18px;
+            height: 18px;
+            stroke: #d4af37;
+        }
+        
+        .modal-icon {
+            width: 140px;
+            height: 140px;
+            margin: 0 auto 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 3px solid rgba(212, 175, 55, 0.5);
+            box-shadow: 0 0 30px rgba(212, 175, 55, 0.4), 0 4px 12px rgba(0, 0, 0, 0.5);
+            background: rgba(30, 41, 59, 0.8);
+        }
+        
+        .modal-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+            background: rgba(30, 41, 59, 0.9);
+        }
+        
+        .modal-icon svg {
+            width: 60px;
+            height: 60px;
+            fill: #d4af37;
+        }
+        
+        .modal-title {
+            font-size: 20px;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 12px;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+            letter-spacing: 0.3px;
+        }
+        
+        .modal-message {
+            font-size: 14px;
+            color: #CBD5E1;
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+        
+        .modal-message strong {
+            color: #E5E7EB;
+            font-weight: 600;
+        }
+        
+        .modal-button {
+            background: linear-gradient(135deg, #d4af37 0%, #f0d266 100%);
+            color: #0f0f1e;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            width: 100%;
+            box-shadow: 0 6px 20px rgba(212, 175, 55, 0.5);
+            letter-spacing: 0.5px;
+            text-transform: none;
+        }
+        
+        .modal-button:hover {
+            background: linear-gradient(135deg, #f0d266 0%, #d4af37 100%);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 28px rgba(212, 175, 55, 0.7);
+        }
+        
+        .modal-button:active {
+            transform: scale(0.97) translateY(0);
+        }
+        
+        /* Simple Context Menu */
+        .context-menu {
+            position: fixed;
+            background: rgba(30, 41, 59, 0.98);
+            border: 2px solid rgba(212, 175, 55, 0.3);
+            border-radius: 12px;
+            padding: 6px;
+            min-width: 140px;
+            z-index: 10000;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(8px);
+            transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s ease;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+        }
+        
+        .context-menu.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        
+        .context-menu-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: background 0.15s ease;
+            color: #E5E7EB;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .context-menu-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+        
+        .context-menu-item:active {
+            background: rgba(255, 255, 255, 0.12);
+        }
+        
+        .context-menu-icon {
+            margin-right: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+        }
+        
+        .context-menu-icon svg {
+            width: 18px;
+            height: 18px;
+        }
+        
+        .movie-card-pressing {
+            transform: scale(0.98);
+            opacity: 0.8;
+        }
+        
+        /* Prevent default context menu and selection on movie cards */
+        .movie-card-no-select {
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+        
+        .movie-card-no-select img {
+            pointer-events: none;
+            -webkit-user-drag: none;
+            -khtml-user-drag: none;
+            -moz-user-drag: none;
+            -o-user-drag: none;
+            user-drag: none;
+        }
+        
+        /* Card Entry Animation */
+        @keyframes cardFadeIn {
+            0% {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .movie-card-animate {
+            animation: cardFadeIn 0.4s ease-out forwards;
+            opacity: 0;
+        }
+        
+        /* Touch Feedback Animation */
+        .movie-card-pressing {
+            transform: scale(0.95);
+            opacity: 0.7;
+            transition: all 0.15s ease;
+        }
+        
+        /* Card hover/active state for better feedback */
+        .movie-card-interactive {
+            transition: all 0.2s ease;
+        }
+        
+        .movie-card-interactive:active {
+            transform: scale(0.97);
+        }
+        
+        /* Movie Caption Container - untuk title dan action icons */
+        .movie-caption {
+            position: relative;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .movie-title-text {
+            text-align: center;
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 0.3s ease, visibility 0.3s ease, transform 0.3s ease;
+            transform: scale(1);
+        }
+        
+        /* Hide title when showing actions */
+        .movie-card-premium.show-actions .movie-title-text {
+            opacity: 0;
+            visibility: hidden;
+            transform: scale(0.95);
+            position: absolute;
+        }
+        
+        /* Long Press Action Icons - di area teks judul */
+        .long-press-actions {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 40px;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease, transform 0.3s ease;
+            transform: translate(-50%, -50%) scale(0.7);
+            pointer-events: none;
+        }
+        
+        /* Show actions when card has show-actions class */
+        .movie-card-premium.show-actions .long-press-actions {
+            opacity: 1;
+            visibility: visible;
+            transform: translate(-50%, -50%) scale(1);
+            pointer-events: auto;
+        }
+        
+        .long-press-action-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 52px;
+            height: 52px;
+            cursor: pointer;
+            transition: transform 0.2s ease, opacity 0.2s ease;
+        }
+        
+        .long-press-action-btn:active {
+            transform: scale(0.85);
+        }
+        
+        .long-press-action-btn {
+            position: relative;
+        }
+        
+        .long-press-action-btn svg {
+            width: 44px;
+            height: 44px;
+            color: white;
+            filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.4));
+            transition: color 0.3s ease, filter 0.3s ease;
+        }
+        
+        /* Tanda +/- transparan di belakang icon */
+        .long-press-action-btn::after {
+            content: attr(data-symbol);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 20px;
+            font-weight: bold;
+            color: rgba(255, 255, 255, 0.3);
+            pointer-events: none;
+        }
+        
+        /* Active state untuk both buttons - kuning */
+        .long-press-action-btn.active-like svg,
+        .long-press-action-btn.active-favorite svg {
+            color: #fbbf24;
+            filter: drop-shadow(0 3px 6px rgba(251, 191, 36, 0.6));
+        }
+        
+        /* Tanda +/- lebih terang saat active */
+        .long-press-action-btn.active-like::after,
+        .long-press-action-btn.active-favorite::after {
+            color: rgba(251, 191, 36, 0.5);
+        }
+        
+        /* Staggered animation for icons */
+        .movie-card-premium.show-actions .long-press-action-btn:nth-child(1) {
+            transition-delay: 0.05s;
+        }
+        
+        .movie-card-premium.show-actions .long-press-action-btn:nth-child(2) {
+            transition-delay: 0.1s;
+        }
+        
+        /* Like and Favorite Badge Styles - Positioned at Bottom */
+        .status-badges {
+            position: absolute;
+            bottom: -4px;
+            left: -2px;
+            right: -2px;
+            display: flex;
+            justify-content: space-between;
+            padding: 0;
+            z-index: 10;
+            pointer-events: none;
+        }
+        
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            padding: 4px 7px;
+            font-size: 10px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            pointer-events: auto;
+        }
+        
+        .status-badge svg {
+            width: 11px;
+            height: 11px;
+            filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.5));
+        }
+        
+        .badge-like {
+            color: rgba(255, 255, 255, 0.9);
+            margin-right: auto;
+            text-shadow: 
+                -0.5px -0.5px 0 rgba(0, 0, 0, 0.5),
+                0.5px -0.5px 0 rgba(0, 0, 0, 0.5),
+                -0.5px 0.5px 0 rgba(0, 0, 0, 0.5),
+                0.5px 0.5px 0 rgba(0, 0, 0, 0.5);
+        }
+        
+        .badge-like.active {
+            color: rgba(255, 255, 255, 1);
+            text-shadow: 
+                -0.5px -0.5px 0 rgba(0, 0, 0, 0.7),
+                0.5px -0.5px 0 rgba(0, 0, 0, 0.7),
+                -0.5px 0.5px 0 rgba(0, 0, 0, 0.7),
+                0.5px 0.5px 0 rgba(0, 0, 0, 0.7);
+        }
+        
+        .badge-favorite {
+            color: rgba(255, 255, 255, 0.9);
+            margin-left: auto;
+            text-shadow: 
+                -0.5px -0.5px 0 rgba(0, 0, 0, 0.5),
+                0.5px -0.5px 0 rgba(0, 0, 0, 0.5),
+                -0.5px 0.5px 0 rgba(0, 0, 0, 0.5),
+                0.5px 0.5px 0 rgba(0, 0, 0, 0.5);
+        }
+        
+        .badge-favorite.active {
+            color: rgba(255, 255, 255, 1);
+            text-shadow: 
+                -0.5px -0.5px 0 rgba(0, 0, 0, 0.7),
+                0.5px -0.5px 0 rgba(0, 0, 0, 0.7),
+                -0.5px 0.5px 0 rgba(0, 0, 0, 0.7),
+                0.5px 0.5px 0 rgba(0, 0, 0, 0.7);
+        }
+        
+        .status-badge:active {
+            transform: scale(0.92);
+        }
+        
+        /* Premium Header Styling */
+        header {
+            background: rgba(26, 26, 46, 0.95);
+            border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+            position: relative;
+        }
+        
+        header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent 0%, #d4af37 30%, #8b5cf6 70%, transparent 100%);
+        }
+        
+        header h1 {
+            text-shadow: 0 3px 6px rgba(0, 0, 0, 0.4);
+        }
+        
+        /* Premium Search Button */
+        #search-btn {
+            background: linear-gradient(135deg, #d4af37 0%, #f0d266 100%);
+            color: #0f0f1e;
+            font-weight: 700;
+            box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        #search-btn:hover {
+            background: linear-gradient(135deg, #f0d266 0%, #d4af37 100%);
+            box-shadow: 0 6px 20px rgba(212, 175, 55, 0.6);
+            transform: translateY(-1px);
+        }
+        
+        #search-btn:active {
+            transform: translateY(0);
+        }
+        
+        /* Autocomplete Dropdown */
+        .autocomplete-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: rgba(30, 41, 59, 0.98);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 12px;
+            margin-top: 8px;
+            max-height: 280px;
+            overflow-y: auto;
+            z-index: 50;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            display: none;
+        }
+        
+        .autocomplete-dropdown.show {
+            display: block;
+        }
+        
+        .autocomplete-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-bottom: 1px solid rgba(212, 175, 55, 0.1);
+            color: #E5E7EB;
+            font-size: 0.9rem;
+        }
+        
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+        
+        .autocomplete-item:hover {
+            background: rgba(212, 175, 55, 0.15);
+            color: #d4af37;
+            padding-left: 20px;
+        }
+        
+        .autocomplete-item:active {
+            background: rgba(212, 175, 55, 0.25);
+        }
+        
+        .autocomplete-highlight {
+            color: #d4af37;
+            font-weight: 700;
+        }
+        
+        .autocomplete-dropdown::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .autocomplete-dropdown::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+        }
+        
+        .autocomplete-dropdown::-webkit-scrollbar-thumb {
+            background: rgba(212, 175, 55, 0.4);
+            border-radius: 10px;
+        }
+        
+        .autocomplete-dropdown::-webkit-scrollbar-thumb:hover {
+            background: rgba(212, 175, 55, 0.6);
+        }
+        
+        /* Premium Filter Buttons */
+        .filter-btn {
+            background: transparent;
+            border: 2px solid rgba(212, 175, 55, 0.3);
+            color: rgba(212, 175, 55, 0.8);
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .filter-btn:hover {
+            border-color: rgba(212, 175, 55, 0.6);
+            color: #d4af37;
+            transform: translateY(-1px);
+        }
+        
+        .filter-btn.bg-blue-600 {
+            background: linear-gradient(135deg, #d4af37 0%, #f0d266 100%);
+            border-color: #d4af37;
+            color: #0f0f1e;
+            font-weight: 700;
+            box-shadow: 0 4px 12px rgba(212, 175, 55, 0.4);
+        }
+        
+        .filter-btn.bg-blue-600:hover {
+            box-shadow: 0 6px 20px rgba(212, 175, 55, 0.6);
+        }
+        
+        /* Premium Navigation Bar */
+        nav a {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        nav a:hover {
+            color: #d4af37;
+            transform: scale(1.1);
+        }
+        
+        nav a.active,
+        nav a[href="drama.html"] {
+            color: #d4af37;
+        }
+        
+        /* Main Container Z-Index */
+        .w-full.h-screen {
+            position: relative;
+            z-index: 1;
+        }
+        
+        main {
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* Shimmer Loading Animation with Colors */
+        .shimmer-card {
+            background: rgba(30, 41, 59, 0.6);
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            height: 280px;
+        }
+        
+        .shimmer-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent 0%,
+                rgba(212, 175, 55, 0.3) 25%,
+                rgba(139, 92, 246, 0.3) 50%,
+                rgba(212, 175, 55, 0.3) 75%,
+                transparent 100%
+            );
+            animation: shimmer 2s infinite;
+            animation-play-state: paused;
+        }
+        
+        .shimmer-card.shimmer-visible::before {
+            animation-play-state: running;
+        }
+        
+        @keyframes shimmer {
+            0% {
+                transform: translateX(-100%);
+            }
+            100% {
+                transform: translateX(100%);
+            }
+        }
+        
+        .shimmer-poster {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(
+                135deg,
+                rgba(30, 41, 59, 0.8) 0%,
+                rgba(45, 55, 72, 0.8) 50%,
+                rgba(30, 41, 59, 0.8) 100%
+            );
+            border-radius: 8px 8px 0 0;
+        }
+        
+        .shimmer-title {
+            width: 80%;
+            height: 16px;
+            background: linear-gradient(
+                135deg,
+                rgba(45, 55, 72, 0.8) 0%,
+                rgba(55, 65, 81, 0.8) 50%,
+                rgba(45, 55, 72, 0.8) 100%
+            );
+            border-radius: 4px;
+            margin: 12px auto 8px;
+        }
+        
+        .shimmer-meta {
+            width: 60%;
+            height: 12px;
+            background: linear-gradient(
+                135deg,
+                rgba(45, 55, 72, 0.6) 0%,
+                rgba(55, 65, 81, 0.6) 50%,
+                rgba(45, 55, 72, 0.6) 100%
+            );
+            border-radius: 4px;
+            margin: 0 auto;
+        }
+        
+        /* Premium Loading Overlay */
+        .premium-loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 15, 30, 0.95);
+            backdrop-filter: blur(20px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 99999;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        
+        .premium-loading-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        /* Premium Spinner */
+        .premium-spinner {
+            width: 80px;
+            height: 80px;
+            position: relative;
+            margin-bottom: 24px;
+        }
+        
+        .premium-spinner::before,
+        .premium-spinner::after {
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+        }
+        
+        .premium-spinner::before {
+            width: 100%;
+            height: 100%;
+            border: 4px solid transparent;
+            border-top-color: #d4af37;
+            border-right-color: #d4af37;
+            animation: premium-spin 1.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+            box-shadow: 0 0 30px rgba(212, 175, 55, 0.4);
+        }
+        
+        .premium-spinner::after {
+            width: 60px;
+            height: 60px;
+            top: 10px;
+            left: 10px;
+            border: 4px solid transparent;
+            border-bottom-color: #8b5cf6;
+            border-left-color: #8b5cf6;
+            animation: premium-spin-reverse 1.2s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+            box-shadow: 0 0 25px rgba(139, 92, 246, 0.4);
+        }
+        
+        @keyframes premium-spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+        
+        @keyframes premium-spin-reverse {
+            0% {
+                transform: rotate(360deg);
+            }
+            100% {
+                transform: rotate(0deg);
+            }
+        }
+        
+        /* Premium Loading Text */
+        .premium-loading-text {
+            color: #ffffff;
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-align: center;
+            margin-bottom: 8px;
+            text-shadow: 0 2px 8px rgba(212, 175, 55, 0.3);
+        }
+        
+        .premium-loading-subtext {
+            color: rgba(212, 175, 55, 0.9);
+            font-size: 14px;
+            font-weight: 500;
+            text-align: center;
+            animation: pulse-text 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse-text {
+            0%, 100% {
+                opacity: 0.6;
+            }
+            50% {
+                opacity: 1;
+            }
+        }
+        
+        /* Decorative elements */
+        .premium-loading-glow {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: radial-gradient(
+                circle,
+                rgba(212, 175, 55, 0.15) 0%,
+                transparent 70%
+            );
+            animation: glow-pulse 3s ease-in-out infinite;
+        }
+        
+        @keyframes glow-pulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 0.5;
+            }
+            50% {
+                transform: scale(1.2);
+                opacity: 0.8;
+            }
+        }
+
+        /* Smooth Luxury Card Border - Flowing Effect */
+        .movie-card-premium {
+            position: relative;
+            background: rgba(20, 20, 35, 0.8);
+            border-radius: 16px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            box-shadow: 
+                0 0 20px rgba(212, 175, 55, 0.15),
+                0 0 40px rgba(139, 92, 246, 0.08),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            border: 1px solid transparent;
+            background-clip: padding-box;
+        }
+
+        .movie-card-premium::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 16px;
+            padding: 1px;
+            background: linear-gradient(135deg, 
+                rgba(212, 175, 55, 0.4) 0%,
+                rgba(212, 175, 55, 0.15) 25%,
+                rgba(139, 92, 246, 0.15) 50%,
+                rgba(212, 175, 55, 0.15) 75%,
+                rgba(212, 175, 55, 0.4) 100%);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+        }
+
+        @keyframes borderFlow {
+            0% {
+                background-position: 0% 0%;
+            }
+            100% {
+                background-position: 100% 100%;
+            }
+        }
+
+        /* Search Input - Flowing Luxury Aura Border */
+        .search-input-container {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .search-input-container::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            border-radius: 9999px;
+            background: linear-gradient(
+                135deg,
+                #d4af37 0%,
+                #8b5cf6 25%,
+                #d4af37 50%,
+                #8b5cf6 75%,
+                #d4af37 100%
+            );
+            background-size: 200% 200%;
+            animation: borderFlow 8s linear infinite;
+            animation-play-state: paused;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.4;
+            filter: blur(2px);
+        }
+        
+        .search-input-container.shimmer-visible::before {
+            animation-play-state: running;
+        }
+
+        .search-input-container::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 9999px;
+            background: rgba(31, 41, 55, 0.85);
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        #search-input {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            background: transparent !important;
+            border: none !important;
+            border-radius: 9999px !important;
+            color: white;
+            padding: 10px 16px !important;
+        }
+
+        #search-input::placeholder {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        #search-input:focus {
+            outline: none !important;
+            box-shadow: none !important;
+            -webkit-tap-highlight-color: transparent !important;
+            -webkit-appearance: none !important;
+        }
+
+        #search-input:focus-visible {
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        .movie-card-premium:hover {
+            box-shadow: 
+                0 0 30px rgba(212, 175, 55, 0.25),
+                0 0 60px rgba(139, 92, 246, 0.12),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
+            transform: translateY(-4px);
+        }
+
+        .movie-card-premium:active {
+            transform: translateY(-2px);
+        }
+        @keyframes spinPTR {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+</head>
+<body>
+
+    <div class="w-full h-screen relative flex flex-col">
+
+        <header class="w-full z-20 py-3 text-center">
+            <h1 class="text-xl font-bold tracking-wide">Daftar Drama</h1>
+        </header>
+
+        <main class="flex-1 overflow-y-auto scrollbar-hide p-4 pb-24">
+            
+            <div class="relative mb-4">
+                <div class="search-input-container">
+                    <input type="text" id="search-input" placeholder="Cari drama..." class="w-full bg-gray-800 rounded-full py-2.5 pl-4 pr-16 text-white placeholder-gray-500 focus:outline-none" autocomplete="off">
+                </div>
+                <button id="search-btn" class="absolute right-1 top-1/2 -translate-y-1/2 bg-green-600 text-white rounded-full px-4 py-1.5 text-sm font-semibold hover:bg-green-700 transition-colors" style="z-index: 3;">
+                    Cari
+                </button>
+                <div id="autocomplete-dropdown" class="autocomplete-dropdown"></div>
+            </div>
+
+            <div class="flex gap-3 mb-6">
+                <button id="filter-populer" class="filter-btn flex-1 bg-blue-600 text-white font-semibold py-3 rounded-full text-sm transition-colors">
+                    Populer
+                </button>
+                <button id="filter-terbaru" class="filter-btn flex-1 bg-gray-800 text-gray-400 font-semibold py-3 rounded-full text-sm hover:bg-gray-700 transition-colors">
+                    Terbaru
+                </button>
+            </div>
+
+            <div id="movies-container" style="display: flex; flex-direction: column; gap: 0;">
+                <div class="grid grid-cols-2 gap-x-3 gap-y-4" id="drama-list-container">
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toastNotification" class="toast-notification">
+        <div class="toast-icon" id="toastIcon"></div>
+        <div class="toast-message" id="toastMessage"></div>
+    </div>
+
+    <!-- Film Selection Modal -->
+    <div id="filmModal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-close-btn" id="modalCloseBtn" title="Tutup">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+            <div class="modal-icon" id="modalIcon"></div>
+            <div class="modal-title" id="modalTitle">Film Dipilih!</div>
+            <div class="modal-message" id="modalMessage">Film berhasil dipilih!</div>
+            <button class="modal-button" id="modalButton">Tutup</button>
+        </div>
+    </div>
+
+    <!-- Context Menu -->
+    <div id="contextMenu" class="context-menu">
+        <div class="context-menu-item" onclick="toggleFavorite()">
+            <span class="context-menu-icon">
+                <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                </svg>
+            </span>
+            <span>Favorit</span>
+        </div>
+        <div class="context-menu-item" onclick="toggleLike()">
+            <span class="context-menu-icon">
+                <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/>
+                </svg>
+            </span>
+            <span>Like</span>
+        </div>
+    </div>
+
+    <!-- Premium Loading Overlay -->
+    <div id="premiumLoading" class="premium-loading-overlay">
+        <div class="premium-loading-glow"></div>
+        <div class="premium-spinner"></div>
+        <div class="premium-loading-text">Memproses...</div>
+        <div class="premium-loading-subtext">Film Anda sedang disiapkan ✨</div>
+    </div>
+
+    <script>
+    let allMovies = [];
+    let currentFilter = 'populer';
+    let selectedMovieForContext = null;
+    
+    // Cached DOM elements (performance optimization)
+    let cachedElements = {};
+    
+    // Track timeouts for cleanup
+    const timeouts = [];
+    
+    function getCachedElement(id) {
+        if (!cachedElements[id]) {
+            cachedElements[id] = document.getElementById(id);
+        }
+        return cachedElements[id];
+    }
+    
+    // LongPressManager - Centralized long-press timer management (per-key tracking)
+    class LongPressManager {
+        constructor() {
+            this.timers = new Map();
+            this.isLongPressMap = new Map(); // Per-key tracking
+            this.ignoreNextClick = false;
+        }
+        
+        start(key, callback, duration = 500) {
+            this.cancel(key);
+            this.isLongPressMap.set(key, false);
+            const timer = setTimeout(() => {
+                this.isLongPressMap.set(key, true);
+                if (callback) callback();
+            }, duration);
+            this.timers.set(key, timer);
+        }
+        
+        cancel(key) {
+            const timer = this.timers.get(key);
+            if (timer) {
+                clearTimeout(timer);
+                this.timers.delete(key);
+            }
+            // Don't reset isLongPress here - reset after touchend check
+        }
+        
+        cancelAll() {
+            this.timers.forEach(timer => clearTimeout(timer));
+            this.timers.clear();
+            this.isLongPressMap.clear();
+        }
+        
+        getIsLongPress(key) {
+            return this.isLongPressMap.get(key) || false;
+        }
+        
+        reset(key) {
+            this.isLongPressMap.delete(key);
+        }
+        
+        setIgnoreNextClick(value) {
+            this.ignoreNextClick = value;
+        }
+        
+        getIgnoreNextClick() {
+            return this.ignoreNextClick;
+        }
+    }
+    
+    const longPressManager = new LongPressManager();
+    
+    // Audio Context for Sound Effects (Singleton Pattern)
+    let globalAudioContext = null;
+    
+    // Initialize Audio Context (lazy initialization with singleton pattern)
+    function getAudioContext() {
+        if (!globalAudioContext) {
+            try {
+                globalAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+            } catch (e) {
+                console.warn('Web Audio API not supported:', e);
+            }
+        }
+        return globalAudioContext;
+    }
+    
+    // Play Facebook-style Pop/Click Sound Effect - ULTRA MAXIMUM VOLUME
+    function playClickSound() {
+        const ctx = getAudioContext();
+        if (!ctx) return;
+        
+        try {
+            // Resume context if suspended (browser autoplay policy)
+            if (ctx.state === 'suspended') {
+                ctx.resume();
+            }
+            
+            // Create MULTIPLE oscillators for MASSIVE volume
+            const osc1 = ctx.createOscillator(); // Main pop
+            const osc2 = ctx.createOscillator(); // Sub bass punch
+            const osc3 = ctx.createOscillator(); // Mid harmonic
+            const osc4 = ctx.createOscillator(); // High sparkle
+            
+            const gain1 = ctx.createGain();
+            const gain2 = ctx.createGain();
+            const gain3 = ctx.createGain();
+            const gain4 = ctx.createGain();
+            const masterGain = ctx.createGain();
+            
+            // Connect all oscillators
+            osc1.connect(gain1);
+            osc2.connect(gain2);
+            osc3.connect(gain3);
+            osc4.connect(gain4);
+            
+            gain1.connect(masterGain);
+            gain2.connect(masterGain);
+            gain3.connect(masterGain);
+            gain4.connect(masterGain);
+            masterGain.connect(ctx.destination);
+            
+            // OSC 1: Main pop sound (square wave for punch)
+            osc1.type = 'square';
+            osc1.frequency.setValueAtTime(1200, ctx.currentTime);
+            osc1.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.08);
+            gain1.gain.setValueAtTime(1.0, ctx.currentTime);
+            gain1.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.12);
+            
+            // OSC 2: Sub bass (MASSIVE punch)
+            osc2.type = 'sine';
+            osc2.frequency.setValueAtTime(100, ctx.currentTime);
+            osc2.frequency.exponentialRampToValueAtTime(50, ctx.currentTime + 0.05);
+            gain2.gain.setValueAtTime(1.0, ctx.currentTime);
+            gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.08);
+            
+            // OSC 3: Mid harmonic (sawtooth for richness)
+            osc3.type = 'sawtooth';
+            osc3.frequency.setValueAtTime(800, ctx.currentTime);
+            osc3.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.07);
+            gain3.gain.setValueAtTime(1.0, ctx.currentTime);
+            gain3.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.11);
+            
+            // OSC 4: High sparkle
+            osc4.type = 'sine';
+            osc4.frequency.setValueAtTime(2400, ctx.currentTime);
+            osc4.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.06);
+            gain4.gain.setValueAtTime(0.8, ctx.currentTime);
+            gain4.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+            
+            // Master gain - ULTRA MAXIMUM VOLUME
+            masterGain.gain.setValueAtTime(1.0, ctx.currentTime);
+            
+            // Start all oscillators
+            const now = ctx.currentTime;
+            osc1.start(now);
+            osc2.start(now);
+            osc3.start(now);
+            osc4.start(now);
+            
+            osc1.stop(now + 0.12);
+            osc2.stop(now + 0.08);
+            osc3.stop(now + 0.11);
+            osc4.stop(now + 0.1);
+        } catch (e) {
+            console.warn('Error playing sound:', e);
+        }
+    }
+    
+    // Play Icon Appearance Sound - RISING WHOOSH
+    function playIconAppearSound() {
+        const ctx = getAudioContext();
+        if (!ctx) return;
+        
+        try {
+            if (ctx.state === 'suspended') {
+                ctx.resume();
+            }
+            
+            // Create two oscillators for richer sound
+            const osc1 = ctx.createOscillator();
+            const osc2 = ctx.createOscillator();
+            const gainNode = ctx.createGain();
+            
+            // Connect nodes
+            osc1.connect(gainNode);
+            osc2.connect(gainNode);
+            gainNode.connect(ctx.destination);
+            
+            // Configure rising whoosh sound
+            osc1.type = 'sine';
+            osc2.type = 'triangle';
+            
+            // Rising frequency (whoosh up)
+            osc1.frequency.setValueAtTime(200, ctx.currentTime);
+            osc1.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.15);
+            
+            osc2.frequency.setValueAtTime(400, ctx.currentTime);
+            osc2.frequency.exponentialRampToValueAtTime(1600, ctx.currentTime + 0.15);
+            
+            // Volume envelope - MAXIMUM VOLUME with smooth rise
+            gainNode.gain.setValueAtTime(0.5, ctx.currentTime);
+            gainNode.gain.linearRampToValueAtTime(1.0, ctx.currentTime + 0.08); // Peak volume
+            gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+            
+            // Play sound
+            osc1.start(ctx.currentTime);
+            osc2.start(ctx.currentTime);
+            osc1.stop(ctx.currentTime + 0.2);
+            osc2.stop(ctx.currentTime + 0.2);
+        } catch (e) {
+            console.warn('Error playing appear sound:', e);
+        }
+    }
+    
+    // Trigger iPhone Haptic Feedback - MAXIMUM STRENGTH
+    function triggerHaptic(strength = 'heavy') {
+        try {
+            if (window.Telegram?.WebApp?.HapticFeedback) {
+                // Use 'heavy' impact for maximum feedback
+                window.Telegram.WebApp.HapticFeedback.impactOccurred(strength);
+            } else if (navigator.vibrate) {
+                // Fallback to vibration API (much stronger vibration)
+                const duration = strength === 'heavy' ? 50 : 30;
+                navigator.vibrate(duration);
+            }
+        } catch (e) {
+            console.warn('Haptic feedback not available:', e);
+        }
+    }
+    
+    // Cooldown mechanism to prevent double sounds
+    let lastClickSoundTime = 0;
+    let lastAppearSoundTime = 0;
+    const SOUND_COOLDOWN = 150; // 150ms cooldown between sounds
+    
+    // Combined function for click feedback
+    function playFeedback() {
+        const now = Date.now();
+        if (now - lastClickSoundTime < SOUND_COOLDOWN) {
+            // Too soon, skip sound but still do haptic
+            triggerHaptic('heavy');
+            return;
+        }
+        lastClickSoundTime = now;
+        playClickSound();
+        triggerHaptic('heavy');
+    }
+    
+    // Combined function for icon appearance
+    function playAppearFeedback() {
+        const now = Date.now();
+        if (now - lastAppearSoundTime < SOUND_COOLDOWN) {
+            // Too soon, skip sound but still do haptic
+            triggerHaptic('heavy');
+            return;
+        }
+        lastAppearSoundTime = now;
+        playIconAppearSound();
+        triggerHaptic('heavy');
+    }
+    
+    // Long Press Action Functions - Toggle antara title dan icon di area caption
+    function showLongPressActions(movie, cardElement) {
+        selectedMovieForContext = movie;
+        longPressManager.setIgnoreNextClick(true);
+        
+        // Hide all other active cards first
+        hideAllLongPressActions();
+        
+        // Show actions on this card
+        if (cardElement) {
+            cardElement.classList.add('show-actions');
+            console.log(`🎯 Long press actions shown for: ${movie.title}`);
+            
+            // Play appear sound and haptic when icons appear
+            playAppearFeedback();
+        }
+        
+        // Reset flag after a short delay
+        const resetTimeout = setTimeout(() => {
+            longPressManager.setIgnoreNextClick(false);
+        }, 100);
+        timeouts.push(resetTimeout);
+    }
+    
+    function hideLongPressActions(cardElement) {
+        if (cardElement) {
+            cardElement.classList.remove('show-actions');
+        }
+        selectedMovieForContext = null;
+    }
+    
+    function hideAllLongPressActions() {
+        const allCards = document.querySelectorAll('.movie-card-premium.show-actions');
+        allCards.forEach(card => {
+            card.classList.remove('show-actions');
+        });
+        selectedMovieForContext = null;
+    }
+    
+    // Context Menu Functions (kept for backward compatibility)
+    function showContextMenu(x, y, movie, cardElement) {
+        // Now redirects to long press actions instead
+        showLongPressActions(movie, cardElement);
+    }
+    
+    function hideContextMenu() {
+        hideAllLongPressActions();
+    }
+    
+    let expandedBadge = null;
+    let expandTimeout = null;
+    
+    function toggleBadge(badge, actionCallback) {
+        // Collapse any other expanded badge
+        if (expandedBadge && expandedBadge !== badge) {
+            expandedBadge.classList.remove('expanded');
+        }
+        
+        // Toggle current badge
+        badge.classList.add('expanded');
+        expandedBadge = badge;
+        
+        // Clear existing timeout
+        if (expandTimeout) {
+            clearTimeout(expandTimeout);
+        }
+        
+        // Auto-collapse after 2 seconds and execute action
+        expandTimeout = setTimeout(() => {
+            badge.classList.remove('expanded');
+            expandedBadge = null;
+            if (actionCallback) actionCallback();
+        }, 2000);
+        timeouts.push(expandTimeout);
+    }
+    
+    async function toggleLikeAction(movie) {
+        console.log(`👍 Toggling like: ${movie.title}`);
+        
+        if (!window.tg || !window.tg.initData) {
+            console.error('❌ Cannot get Telegram initData!');
+            showToast('Data user Telegram tidak tersedia', 'error');
+            return;
+        }
+        
+        const wasLiked = movie.is_liked || false;
+        const oldLikeCount = movie.like_count || 0;
+        
+        updateMovieBadges(movie.id, {
+            is_liked: !wasLiked,
+            like_count: wasLiked ? Math.max(0, oldLikeCount - 1) : oldLikeCount + 1
+        });
+        
+        const apiUrl = window.API_BASE_URL + '/api/v1/likes/toggle';
+        const payload = {
+            init_data: window.tg.initData,
+            movie_id: movie.id
+        };
+        
+        try {
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                updateMovieBadges(movie.id, {
+                    is_liked: result.is_liked,
+                    like_count: result.like_count
+                });
+                
+                showToast(
+                    result.is_liked 
+                        ? `Film "${movie.title}" berhasil di-like!`
+                        : `Like untuk "${movie.title}" telah dihapus`,
+                    'success'
+                );
+            } else {
+                updateMovieBadges(movie.id, {
+                    is_liked: wasLiked,
+                    like_count: oldLikeCount
+                });
+                
+                showToast(`Gagal: ${result.detail || 'Unknown error'}`, 'error');
+            }
+        } catch (error) {
+            updateMovieBadges(movie.id, {
+                is_liked: wasLiked,
+                like_count: oldLikeCount
+            });
+            
+            showToast(`Koneksi bermasalah: ${error.message}`, 'error');
+        }
+    }
+    
+    async function toggleFavoriteAction(movie) {
+        console.log(`❤️ Toggling favorite: ${movie.title}`);
+        
+        if (!window.tg || !window.tg.initData) {
+            console.error('❌ Cannot get Telegram initData!');
+            showToast('Data user Telegram tidak tersedia', 'error');
+            return;
+        }
+        
+        const wasFavorited = movie.is_favorited || false;
+        const oldFavoriteCount = movie.favorite_count || 0;
+        
+        updateMovieBadges(movie.id, {
+            is_favorited: !wasFavorited,
+            favorite_count: wasFavorited ? Math.max(0, oldFavoriteCount - 1) : oldFavoriteCount + 1
+        });
+        
+        let apiUrl, method;
+        if (wasFavorited) {
+            apiUrl = window.API_BASE_URL + '/api/v1/favorites/remove';
+            method = 'POST';
+        } else {
+            apiUrl = window.API_BASE_URL + '/api/v1/favorites';
+            method = 'POST';
+        }
+        
+        const payload = {
+            init_data: window.tg.initData,
+            movie_id: movie.id
+        };
+        
+        try {
+            const response = await fetch(apiUrl, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                updateMovieBadges(movie.id, {
+                    is_favorited: result.is_favorited !== undefined ? result.is_favorited : !wasFavorited,
+                    favorite_count: result.favorite_count !== undefined ? result.favorite_count : (wasFavorited ? oldFavoriteCount - 1 : oldFavoriteCount + 1)
+                });
+                
+                showToast(
+                    wasFavorited 
+                        ? `"${movie.title}" dihapus dari favorit`
+                        : `"${movie.title}" ditambahkan ke favorit!`,
+                    'success'
+                );
+            } else {
+                updateMovieBadges(movie.id, {
+                    is_favorited: wasFavorited,
+                    favorite_count: oldFavoriteCount
+                });
+                
+                showToast(`Gagal: ${result.detail || 'Unknown error'}`, 'error');
+            }
+        } catch (error) {
+            updateMovieBadges(movie.id, {
+                is_favorited: wasFavorited,
+                favorite_count: oldFavoriteCount
+            });
+            
+            showToast(`Koneksi bermasalah: ${error.message}`, 'error');
+        }
+    }
+    
+    function updateMovieBadges(movieId, updates) {
+        const movie = allMovies.find(m => m.id === movieId);
+        if (!movie) return;
+        
+        if (updates.hasOwnProperty('like_count')) movie.like_count = updates.like_count;
+        if (updates.hasOwnProperty('favorite_count')) movie.favorite_count = updates.favorite_count;
+        if (updates.hasOwnProperty('is_liked')) movie.is_liked = updates.is_liked;
+        if (updates.hasOwnProperty('is_favorited')) movie.is_favorited = updates.is_favorited;
+        
+        const badgesContainer = document.querySelector(`.status-badges[data-movie-id="${movieId}"]`);
+        if (!badgesContainer) return;
+        
+        badgesContainer.innerHTML = '';
+        
+        const likeCount = movie.like_count || 0;
+        const favoriteCount = movie.favorite_count || 0;
+        const isLiked = movie.is_liked || false;
+        const isFavorited = movie.is_favorited || false;
+        
+        // Use DocumentFragment for batch DOM writes
+        const fragment = document.createDocumentFragment();
+        
+        if (likeCount > 0 || isLiked) {
+            const likeBadge = document.createElement('div');
+            likeBadge.className = `status-badge badge-like ${isLiked ? 'active' : ''}`;
+            likeBadge.setAttribute('data-movie-id', movieId);
+            likeBadge.innerHTML = `
+                <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/>
+                </svg>
+                <span class="badge-count">${likeCount}</span>
+            `;
+            
+            likeBadge.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                playFeedback(); // Play sound + haptic
+                toggleBadge(likeBadge, () => toggleLikeAction(movie));
+            });
+            
+            fragment.appendChild(likeBadge);
+        }
+        
+        if (favoriteCount > 0 || isFavorited) {
+            const favBadge = document.createElement('div');
+            favBadge.className = `status-badge badge-favorite ${isFavorited ? 'active' : ''}`;
+            favBadge.setAttribute('data-movie-id', movieId);
+            favBadge.innerHTML = `
+                <span class="badge-count">${favoriteCount}</span>
+                <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                </svg>
+            `;
+            
+            favBadge.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                playFeedback(); // Play sound + haptic
+                toggleBadge(favBadge, () => toggleFavoriteAction(movie));
+            });
+            
+            fragment.appendChild(favBadge);
+        }
+        
+        // Batch append all badges at once
+        badgesContainer.appendChild(fragment);
+    }
+    
+    // Reusable component untuk create action buttons (like & favorite)
+    function createActionButtons(movie, movieCard) {
+        // Like action button - icon like dengan +/- transparan
+        const likeBtn = document.createElement('div');
+        const likeSymbol = movie.is_liked ? '−' : '+';
+        likeBtn.className = `long-press-action-btn ${movie.is_liked ? 'active-like' : ''}`;
+        likeBtn.setAttribute('aria-label', movie.is_liked ? 'Unlike' : 'Like');
+        likeBtn.setAttribute('data-movie-id', movie.id);
+        likeBtn.setAttribute('data-symbol', likeSymbol);
+        likeBtn.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/>
+            </svg>
+        `;
+        likeBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            playFeedback();
+            hideLongPressActions(movieCard);
+            likeBtn.classList.toggle('active-like');
+            // Update data-symbol untuk toggle +/-
+            const newSymbol = likeBtn.classList.contains('active-like') ? '−' : '+';
+            likeBtn.setAttribute('data-symbol', newSymbol);
+            toggleLikeAction(movie);
+        });
+
+        // Favorite action button - icon favorite dengan +/- transparan
+        const favBtn = document.createElement('div');
+        const favSymbol = movie.is_favorited ? '−' : '+';
+        favBtn.className = `long-press-action-btn ${movie.is_favorited ? 'active-favorite' : ''}`;
+        favBtn.setAttribute('aria-label', movie.is_favorited ? 'Remove from favorites' : 'Add to favorites');
+        favBtn.setAttribute('data-movie-id', movie.id);
+        favBtn.setAttribute('data-symbol', favSymbol);
+        favBtn.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+            </svg>
+        `;
+        favBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            playFeedback();
+            hideLongPressActions(movieCard);
+            favBtn.classList.toggle('active-favorite');
+            // Update data-symbol untuk toggle +/-
+            const newSymbol = favBtn.classList.contains('active-favorite') ? '−' : '+';
+            favBtn.setAttribute('data-symbol', newSymbol);
+            toggleFavoriteAction(movie);
+        });
+
+        return { likeBtn, favBtn };
+    }
+    
+    async function toggleLike() {
+        if (!selectedMovieForContext) return;
+        
+        const movie = selectedMovieForContext;
+        console.log(`👍 Toggling like: ${movie.title}`);
+        hideContextMenu();
+        
+        if (!window.tg || !window.tg.initData) {
+            console.error('❌ Cannot get Telegram initData!');
+            showCustomPopup(
+                'error',
+                'Error',
+                'Data user Telegram tidak tersedia',
+                'OK'
+            );
+            return;
+        }
+        
+        const wasLiked = movie.is_liked || false;
+        const oldLikeCount = movie.like_count || 0;
+        
+        updateMovieBadges(movie.id, {
+            is_liked: !wasLiked,
+            like_count: wasLiked ? Math.max(0, oldLikeCount - 1) : oldLikeCount + 1
+        });
+        
+        const apiUrl = window.API_BASE_URL + '/api/v1/likes/toggle';
+        const payload = {
+            init_data: window.tg.initData,
+            movie_id: movie.id
+        };
+        
+        try {
+            console.log(`🔄 Toggling like: ${movie.title} (ID: ${movie.id})`);
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            
+            const result = await response.json();
+            console.log(`📊 Response:`, result);
+            
+            if (response.ok) {
+                updateMovieBadges(movie.id, {
+                    is_liked: result.is_liked,
+                    like_count: result.like_count
+                });
+                
+                showToast(
+                    result.is_liked 
+                        ? `Film "${movie.title}" berhasil di-like!`
+                        : `Like untuk "${movie.title}" telah dihapus`,
+                    'success'
+                );
+            } else {
+                updateMovieBadges(movie.id, {
+                    is_liked: wasLiked,
+                    like_count: oldLikeCount
+                });
+                
+                console.error(`❌ API Error:`, result);
+                showToast(
+                    `Gagal: ${result.detail || 'Unknown error'}`,
+                    'error'
+                );
+            }
+        } catch (error) {
+            updateMovieBadges(movie.id, {
+                is_liked: wasLiked,
+                like_count: oldLikeCount
+            });
+            
+            console.error(`❌ Network error:`, error);
+            showToast(
+                `Koneksi bermasalah: ${error.message}`,
+                'error'
+            );
+        }
+    }
+    
+    async function toggleFavorite() {
+        if (!selectedMovieForContext) return;
+        
+        const movie = selectedMovieForContext;
+        console.log(`❤️ Toggling favorite: ${movie.title}`);
+        hideContextMenu();
+        
+        if (!window.tg || !window.tg.initData) {
+            console.error('❌ Cannot get Telegram initData!');
+            showToast('Data user Telegram tidak tersedia', 'error');
+            return;
+        }
+        
+        const wasFavorited = movie.is_favorited || false;
+        const oldFavoriteCount = movie.favorite_count || 0;
+        
+        updateMovieBadges(movie.id, {
+            is_favorited: !wasFavorited,
+            favorite_count: wasFavorited ? Math.max(0, oldFavoriteCount - 1) : oldFavoriteCount + 1
+        });
+        
+        let apiUrl, method;
+        if (wasFavorited) {
+            apiUrl = window.API_BASE_URL + '/api/v1/favorites/remove';
+            method = 'POST';
+        } else {
+            apiUrl = window.API_BASE_URL + '/api/v1/favorites';
+            method = 'POST';
+        }
+        
+        const payload = {
+            init_data: window.tg.initData,
+            movie_id: movie.id
+        };
+        
+        try {
+            console.log(`🔄 ${wasFavorited ? 'Removing from' : 'Adding to'} favorites: ${movie.title} (ID: ${movie.id})`);
+            const response = await fetch(apiUrl, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            
+            const result = await response.json();
+            console.log(`📊 Response:`, result);
+            
+            if (response.ok) {
+                updateMovieBadges(movie.id, {
+                    is_favorited: result.is_favorited !== undefined ? result.is_favorited : !wasFavorited,
+                    favorite_count: result.favorite_count !== undefined ? result.favorite_count : (wasFavorited ? oldFavoriteCount - 1 : oldFavoriteCount + 1)
+                });
+                
+                showToast(
+                    wasFavorited 
+                        ? `"${movie.title}" dihapus dari favorit`
+                        : `"${movie.title}" ditambahkan ke favorit!`,
+                    'success'
+                );
+            } else {
+                updateMovieBadges(movie.id, {
+                    is_favorited: wasFavorited,
+                    favorite_count: oldFavoriteCount
+                });
+                
+                console.error(`❌ API Error:`, result);
+                showToast(
+                    `Gagal: ${result.detail || 'Unknown error'}`,
+                    'error'
+                );
+            }
+        } catch (error) {
+            updateMovieBadges(movie.id, {
+                is_favorited: wasFavorited,
+                favorite_count: oldFavoriteCount
+            });
+            
+            console.error(`❌ Network error:`, error);
+            showToast(
+                `Koneksi bermasalah: ${error.message}`,
+                'error'
+            );
+        }
+    }
+    
+    // Toast Notification Function
+    let toastTimeout = null;
+    
+    function showToast(message, type = 'success') {
+        const toast = getCachedElement('toastNotification');
+        const toastIcon = getCachedElement('toastIcon');
+        const toastMessage = getCachedElement('toastMessage');
+        
+        if (toastTimeout) {
+            clearTimeout(toastTimeout);
+        }
+        
+        toast.classList.remove('active', 'toast-success', 'toast-error');
+        
+        const icons = {
+            'success': `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor">
+                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke="#22C55E"/>
+            </svg>`,
+            'error': `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#EF4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>`
+        };
+        
+        toastIcon.innerHTML = icons[type] || icons['success'];
+        toastMessage.textContent = message;
+        
+        if (type === 'success') {
+            toast.classList.add('toast-success');
+        } else if (type === 'error') {
+            toast.classList.add('toast-error');
+        }
+        
+        toast.classList.add('active');
+        
+        toastTimeout = setTimeout(() => {
+            toast.classList.remove('active');
+        }, 2500);
+    }
+    
+    // Film Selection Modal Functions
+    function showFilmModal(title, message, buttonText = 'Tutup', onClose = null, posterUrl = null) {
+        const modal = getCachedElement('filmModal');
+        const modalOverlay = modal;
+        const modalIcon = getCachedElement('modalIcon');
+        const modalTitle = getCachedElement('modalTitle');
+        const modalMessage = getCachedElement('modalMessage');
+        const modalButton = getCachedElement('modalButton');
+        const modalCloseBtn = getCachedElement('modalCloseBtn');
+        
+        // Jika ada posterUrl, tampilkan poster sebagai icon
+        if (posterUrl) {
+            // Clear existing content
+            modalIcon.innerHTML = '';
+            
+            // Create image element
+            const img = document.createElement('img');
+            img.alt = 'Poster Film';
+            img.loading = 'lazy';
+            img.className = 'poster-img img-loading';
+            
+            img.onload = function() {
+                this.classList.remove('img-loading');
+                this.classList.add('img-loaded');
+            };
+            
+            img.onerror = function() {
+                this.classList.remove('img-loading');
+                this.classList.add('img-error');
+                modalIcon.innerHTML = getDefaultFilmIcon();
+            };
+            
+            img.src = posterUrl;
+            
+            modalIcon.appendChild(img);
+        } else {
+            modalIcon.innerHTML = getDefaultFilmIcon();
+        }
+        
+        modalTitle.textContent = title;
+        modalMessage.innerHTML = message;
+        modalButton.textContent = buttonText;
+        
+        modal.classList.add('active');
+        
+        // Handler untuk tombol utama
+        if (onClose) {
+            modalButton.onclick = () => {
+                closeFilmModal();
+                onClose();
+            };
+        } else {
+            modalButton.onclick = closeFilmModal;
+        }
+        
+        // Handler untuk tombol close (X)
+        modalCloseBtn.onclick = (e) => {
+            e.stopPropagation();
+            closeFilmModal();
+        };
+        
+        // Handler untuk klik di overlay (di luar modal card)
+        modalOverlay.onclick = (e) => {
+            if (e.target === modalOverlay) {
+                closeFilmModal();
+            }
+        };
+    }
+    
+    function getDefaultFilmIcon() {
+        return `<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 3h16a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm0 2v3h3V5H4zm5 0v3h6V5H9zm8 0v3h3V5h-3zM4 10v4h3v-4H4zm5 0v4h6v-4H9zm8 0v4h3v-4h-3zM4 16v3h3v-3H4zm5 0v3h6v-3H9zm8 0v3h3v-3h-3z"/>
+        </svg>`;
+    }
+    
+    function closeFilmModal() {
+        const modal = getCachedElement('filmModal');
+        modal.classList.remove('active');
+    }
+    
+    // Premium Loading Functions
+    function showPremiumLoading() {
+        const loading = getCachedElement('premiumLoading');
+        if (loading) {
+            loading.classList.add('active');
+            console.log('✨ Premium loading displayed');
+        }
+    }
+    
+    function hidePremiumLoading() {
+        const loading = getCachedElement('premiumLoading');
+        if (loading) {
+            loading.classList.remove('active');
+            console.log('✅ Premium loading hidden');
+        }
+    }
+    
+    document.addEventListener("DOMContentLoaded", () => {
+        const tg = window.Telegram?.WebApp;
+        
+        if (tg) {
+            console.log("✅ Telegram WebApp SDK aktif");
+            console.log("✅ Platform:", tg.platform);
+            console.log("✅ Version:", tg.version);
+            tg.ready();
+            tg.expand();
+            tg.enableClosingConfirmation();
+            
+            tg.disableVerticalSwipes();
+            console.log("🔒 Vertical swipes disabled - mini app tidak akan close saat scroll");
+            
+            window.tg = tg;
+            fetchMovies();
+        } else {
+            console.warn("⚠️ Bukan dibuka lewat Telegram Mini App — mode pengujian aktif");
+            console.warn("⚠️ window.Telegram:", window.Telegram);
+            window.tg = null;
+            fetchMovies();
+        }
+        
+        setupEventListeners();
+    });
+    
+    async function sendMovieToBackend(movieId, movieTitle, moviePosterUrl = null) {
+        console.log(`📤 Sending movie to backend API: ${movieId}`);
+        
+        if (!window.tg || !window.tg.initData) {
+            console.error('❌ Cannot get Telegram initData!');
+            alert("Error: Data user Telegram tidak tersedia");
+            return;
+        }
+        
+        // Show premium loading animation
+        showPremiumLoading();
+        
+        const initData = window.tg.initData;
+        console.log(`🔐 initData length: ${initData.length} chars`);
+        console.log(`📱 User ID from initDataUnsafe: ${window.tg.initDataUnsafe?.user?.id}`);
+        
+        const apiUrl = window.API_BASE_URL + '/api/v1/select_movie';
+        const payload = { init_data: initData, movie_id: movieId };
+        
+        console.log(`🌐 API URL: ${apiUrl}`);
+        console.log(`📦 Payload keys: ${Object.keys(payload).join(', ')}`);
+        
+        try {
+            console.log('🔄 Sending POST request...');
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            
+            console.log(`📊 Response status: ${response.status}`);
+            
+            // Hide premium loading
+            hidePremiumLoading();
+            
+            if (response.ok) {
+                const result = await response.json();
+                console.log(`✅ SUCCESS! ${JSON.stringify(result)}`);
+                console.log(`🎉 Bot akan kirim pesan "${movieTitle}" ke Anda!`);
+                
+                showFilmModal(
+                    'Film Dipilih!',
+                    `Film <strong>"${movieTitle}"</strong> berhasil dipilih!<br><br>✨ Cek chat box untuk detail lengkapnya.`,
+                    'Lihat Chat',
+                    () => {
+                        if (window.tg && window.tg.close) {
+                            window.tg.close();
+                        }
+                    },
+                    moviePosterUrl
+                );
+            } else {
+                const errorData = await response.json();
+                console.error(`❌ API Error: ${JSON.stringify(errorData)}`);
+                
+                showFilmModal(
+                    'Oops! Terjadi Kesalahan',
+                    `Maaf, terjadi kesalahan:<br><br><strong>${errorData.detail || 'Unknown error'}</strong>`,
+                    'Coba Lagi',
+                    null,
+                    null
+                );
+            }
+        } catch (error) {
+            console.error(`❌ Network error: ${error.message}`);
+            
+            // Hide premium loading on error
+            hidePremiumLoading();
+            
+            showFilmModal(
+                'Koneksi Bermasalah',
+                `Tidak dapat menghubungi server.<br><br><strong>${error.message}</strong>`,
+                'Tutup',
+                null,
+                null
+            );
+        }
+    }
+
+    function setupEventListeners() {
+        const searchBtn = getCachedElement('search-btn');
+        const searchInput = getCachedElement('search-input');
+        const filterPopuler = getCachedElement('filter-populer');
+        const filterTerbaru = getCachedElement('filter-terbaru');
+        
+        if (searchBtn) {
+            searchBtn.addEventListener('click', handleSearch);
+        }
+        
+        if (searchInput) {
+            searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    handleSearch();
+                    hideAutocomplete();
+                }
+            });
+            
+            searchInput.addEventListener('input', (e) => {
+                showAutocomplete(e.target.value);
+            });
+            
+            searchInput.addEventListener('focus', (e) => {
+                if (e.target.value.trim()) {
+                    showAutocomplete(e.target.value);
+                }
+            });
+        }
+        
+        document.addEventListener('click', (e) => {
+            const dropdown = getCachedElement('autocomplete-dropdown');
+            const searchBox = getCachedElement('search-input');
+            if (dropdown && !dropdown.contains(e.target) && e.target !== searchBox) {
+                hideAutocomplete();
+            }
+        });
+        
+        if (filterPopuler) {
+            filterPopuler.addEventListener('click', () => {
+                setActiveFilter('populer');
+                fetchMovies();
+            });
+        }
+        
+        if (filterTerbaru) {
+            filterTerbaru.addEventListener('click', () => {
+                setActiveFilter('terbaru');
+                fetchMovies();
+            });
+        }
+        
+        // Close long press actions when clicking outside
+        document.addEventListener('click', (e) => {
+            if (longPressManager.getIgnoreNextClick()) {
+                longPressManager.setIgnoreNextClick(false);
+                return;
+            }
+            
+            // Check if click is inside action buttons
+            const clickedInsideActions = e.target.closest('.long-press-actions');
+            if (!clickedInsideActions) {
+                hideAllLongPressActions();
+            }
+        });
+        
+        // Close long press actions on scroll (with passive listener for better performance)
+        const scrollableContainer = document.querySelector('.overflow-y-auto');
+        if (scrollableContainer) {
+            scrollableContainer.addEventListener('scroll', hideAllLongPressActions, { passive: true });
+        }
+        
+        // Also close on window scroll for safety (with passive listener)
+        window.addEventListener('scroll', hideAllLongPressActions, { passive: true });
+    }
+
+    function setActiveFilter(filter) {
+        currentFilter = filter;
+        
+        const filterPopuler = getCachedElement('filter-populer');
+        const filterTerbaru = getCachedElement('filter-terbaru');
+        
+        if (filter === 'populer') {
+            if (filterPopuler) {
+                filterPopuler.className = 'filter-btn flex-1 bg-blue-600 text-white font-semibold py-3 rounded-full text-sm transition-colors';
+            }
+            if (filterTerbaru) {
+                filterTerbaru.className = 'filter-btn flex-1 bg-gray-800 text-gray-400 font-semibold py-3 rounded-full text-sm hover:bg-gray-700 transition-colors';
+            }
+        } else if (filter === 'terbaru') {
+            if (filterPopuler) {
+                filterPopuler.className = 'filter-btn flex-1 bg-gray-800 text-gray-400 font-semibold py-3 rounded-full text-sm hover:bg-gray-700 transition-colors';
+            }
+            if (filterTerbaru) {
+                filterTerbaru.className = 'filter-btn flex-1 bg-blue-600 text-white font-semibold py-3 rounded-full text-sm transition-colors';
+            }
+        }
+        
+        console.log(`✅ Filter aktif: ${filter}`);
+    }
+
+    function handleSearch() {
+        const searchInput = getCachedElement('search-input');
+        const query = searchInput?.value.toLowerCase().trim();
+        
+        if (!query) {
+            renderMovies(allMovies);
+            return;
+        }
+        
+        const filteredMovies = allMovies.filter(movie => 
+            movie.title.toLowerCase().includes(query) ||
+            (movie.description && movie.description.toLowerCase().includes(query))
+        );
+        
+        renderMovies(filteredMovies);
+    }
+    
+    function showAutocomplete(query) {
+        const dropdown = getCachedElement('autocomplete-dropdown');
+        if (!dropdown || !query.trim()) {
+            hideAutocomplete();
+            return;
+        }
+        
+        const normalizedQuery = query.toLowerCase().trim();
+        
+        const suggestions = allMovies
+            .filter(movie => movie.title.toLowerCase().includes(normalizedQuery))
+            .slice(0, 8);
+        
+        if (suggestions.length === 0) {
+            hideAutocomplete();
+            return;
+        }
+        
+        dropdown.innerHTML = suggestions.map(movie => {
+            const title = movie.title;
+            const lowerTitle = title.toLowerCase();
+            const index = lowerTitle.indexOf(normalizedQuery);
+            
+            let highlightedTitle = title;
+            if (index !== -1) {
+                const before = title.substring(0, index);
+                const match = title.substring(index, index + normalizedQuery.length);
+                const after = title.substring(index + normalizedQuery.length);
+                highlightedTitle = `${escapeHtml(before)}<span class="autocomplete-highlight">${escapeHtml(match)}</span>${escapeHtml(after)}`;
+            } else {
+                highlightedTitle = escapeHtml(title);
+            }
+            
+            return `<div class="autocomplete-item" data-title="${escapeHtml(title)}">${highlightedTitle}</div>`;
+        }).join('');
+        
+        dropdown.classList.add('show');
+        
+        dropdown.querySelectorAll('.autocomplete-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const title = this.getAttribute('data-title');
+                const searchInput = getCachedElement('search-input');
+                if (searchInput) {
+                    searchInput.value = title;
+                    handleSearch();
+                    hideAutocomplete();
+                }
+            });
+        });
+    }
+    
+    function hideAutocomplete() {
+        const dropdown = getCachedElement('autocomplete-dropdown');
+        if (dropdown) {
+            dropdown.classList.remove('show');
+            dropdown.innerHTML = '';
+        }
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function showShimmerLoading() {
+        const container = getCachedElement('drama-list-container');
+        if (!container) return;
+        
+        let shimmerHTML = '';
+        for (let i = 0; i < 6; i++) {
+            shimmerHTML += `
+                <div class="shimmer-card">
+                    <div class="shimmer-poster"></div>
+                    <div class="shimmer-title"></div>
+                    <div class="shimmer-meta"></div>
+                </div>
+            `;
+        }
+        
+        container.innerHTML = shimmerHTML;
+    }
+    
+    async function fetchMovies() {
+        console.log('Fetching movies from API...');
+        const container = getCachedElement('drama-list-container');
+        if (!container) {
+            console.error('❌ Container not found!');
+            return;
+        }
+
+        showShimmerLoading();
+
+        try {
+            // Gunakan API_BASE_URL yang sudah diset oleh config.js
+            const baseUrl = window.API_BASE_URL;
+            if (!baseUrl) {
+                console.error('❌ API_BASE_URL tidak tersedia!');
+                throw new Error('API configuration missing');
+            }
+            let apiUrl = baseUrl + '/api/v1/movies';
+            
+            const queryParams = [];
+            queryParams.push('sort=' + encodeURIComponent(currentFilter));
+            
+            if (window.tg && window.tg.initData) {
+                queryParams.push('init_data=' + encodeURIComponent(window.tg.initData));
+                console.log('📤 Sending init_data with request');
+            } else {
+                console.warn('⚠️ No init_data available, fetching without user context');
+            }
+            
+            apiUrl = apiUrl + '?' + queryParams.join('&');
+            console.log(`API URL: ${apiUrl}`);
+            
+            const response = await fetch(apiUrl, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            console.log(`API Response status: ${response.status}`);
+            
+            if (!response.ok) {
+                throw new Error(`API error: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const movies = data.movies;
+            
+            console.log(`Received ${movies ? movies.length : 0} movies`);
+
+            if (!movies || movies.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-center col-span-2">Belum ada film tersedia.</p>';
+                console.warn('⚠️ No movies available');
+                return;
+            }
+            
+            allMovies = movies;
+            renderMovies(movies);
+            console.log('✅ Movies rendered successfully');
+
+        } catch (error) {
+            console.error('❌ Error fetching movies:', error);
+            console.error('❌ Error details:', error.message);
+            container.innerHTML = `
+                <div class="col-span-2 text-center px-4">
+                    <p class="text-red-500 mb-2 font-semibold">Gagal memuat film</p>
+                    <p class="text-gray-400 text-sm mb-4">${error.message}</p>
+                    <button onclick="fetchMovies()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                        Coba Lagi
+                    </button>
+                </div>
+            `;
+        }
+    }
+
+    function renderMovies(movies) {
+        const container = getCachedElement('drama-list-container');
+        if (!container) return;
+        
+        container.innerHTML = '';
+        
+        if (movies.length === 0) {
+            container.innerHTML = '<p class="text-gray-400 text-center col-span-2">Tidak ada film yang sesuai.</p>';
+            return;
+        }
+
+        // Use DocumentFragment for batch DOM writes
+        const fragment = document.createDocumentFragment();
+        
+        movies.forEach((movie, index) => {
+            const movieCard = document.createElement('div');
+            movieCard.className = 'movie-card-premium rounded-xl p-2.5 cursor-pointer group movie-card-no-select movie-card-animate movie-card-interactive';
+            
+            // Stagger animation delay for each card
+            movieCard.style.animationDelay = `${index * 0.05}s`;
+            
+            // Prevent all default context behaviors
+            movieCard.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                showContextMenu(e.clientX, e.clientY, movie, movieCard);
+                return false;
+            });
+            
+            // Click handler for desktop (mouse)
+            movieCard.onclick = (e) => {
+                // Check if clicking on action buttons area
+                const isClickingActionArea = e.target.closest('.long-press-actions');
+                
+                // Click di manapun dalam card (termasuk poster) → buka film modal
+                // Kecuali klik pada action buttons (icons)
+                if (!isClickingActionArea && (e.pointerType === 'mouse' || !('ontouchstart' in window))) {
+                    handleMovieClick(movie.id);
+                }
+            };
+            
+            // Long press handler for mobile
+            let touchStartX = 0;
+            let touchStartY = 0;
+            let hasScrolled = false;
+            const cardKey = `card-${movie.id}`;
+            
+            movieCard.addEventListener('touchstart', (e) => {
+                // DON'T preventDefault - it blocks scrolling!
+                hasScrolled = false;
+                const touch = e.touches[0];
+                touchStartX = touch.clientX;
+                touchStartY = touch.clientY;
+                
+                movieCard.classList.add('movie-card-pressing');
+                
+                longPressManager.start(cardKey, () => {
+                    showContextMenu(touch.clientX, touch.clientY, movie, movieCard);
+                    movieCard.classList.remove('movie-card-pressing');
+                    
+                    // Haptic feedback if available
+                    if (window.Telegram?.WebApp?.HapticFeedback) {
+                        window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
+                    }
+                }, 500);
+            }, { passive: true });
+            
+            movieCard.addEventListener('touchend', (e) => {
+                longPressManager.cancel(cardKey);
+                movieCard.classList.remove('movie-card-pressing');
+                
+                const touchTarget = e.changedTouches[0];
+                const elementAtPoint = document.elementFromPoint(touchTarget.clientX, touchTarget.clientY);
+                const isClickingActionArea = elementAtPoint && elementAtPoint.closest('.long-press-actions');
+                
+                // Short-tap di manapun dalam card (termasuk poster) → buka film modal
+                // Jika bukan long-press dan tidak ada scroll, dan bukan klik pada action buttons
+                if (!longPressManager.getIsLongPress(cardKey) && !hasScrolled && !isClickingActionArea) {
+                    handleMovieClick(movie.id);
+                }
+                
+                // Reset per-key tracking setelah check selesai
+                longPressManager.reset(cardKey);
+                hasScrolled = false;
+            }, { passive: true });
+            
+            movieCard.addEventListener('touchmove', (e) => {
+                // Cancel long press if user scrolls
+                const touch = e.touches[0];
+                const moveX = Math.abs(touch.clientX - touchStartX);
+                const moveY = Math.abs(touch.clientY - touchStartY);
+                
+                // If moved more than 5px, mark as scrolled
+                if (moveX > 5 || moveY > 5) {
+                    hasScrolled = true;
+                    longPressManager.cancel(cardKey);
+                    movieCard.classList.remove('movie-card-pressing');
+                }
+            }, { passive: true });
+            
+            const posterDiv = document.createElement('div');
+            posterDiv.className = 'w-full aspect-[2/3] bg-gray-900 rounded-lg overflow-hidden mb-2 relative poster-image-area';
+            posterDiv.setAttribute('data-poster', movie.id);
+            
+            const img = document.createElement('img');
+            img.alt = escapeHtml(movie.title);
+            img.className = 'w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 poster-img img-loading';
+            img.loading = 'lazy';
+            
+            img.onload = function() {
+                this.classList.remove('img-loading');
+                this.classList.add('img-loaded');
+            };
+            
+            img.onerror = function() {
+                this.classList.remove('img-loading');
+                this.classList.add('img-error');
+                this.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="300"%3E%3Crect fill="%23374151" width="200" height="300"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" fill="%239CA3AF" font-size="20"%3ENo Image%3C/text%3E%3C/svg%3E';
+            };
+            
+            // Prioritas: pakai Telegram File ID jika ada, fallback ke poster_url
+            if (movie.poster_file_id) {
+                img.src = `${window.API_BASE_URL}/api/poster/${movie.poster_file_id}`;
+            } else if (movie.poster_url) {
+                // Jika poster_url adalah path relatif (dimulai dengan /), prepend dengan API_BASE_URL
+                if (movie.poster_url.startsWith('/')) {
+                    img.src = `${window.API_BASE_URL}${movie.poster_url}`;
+                } else {
+                    img.src = movie.poster_url;
+                }
+            } else {
+                img.src = '';
+            }
+            
+            // Prevent all image interactions that trigger default menus
+            img.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                return false;
+            });
+            
+            posterDiv.appendChild(img);
+            
+            const badgesContainer = document.createElement('div');
+            badgesContainer.className = 'status-badges';
+            badgesContainer.setAttribute('data-movie-id', movie.id);
+            
+            const likeCount = movie.like_count || 0;
+            const favoriteCount = movie.favorite_count || 0;
+            const isLiked = movie.is_liked || false;
+            const isFavorited = movie.is_favorited || false;
+            
+            if (likeCount > 0 || isLiked) {
+                const likeBadge = document.createElement('div');
+                likeBadge.className = `status-badge badge-like ${isLiked ? 'active' : ''}`;
+                likeBadge.setAttribute('data-movie-id', movie.id);
+                likeBadge.innerHTML = `
+                    <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/>
+                    </svg>
+                    <span class="badge-count">${likeCount}</span>
+                `;
+                
+                likeBadge.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    playFeedback(); // Play sound + haptic
+                    toggleBadge(likeBadge, () => toggleLikeAction(movie));
+                });
+                
+                badgesContainer.appendChild(likeBadge);
+            }
+            
+            if (favoriteCount > 0 || isFavorited) {
+                const favBadge = document.createElement('div');
+                favBadge.className = `status-badge badge-favorite ${isFavorited ? 'active' : ''}`;
+                favBadge.setAttribute('data-movie-id', movie.id);
+                favBadge.innerHTML = `
+                    <span class="badge-count">${favoriteCount}</span>
+                    <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                    </svg>
+                `;
+                
+                favBadge.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    playFeedback(); // Play sound + haptic
+                    toggleBadge(favBadge, () => toggleFavoriteAction(movie));
+                });
+                
+                badgesContainer.appendChild(favBadge);
+            }
+            
+            posterDiv.appendChild(badgesContainer);
+            
+            // Create caption container (untuk title dan action icons)
+            const captionContainer = document.createElement('div');
+            captionContainer.className = 'movie-caption';
+            
+            // Title text
+            const title = document.createElement('p');
+            title.className = 'text-sm text-white font-semibold leading-snug movie-title-text';
+            title.style.display = '-webkit-box';
+            title.style.webkitLineClamp = '2';
+            title.style.webkitBoxOrient = 'vertical';
+            title.style.overflow = 'hidden';
+            title.textContent = movie.title;
+            
+            // Long press actions (icon like dan favorit)
+            const actionsContainer = document.createElement('div');
+            actionsContainer.className = 'long-press-actions';
+            
+            // Create action buttons using reusable function
+            const { likeBtn, favBtn } = createActionButtons(movie, movieCard);
+            actionsContainer.appendChild(likeBtn);
+            actionsContainer.appendChild(favBtn);
+            
+            captionContainer.appendChild(title);
+            captionContainer.appendChild(actionsContainer);
+            
+            movieCard.appendChild(posterDiv);
+            movieCard.appendChild(captionContainer);
+            fragment.appendChild(movieCard);
+        });
+        
+        // Batch append all movie cards at once
+        container.appendChild(fragment);
+    }
+
+    function handleMovieClick(movieId) {
+        console.log("🎬 Film diklik! ID:", movieId);
+        console.log("🔍 Checking Telegram WebApp:", window.tg);
+        
+        if (!window.tg) {
+            console.error("❌ Telegram WebApp tidak tersedia");
+            console.error("❌ window.Telegram:", window.Telegram);
+            alert("Halaman ini harus dibuka melalui Telegram Mini App");
+            return;
+        }
+        
+        const movie = allMovies.find(m => m.id === movieId);
+        if (movie) {
+            console.log(`✅ Found movie: ${movie.title}`);
+            
+            // Get poster URL
+            let posterUrl = null;
+            if (movie.poster_file_id) {
+                posterUrl = `${window.API_BASE_URL}/api/poster/${movie.poster_file_id}`;
+            } else if (movie.poster_url) {
+                posterUrl = movie.poster_url.startsWith('/') 
+                    ? `${window.API_BASE_URL}${movie.poster_url}` 
+                    : movie.poster_url;
+            }
+            
+            sendMovieToBackend(movieId, movie.title, posterUrl);
+        } else {
+            console.warn(`⚠️ Movie not found with ID: ${movieId}`);
+            alert("Film tidak ditemukan");
+        }
+    }
+    
+    // Cleanup function to prevent memory leaks
+    function cleanup() {
+        console.log('🧹 Cleaning up resources...');
+        
+        // Clear all tracked timeouts
+        timeouts.forEach(id => clearTimeout(id));
+        timeouts.length = 0;
+        
+        // Clear expandTimeout if it exists
+        if (expandTimeout) {
+            clearTimeout(expandTimeout);
+            expandTimeout = null;
+        }
+        
+        // Cancel all long press timers
+        longPressManager.cancelAll();
+        
+        // Hide all long press actions
+        hideAllLongPressActions();
+        
+        // Close audio context if it exists
+        if (globalAudioContext) {
+            if (globalAudioContext.state !== 'closed') {
+                globalAudioContext.close();
+            }
+            globalAudioContext = null;
+        }
+        
+        // Clear modals and detach DOM references
+        const toastNotification = getCachedElement('toastNotification');
+        if (toastNotification) {
+            toastNotification.classList.remove('show');
+            const toastIcon = getCachedElement('toastIcon');
+            const toastMessage = getCachedElement('toastMessage');
+            if (toastIcon) toastIcon.innerHTML = '';
+            if (toastMessage) toastMessage.innerHTML = '';
+        }
+        
+        const filmModal = getCachedElement('filmModal');
+        if (filmModal) {
+            filmModal.classList.remove('active');
+            const modalIcon = getCachedElement('modalIcon');
+            const modalTitle = getCachedElement('modalTitle');
+            const modalMessage = getCachedElement('modalMessage');
+            if (modalIcon) modalIcon.innerHTML = '';
+            if (modalTitle) modalTitle.innerHTML = '';
+            if (modalMessage) modalMessage.innerHTML = '';
+        }
+        
+        const contextMenu = getCachedElement('contextMenu');
+        if (contextMenu) {
+            contextMenu.classList.remove('active');
+            contextMenu.innerHTML = '';
+        }
+        
+        // Clear autocomplete dropdown
+        const dropdown = getCachedElement('autocomplete-dropdown');
+        if (dropdown) {
+            dropdown.classList.remove('show');
+            dropdown.innerHTML = '';
+        }
+        
+        // Clear object references
+        selectedMovieForContext = null;
+        expandedBadge = null;
+        
+        // Clear cached elements
+        cachedElements = {};
+        
+        console.log('✅ Cleanup complete');
+    }
+    
+    // Add cleanup on page unload
+    window.addEventListener('beforeunload', cleanup);
+    window.addEventListener('pagehide', cleanup);
+    </script>
+    <script src="navbar.js?v=222222222"></script>
+    <script src="cache-manager?t=555555555".js?v=222222222"></script>
+</body>
+</html>

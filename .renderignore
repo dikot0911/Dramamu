@@ -1,0 +1,23 @@
+# Exclude frontend assets (deployed separately to Netlify)
+frontend/
+
+# Exclude attached assets (development only)
+attached_assets/
+
+# Exclude git files
+.git/
+.gitignore
+
+# Exclude development files
+*.md
+!README.md
+.replit
+replit.nix
+
+# Exclude database files (use production database)
+*.db
+*.db-shm
+*.db-wal
+
+# Keep backend_assets (needed for poster serving)
+# backend_assets/ is NOT excluded - it's needed for the backend

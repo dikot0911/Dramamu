@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="id" translate="no">
+<head>
+    <base href="/panel/">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <meta name="google" content="notranslate">
+    <title>Super Admin Login - Dramamu</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+            background: linear-gradient(180deg, #0f0f1e 0%, #1a1a2e 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            position: relative;
+            overflow-y: auto;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 20% 50%, rgba(212, 175, 55, 0.15) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.15) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        .login-container {
+            background: rgba(30, 41, 59, 0.98);
+            border-radius: 16px;
+            box-shadow: 0 25px 70px rgba(0, 0, 0, 0.6);
+            width: 100%;
+            max-width: 440px;
+            padding: 0;
+            animation: slideUp 0.5s ease;
+            position: relative;
+            border: 2px solid rgba(212, 175, 55, 0.3);
+            backdrop-filter: blur(15px);
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .login-header {
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%);
+            padding: 45px 40px 35px;
+            border-bottom: 3px solid rgba(212, 175, 55, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, transparent 0%, #d4af37 30%, #8b5cf6 70%, transparent 100%);
+            opacity: 1;
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .logo-icon {
+            width: 90px;
+            height: 90px;
+            background: #000000;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 45px;
+            margin-bottom: 18px;
+            box-shadow: 0 8px 25px rgba(212, 175, 55, 0.5), 0 0 40px rgba(139, 92, 246, 0.3);
+            border: 3px solid rgba(212, 175, 55, 0.7);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .logo-icon::after {
+            content: '👑';
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            font-size: 28px;
+            filter: drop-shadow(0 4px 8px rgba(212, 175, 55, 0.6));
+        }
+
+        .logo-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+
+        .logo-icon:hover {
+            transform: scale(1.05) rotate(5deg);
+            box-shadow: 0 10px 30px rgba(212, 175, 55, 0.7), 0 0 50px rgba(139, 92, 246, 0.5);
+            border-color: #d4af37;
+        }
+
+        h1 {
+            color: #ffffff;
+            font-size: 30px;
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 8px;
+            letter-spacing: 0.5px;
+            text-shadow: 0 3px 6px rgba(0, 0, 0, 0.4);
+        }
+
+        .subtitle {
+            text-align: center;
+            color: rgba(212, 175, 55, 1);
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .admin-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.3) 0%, rgba(139, 92, 246, 0.3) 100%);
+            color: #d4af37;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-top: 10px;
+            border: 1px solid rgba(212, 175, 55, 0.4);
+        }
+
+        .login-body {
+            padding: 45px 40px;
+        }
+
+        .security-notice {
+            background: rgba(139, 92, 246, 0.15);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-bottom: 28px;
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .security-notice strong {
+            color: #d4af37;
+            font-weight: 600;
+        }
+
+        .form-group {
+            margin-bottom: 26px;
+        }
+
+        label {
+            display: block;
+            color: rgba(255, 255, 255, 0.95);
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            letter-spacing: 0.5px;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 20px;
+            color: rgba(212, 175, 55, 0.7);
+        }
+
+        input {
+            width: 100%;
+            padding: 16px 18px 16px 52px;
+            background: rgba(15, 23, 42, 0.7);
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            font-size: 15px;
+            color: #ffffff;
+            transition: all 0.3s;
+            outline: none;
+            font-weight: 500;
+        }
+
+        input::placeholder {
+            color: rgba(255, 255, 255, 0.35);
+        }
+
+        input:focus {
+            background: rgba(15, 23, 42, 0.9);
+            border-color: #d4af37;
+            box-shadow: 0 0 0 5px rgba(212, 175, 55, 0.2);
+        }
+
+        .input-hint {
+            display: block;
+            margin-top: 8px;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .env-hint {
+            color: rgba(139, 92, 246, 0.8);
+            font-weight: 500;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #d4af37 0%, #f0d266 50%, #d4af37 100%);
+            color: #0f0f1e;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4);
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(212, 175, 55, 0.6);
+            background: linear-gradient(135deg, #f0d266 0%, #d4af37 50%, #f0d266 100%);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+            padding: 16px 18px;
+            border-radius: 10px;
+            font-size: 14px;
+            margin-bottom: 22px;
+            display: none;
+            border: 2px solid rgba(239, 68, 68, 0.4);
+            font-weight: 500;
+        }
+
+        .error-message.show {
+            display: block;
+            animation: shake 0.4s;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 3px solid rgba(15, 15, 30, 0.3);
+            border-top-color: #0f0f1e;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .login-footer {
+            padding: 20px 40px 35px;
+            text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .login-footer a {
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .login-footer a:hover {
+            color: #ffffff;
+            text-decoration: underline;
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+                align-items: flex-start;
+                padding-top: 20px;
+                padding-bottom: 20px;
+            }
+
+            .login-container {
+                max-width: 100%;
+                border-radius: 12px;
+                margin: 0 auto;
+            }
+
+            .login-header {
+                padding: 20px 20px 15px;
+            }
+
+            .login-body {
+                padding: 20px;
+            }
+
+            .login-footer {
+                padding: 15px 20px 20px;
+            }
+
+            .logo-icon {
+                width: 65px;
+                height: 65px;
+                font-size: 35px;
+                margin-bottom: 12px;
+            }
+
+            .logo-icon::after {
+                font-size: 22px;
+                top: -8px;
+                right: -8px;
+            }
+
+            h1 {
+                font-size: 22px;
+                margin-bottom: 5px;
+            }
+
+            .subtitle {
+                font-size: 12px;
+                letter-spacing: 1.2px;
+            }
+
+            .admin-badge {
+                font-size: 10px;
+                padding: 5px 12px;
+                margin-top: 8px;
+            }
+
+            .security-notice {
+                padding: 12px 14px;
+                margin-bottom: 18px;
+                font-size: 12px;
+            }
+
+            .form-group {
+                margin-bottom: 18px;
+            }
+
+            label {
+                font-size: 13px;
+                margin-bottom: 8px;
+            }
+
+            input {
+                padding: 14px 16px 14px 46px;
+                font-size: 14px;
+            }
+
+            .input-icon {
+                font-size: 18px;
+                left: 14px;
+            }
+
+            .input-hint {
+                font-size: 11px;
+                margin-top: 6px;
+            }
+
+            .btn {
+                padding: 15px;
+                font-size: 14px;
+                margin-top: 8px;
+                letter-spacing: 1px;
+            }
+
+            .error-message {
+                padding: 14px 16px;
+                font-size: 13px;
+                margin-bottom: 18px;
+            }
+
+            .login-footer a {
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <div class="logo">
+                <div class="logo-icon">
+                    <img src="assets/logo-dramamu.jpg" alt="Dramamu Logo">
+                </div>
+                <h1>Super Admin</h1>
+                <p class="subtitle">Full Access Control</p>
+                <div class="admin-badge">🔐 Privileged Access</div>
+            </div>
+        </div>
+
+        <div class="login-body">
+            <div class="security-notice">
+                <strong>⚠️ Akses Terbatas:</strong> Halaman ini khusus untuk Super Admin dengan kredensial environment variables.
+            </div>
+
+            <div id="errorMessage" class="error-message"></div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">Username Super Admin</label>
+                    <div class="input-wrapper">
+                        <span class="input-icon">⚡</span>
+                        <input type="text" id="username" name="username" required autocomplete="username" placeholder="ADMIN_USERNAME">
+                    </div>
+                    <small class="input-hint env-hint">
+                        Gunakan username yang sama dengan <strong>ADMIN_USERNAME</strong> di environment variables
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password Super Admin</label>
+                    <div class="input-wrapper">
+                        <span class="input-icon">🔑</span>
+                        <input type="password" id="password" name="password" required autocomplete="current-password" placeholder="ADMIN_PASSWORD" minlength="8">
+                    </div>
+                    <small class="input-hint env-hint">
+                        Gunakan password yang sama dengan <strong>ADMIN_PASSWORD</strong> di environment variables
+                    </small>
+                </div>
+
+                <button type="submit" class="btn" id="loginBtn">🚀 Akses Panel</button>
+            </form>
+        </div>
+
+        <div class="login-footer">
+            <a href="login.html">← Kembali ke Login Admin Biasa</a>
+        </div>
+    </div>
+
+    <script src="admin.js?v=1763121220"></script>
+    <script>
+        async function checkExistingAuth() {
+            try {
+                await AdminPanel.apiCall('/admin/me', {
+                    skipAuthRedirect: true
+                });
+                window.location.href = 'dashboard.html';
+            } catch (error) {
+            }
+        }
+        checkExistingAuth();
+
+        const loginForm = document.getElementById('loginForm');
+        const loginBtn = document.getElementById('loginBtn');
+        const errorMessage = document.getElementById('errorMessage');
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+
+            if (password.length < 8) {
+                errorMessage.textContent = 'Password harus minimal 8 karakter';
+                errorMessage.classList.add('show');
+                return;
+            }
+
+            errorMessage.classList.remove('show');
+            AdminPanel.showLoading(loginBtn);
+
+            try {
+                const response = await AdminPanel.apiCall('/admin/login', {
+                    method: 'POST',
+                    body: JSON.stringify({ username, password }),
+                    skipAuthRedirect: true
+                });
+
+                window.location.href = '/panel/dashboard.html';
+            } catch (error) {
+                errorMessage.textContent = error.message || 'Login gagal. Pastikan username dan password dari environment variables benar.';
+                errorMessage.classList.add('show');
+                AdminPanel.hideLoading(loginBtn);
+            }
+        });
+    </script>
+</body>
+</html>

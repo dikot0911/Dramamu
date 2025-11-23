@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Dramamu - Kategori</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="config.js"></script>
+    <link rel="stylesheet" href="premium-styles.css">
+    <script src="premium-icons.js"></script>
+    <script src="premium-init.js"></script>
+    
+    <style>
+        .category-card {
+            border: 2px solid rgba(212, 175, 55, 0.3);
+            transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+            will-change: transform;
+        }
+        
+        .category-card:hover {
+            border-color: rgba(212, 175, 55, 0.6);
+            transform: scale(1.03);
+            box-shadow: 0 8px 20px rgba(212, 175, 55, 0.3);
+        }
+    </style>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+</head>
+<body>
+
+    <div class="w-full h-screen overflow-hidden relative flex flex-col">
+
+        <header class="premium-header w-full z-20">
+            <h1>Kategori Drama</h1>
+        </header>
+
+        <main class="flex-1 overflow-y-auto scrollbar-hide p-4 pb-24" style="position: relative; z-index: 1;">
+            
+            <div class="grid grid-cols-2 gap-3" id="category-container">
+                
+                <div class="category-card bg-gradient-to-br from-pink-600 to-purple-600 rounded-xl p-5 cursor-pointer" onclick="filterByCategory('Romance')">
+                    <div class="text-center">
+                        <div class="text-4xl mb-2">💕</div>
+                        <h3 class="text-white font-bold text-lg">Romance</h3>
+                        <p class="text-pink-100 text-xs mt-1">Drama cinta</p>
+                    </div>
+                </div>
+
+                <div class="category-card bg-gradient-to-br from-blue-600 to-cyan-600 rounded-xl p-5 cursor-pointer" onclick="filterByCategory('Action')">
+                    <div class="text-center">
+                        <div class="text-4xl mb-2">⚔️</div>
+                        <h3 class="text-white font-bold text-lg">Action</h3>
+                        <p class="text-blue-100 text-xs mt-1">Aksi seru</p>
+                    </div>
+                </div>
+
+                <div class="category-card bg-gradient-to-br from-green-600 to-emerald-600 rounded-xl p-5 cursor-pointer" onclick="filterByCategory('Comedy')">
+                    <div class="text-center">
+                        <div class="text-4xl mb-2">😂</div>
+                        <h3 class="text-white font-bold text-lg">Comedy</h3>
+                        <p class="text-green-100 text-xs mt-1">Komedi lucu</p>
+                    </div>
+                </div>
+
+                <div class="category-card bg-gradient-to-br from-purple-600 to-indigo-600 rounded-xl p-5 cursor-pointer" onclick="filterByCategory('Fantasy')">
+                    <div class="text-center">
+                        <div class="text-4xl mb-2">🔮</div>
+                        <h3 class="text-white font-bold text-lg">Fantasy</h3>
+                        <p class="text-purple-100 text-xs mt-1">Fantasi magis</p>
+                    </div>
+                </div>
+
+                <div class="category-card bg-gradient-to-br from-red-600 to-orange-600 rounded-xl p-5 cursor-pointer" onclick="filterByCategory('Thriller')">
+                    <div class="text-center">
+                        <div class="text-4xl mb-2">🔥</div>
+                        <h3 class="text-white font-bold text-lg">Thriller</h3>
+                        <p class="text-red-100 text-xs mt-1">Menegangkan</p>
+                    </div>
+                </div>
+
+                <div class="category-card bg-gradient-to-br from-yellow-600 to-amber-600 rounded-xl p-5 cursor-pointer" onclick="filterByCategory('Historical')">
+                    <div class="text-center">
+                        <div class="text-4xl mb-2">👑</div>
+                        <h3 class="text-white font-bold text-lg">Historical</h3>
+                        <p class="text-yellow-100 text-xs mt-1">Sejarah</p>
+                    </div>
+                </div>
+
+                <div class="category-card bg-gradient-to-br from-teal-600 to-cyan-600 rounded-xl p-5 cursor-pointer" onclick="filterByCategory('School')">
+                    <div class="text-center">
+                        <div class="text-4xl mb-2">🎓</div>
+                        <h3 class="text-white font-bold text-lg">School</h3>
+                        <p class="text-teal-100 text-xs mt-1">Kehidupan sekolah</p>
+                    </div>
+                </div>
+
+                <div class="category-card bg-gradient-to-br from-gray-600 to-slate-600 rounded-xl p-5 cursor-pointer" onclick="filterByCategory('Mystery')">
+                    <div class="text-center">
+                        <div class="text-4xl mb-2">🕵️</div>
+                        <h3 class="text-white font-bold text-lg">Mystery</h3>
+                        <p class="text-gray-100 text-xs mt-1">Misteri</p>
+                    </div>
+                </div>
+
+            </div>
+
+        </main>
+    </div>
+    
+    <script src="navbar.js?v=222222222"></script>
+
+    <script>
+    // Track timeouts for cleanup
+    const timeouts = [];
+    
+    document.addEventListener("DOMContentLoaded", () => {
+        const tg = window.Telegram?.WebApp;
+        
+        if (tg) {
+            console.log("✅ Telegram WebApp SDK aktif");
+            tg.ready();
+            tg.expand();
+            tg.enableClosingConfirmation();
+            
+            tg.disableVerticalSwipes();
+            console.log("🔒 Vertical swipes disabled - mini app tidak akan close saat scroll");
+            
+            window.tg = tg;
+        } else {
+            console.warn("⚠️ Bukan dibuka lewat Telegram Mini App");
+            window.tg = null;
+        }
+    });
+    
+    function filterByCategory(category) {
+        console.log(`Kategori dipilih: ${category}`);
+        
+        if (window.tg && window.tg.showAlert) {
+            window.tg.showAlert(`Mencari drama ${category}...`);
+        }
+        
+        const navigateTimeout = setTimeout(() => {
+            window.location.href = `drama.html?category=${encodeURIComponent(category)}`;
+        }, 500);
+        timeouts.push(navigateTimeout);
+    }
+    
+    // Cleanup function to prevent memory leaks
+    function cleanup() {
+        console.log('🧹 Cleaning up resources...');
+        
+        // Clear all tracked timeouts
+        timeouts.forEach(id => clearTimeout(id));
+        timeouts.length = 0;
+        
+        console.log('✅ Cleanup complete');
+    }
+    
+    // Add cleanup on page unload
+    window.addEventListener('beforeunload', cleanup);
+    window.addEventListener('pagehide', cleanup);
+    </script>
+    <script src="cache-manager?t=555555555".js?v=222222222"></script>
+</body>
+</html>

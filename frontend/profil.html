@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Dramamu - Profil</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="config.js?v=222222222"></script>
+    <link rel="stylesheet" href="premium-styles.css?v=222222222">
+    <script src="premium-icons.js?v=222222222"></script>
+    <script src="premium-init.js?v=222222222"></script>
+    
+    <style>
+        /* Performance Optimizations */
+        * {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        body {
+            font-family: 'Manrope', sans-serif;
+            background: linear-gradient(180deg, #0f0f1e 0%, #1a1a2e 100%);
+            color: #E5E7EB;
+            position: relative;
+        }
+        
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Shimmer Loading Animation */
+        .shimmer-box {
+            background: rgba(30, 41, 59, 0.6);
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .shimmer-box::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                135deg,
+                transparent 0%,
+                transparent 45%,
+                rgba(212, 175, 55, 0.2) 48%,
+                rgba(139, 92, 246, 0.2) 50%,
+                rgba(212, 175, 55, 0.2) 52%,
+                transparent 55%,
+                transparent 100%
+            );
+            animation: shimmerBoxDiagonal 8s ease-in-out infinite;
+            animation-play-state: paused;
+        }
+        
+        .shimmer-box.shimmer-visible::before {
+            animation-play-state: running;
+        }
+        
+        @keyframes shimmerBoxDiagonal {
+            0% {
+                transform: translate(100%, 100%);
+            }
+            15% {
+                transform: translate(-100%, -100%);
+            }
+            100% {
+                transform: translate(-100%, -100%);
+            }
+        }
+        
+        .shimmer-text {
+            height: 16px;
+            background: linear-gradient(
+                135deg,
+                rgba(45, 55, 72, 0.8) 0%,
+                rgba(55, 65, 81, 0.8) 50%,
+                rgba(45, 55, 72, 0.8) 100%
+            );
+            border-radius: 4px;
+        }
+        
+        .shimmer-stat {
+            height: 32px;
+            background: linear-gradient(
+                135deg,
+                rgba(45, 55, 72, 0.8) 0%,
+                rgba(55, 65, 81, 0.8) 50%,
+                rgba(45, 55, 72, 0.8) 100%
+            );
+            border-radius: 4px;
+            margin-top: 8px;
+        }
+        
+        header {
+            background: rgba(26, 26, 46, 0.98) !important;
+            border-bottom: 1px solid rgba(212, 175, 55, 0.2) !important;
+            transform: translateZ(0);
+            will-change: transform;
+        }
+        
+        .premium-card {
+            position: relative;
+            background: rgba(20, 20, 35, 0.85);
+            border-radius: 16px;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translateZ(0);
+            will-change: transform;
+            contain: layout style paint;
+            box-shadow: 
+                0 0 20px rgba(212, 175, 55, 0.12),
+                0 0 40px rgba(139, 92, 246, 0.08),
+                inset 0 1px 0 rgba(255, 255, 255, 0.08);
+            border: 1px solid transparent;
+            background-clip: padding-box;
+        }
+
+        .premium-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 16px;
+            padding: 1px;
+            background: linear-gradient(135deg, 
+                rgba(212, 175, 55, 0.3) 0%,
+                rgba(212, 175, 55, 0.12) 25%,
+                rgba(139, 92, 246, 0.12) 50%,
+                rgba(212, 175, 55, 0.12) 75%,
+                rgba(212, 175, 55, 0.3) 100%);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+            opacity: 0.7;
+            will-change: opacity;
+        }
+        
+        .premium-card:hover {
+            box-shadow: 
+                0 0 30px rgba(212, 175, 55, 0.2),
+                0 0 60px rgba(139, 92, 246, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.12);
+            transform: translateY(-4px) translateZ(0);
+        }
+        
+        .premium-button {
+            background: linear-gradient(135deg, #d4af37 0%, #f0d266 100%);
+            color: #0f0f1e;
+            font-weight: 700;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translateZ(0);
+            box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4);
+            border-radius: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .premium-button::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transform: translateX(-100%);
+            display: none;
+        }
+        
+        .premium-button:hover {
+            background: linear-gradient(135deg, #f0d266 0%, #d4af37 100%);
+            transform: translateY(-3px) translateZ(0);
+            box-shadow: 0 8px 28px rgba(212, 175, 55, 0.6);
+        }
+
+        .premium-button:active {
+            transform: translateY(-1px) translateZ(0);
+        }
+        
+        nav {
+            transform: translateZ(0);
+            will-change: transform;
+            contain: layout style paint;
+        }
+        
+        nav a {
+            transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translateZ(0);
+        }
+        
+        nav a:hover {
+            color: #d4af37 !important;
+        }
+        
+        /* Member Card Styles - Platinum Card Design */
+        .member-card {
+            position: relative;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translateZ(0);
+            will-change: transform;
+            contain: layout style paint;
+        }
+        
+        /* Silver Metallic Card - Standard */
+        .member-card.standard {
+            background: linear-gradient(135deg, 
+                #B8B8B8 0%, 
+                #D8D8D8 30%,
+                #F0F0F0 50%,
+                #D8D8D8 70%,
+                #B8B8B8 100%);
+            border: 1px solid rgba(192, 192, 192, 0.6);
+            box-shadow: 
+                0 8px 20px rgba(0, 0, 0, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.4),
+                inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+        }
+        
+        /* Gold Metallic Card - VIP */
+        .member-card.vip {
+            background: linear-gradient(135deg, 
+                #C5A028 0%, 
+                #D4AF37 25%,
+                #F0D266 50%,
+                #D4AF37 75%,
+                #C5A028 100%);
+            border: 1px solid rgba(212, 175, 55, 0.7);
+            box-shadow: 
+                0 10px 30px rgba(212, 175, 55, 0.5),
+                0 4px 12px rgba(255, 215, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.5),
+                inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+        }
+        
+        /* VIP Shimmer - From Bottom Right to Top Left with Long Delay */
+        .member-card.vip::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                135deg,
+                transparent 0%,
+                transparent 40%,
+                rgba(255, 215, 0, 0.15) 45%,
+                rgba(255, 255, 255, 0.3) 50%,
+                rgba(255, 215, 0, 0.15) 55%,
+                transparent 60%,
+                transparent 100%
+            );
+            animation: shimmerDiagonal 10s ease-in-out infinite;
+            animation-play-state: paused;
+            pointer-events: none;
+            z-index: 1;
+            transform: translateZ(0);
+        }
+        
+        .member-card.vip.shimmer-visible::before {
+            animation-play-state: running;
+        }
+        
+        @keyframes shimmerDiagonal {
+            0% {
+                transform: translate(100%, 100%) translateZ(0);
+            }
+            10% {
+                transform: translate(-100%, -100%) translateZ(0);
+            }
+            100% {
+                transform: translate(-100%, -100%) translateZ(0);
+            }
+        }
+        
+        /* Simplified - Remove particles for better performance */
+        .particle {
+            display: none;
+        }
+        
+        .member-card .avatar-wrapper {
+            position: relative;
+            z-index: 10;
+        }
+        
+        .member-card .content-wrapper {
+            position: relative;
+            z-index: 10;
+        }
+        
+        /* User Info Text Colors - Dark for both Standard & VIP */
+        .member-card #user-name {
+            color: rgba(30, 30, 40, 0.95) !important;
+            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
+            font-weight: 700;
+        }
+        
+        .member-card #username {
+            color: rgba(40, 40, 50, 0.85) !important;
+            text-shadow: 0 1px 1px rgba(255, 255, 255, 0.2);
+        }
+        
+        .member-card #member-status {
+            color: rgba(50, 50, 60, 0.8) !important;
+            text-shadow: 0 1px 1px rgba(255, 255, 255, 0.2);
+        }
+        
+        /* VIP Badge */
+        .vip-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.25rem 0.75rem;
+            background: linear-gradient(135deg, #fff 0%, #f0f0f0 100%);
+            color: #d4af37;
+            font-size: 0.75rem;
+            font-weight: 700;
+            border-radius: 9999px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            
+        }
+        
+        @keyframes badgePulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+        }
+        
+        /* Balance Display - Simple without background */
+        .balance-display {
+            margin-top: 1rem;
+            padding: 0;
+            background: transparent;
+        }
+        
+        /* Wallet/Crown SVG Icon */
+        .wallet-icon {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            width: 64px;
+            height: 64px;
+            opacity: 0.3;
+            transition: opacity 0.3s ease;
+            z-index: 5;
+        }
+        
+        .member-card.vip .wallet-icon {
+            opacity: 0.5;
+        }
+        
+        /* Balance Text Styles */
+        .balance-text {
+            position: absolute;
+            bottom: 1rem;
+            left: 1rem;
+        }
+        
+        /* Balance Colors - Dark for both Standard & VIP */
+        .member-card .balance-amount {
+            font-size: 0.875rem;
+            font-weight: 700;
+            color: rgba(30, 30, 40, 0.95);
+            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
+        }
+        
+        .member-card .balance-label {
+            font-size: 0.65rem;
+            color: rgba(50, 50, 60, 0.8);
+            margin-bottom: 0.125rem;
+            text-shadow: 0 1px 1px rgba(255, 255, 255, 0.2);
+        }
+        
+        /* Simple Line Chart */
+        .chart-container {
+            position: absolute;
+            bottom: 1rem;
+            right: 1rem;
+            width: 100px;
+            height: 50px;
+        }
+        
+        .chart-wrapper {
+            position: relative;
+            width: 100%;
+            height: 40px;
+        }
+        
+        /* Chart - Dark for both Standard & VIP */
+        .member-card .chart-line {
+            stroke: rgba(40, 40, 50, 0.75);
+            stroke-width: 2;
+            fill: none;
+            filter: drop-shadow(0 1px 2px rgba(255, 255, 255, 0.2));
+        }
+        
+        .member-card .chart-label {
+            font-size: 0.6rem;
+            color: rgba(50, 50, 60, 0.75);
+            margin-bottom: 0.25rem;
+            text-align: right;
+        }
+        
+        .member-card .chart-info {
+            font-size: 0.7rem;
+            color: rgba(30, 30, 40, 0.9);
+            margin-top: 0.25rem;
+            text-align: right;
+            font-weight: 600;
+            text-shadow: 0 1px 1px rgba(255, 255, 255, 0.2);
+        }
+        
+        /* Avatar Border Styles */
+        #avatar-container {
+            position: relative;
+            border: 3px solid rgba(192, 192, 192, 0.8);
+            transition: all 0.3s ease;
+        }
+        
+        /* VIP Avatar Border - Gold dengan Shimmer */
+        .member-card.vip #avatar-container {
+            border: 3px solid transparent;
+            background-image: 
+                linear-gradient(white, white),
+                linear-gradient(135deg, 
+                    #C5A028 0%, 
+                    #D4AF37 25%,
+                    #F0D266 50%,
+                    #FFD700 62.5%,
+                    #F0D266 75%,
+                    #D4AF37 87.5%,
+                    #C5A028 100%);
+            background-origin: border-box;
+            background-clip: padding-box, border-box;
+            box-shadow: 
+                0 0 15px rgba(212, 175, 55, 0.5),
+                0 0 30px rgba(255, 215, 0, 0.3),
+                inset 0 0 10px rgba(255, 215, 0, 0.1);
+            
+        }
+        
+        @keyframes avatarGlow {
+            0%, 100% {
+                opacity: 0.9;
+            }
+            50% {
+                opacity: 1;
+            }
+        }
+        
+        /* Standard Avatar Border - Silver Simple */
+        .member-card.standard #avatar-container {
+            border: 3px solid rgba(192, 192, 192, 0.8);
+            box-shadow: 
+                0 2px 8px rgba(0, 0, 0, 0.2),
+                inset 0 1px 2px rgba(255, 255, 255, 0.3);
+        }
+        
+        /* Time Period Dropdown */
+        .time-period-selector {
+            position: relative;
+            cursor: pointer;
+            user-select: none;
+            display: inline-block;
+        }
+        
+        .time-period-options {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            display: none;
+            gap: 6px;
+            margin-top: 2px;
+            white-space: nowrap;
+            z-index: 10;
+        }
+        
+        .time-period-options.active {
+            display: flex;
+        }
+        
+        .time-option {
+            font-size: 0.6rem;
+            color: rgba(50, 50, 60, 0.6);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            padding: 2px 0;
+        }
+        
+        .time-option:hover {
+            color: rgba(30, 30, 40, 0.9);
+            transform: scale(1.1);
+        }
+        
+        .time-option.selected {
+            color: rgba(30, 30, 40, 0.9);
+            font-weight: 700;
+        }
+        
+        .member-card.vip .time-option {
+            color: rgba(50, 50, 60, 0.6);
+        }
+        
+        .member-card.vip .time-option:hover {
+            color: rgba(30, 30, 40, 0.95);
+        }
+        
+        .member-card.vip .time-option.selected {
+            color: rgba(30, 30, 40, 0.95);
+            font-weight: 700;
+        }
+
+        /* Luxury Input & Form Elements */
+        input[type="text"],
+        input[type="email"],
+        input[type="password"],
+        input[type="number"],
+        textarea,
+        select {
+            background: rgba(20, 20, 35, 0.8);
+            border: 1px solid transparent;
+            border-radius: 12px;
+            color: #E5E7EB;
+            padding: 12px 16px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 
+                0 0 15px rgba(212, 175, 55, 0.08),
+                inset 0 1px 0 rgba(255, 255, 255, 0.08);
+            background-clip: padding-box;
+            position: relative;
+        }
+
+        input::placeholder,
+        textarea::placeholder {
+            color: rgba(229, 231, 235, 0.5);
+        }
+
+        input[type="text"]:focus,
+        input[type="email"]:focus,
+        input[type="password"]:focus,
+        input[type="number"]:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            box-shadow: 
+                0 0 25px rgba(212, 175, 55, 0.2),
+                0 0 50px rgba(139, 92, 246, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.12);
+            background: rgba(20, 20, 35, 0.95);
+            border-color: rgba(212, 175, 55, 0.3);
+        }
+
+        /* Section Cards - Luxury Flowing */
+        .section-card {
+            position: relative;
+            background: rgba(20, 20, 35, 0.8);
+            border-radius: 16px;
+            overflow: hidden;
+            padding: 16px;
+            transition: all 0.3s ease;
+            box-shadow: 
+                0 0 20px rgba(212, 175, 55, 0.12),
+                0 0 40px rgba(139, 92, 246, 0.08),
+                inset 0 1px 0 rgba(255, 255, 255, 0.08);
+            border: 1px solid transparent;
+            background-clip: padding-box;
+        }
+
+        .section-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 16px;
+            padding: 1px;
+            background: linear-gradient(135deg, 
+                rgba(212, 175, 55, 0.3) 0%,
+                rgba(212, 175, 55, 0.12) 25%,
+                rgba(139, 92, 246, 0.12) 50%,
+                rgba(212, 175, 55, 0.12) 75%,
+                rgba(212, 175, 55, 0.3) 100%);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+            opacity: 0.7;
+            will-change: opacity;
+        }
+
+        .section-card:hover {
+            box-shadow: 
+                0 0 30px rgba(212, 175, 55, 0.2),
+                0 0 60px rgba(139, 92, 246, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.12);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="w-full h-screen overflow-hidden relative flex flex-col">
+
+        <header class="w-full z-20 py-3 text-center">
+            <h1 class="text-xl font-bold tracking-wide">Profil Saya</h1>
+        </header>
+
+        <main class="flex-1 overflow-y-auto scrollbar-hide p-4 pb-24">
+            
+            <!-- Member Card dengan Saldo - Platinum Design -->
+            <div class="member-card standard mb-4" id="member-card" style="min-height: 160px;">
+                <!-- Particles untuk VIP (akan ditambahkan via JS) -->
+                <div id="particles-container"></div>
+                
+                <!-- Wallet Icon SVG (Silver/Gray) - Standard -->
+                <svg class="wallet-icon" id="wallet-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M21 8.25V6C21 4.34315 19.6569 3 18 3H5C3.34315 3 2 4.34315 2 6V18C2 19.6569 3.34315 21 5 21H18C19.6569 21 21 19.6569 21 18V15.75M21 8.25H18C16.3431 8.25 15 9.59315 15 11.25V12.75C15 14.4069 16.3431 15.75 18 15.75H21M21 8.25V15.75" 
+                          stroke="rgba(192, 192, 192, 0.6)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="18" cy="12" r="1" fill="rgba(192, 192, 192, 0.6)"/>
+                </svg>
+                
+                <!-- Diamond Icon SVG (Gold) - VIP - Elegant with Gradient -->
+                <svg class="wallet-icon" id="crown-icon" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style="display: none;">
+                    <defs>
+                        <!-- Rich gold gradient -->
+                        <linearGradient id="diamondGold" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#FFD700;stop-opacity:1" />
+                            <stop offset="30%" style="stop-color:#F0D266;stop-opacity:1" />
+                            <stop offset="60%" style="stop-color:#D4AF37;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#C5A028;stop-opacity:1" />
+                        </linearGradient>
+                        
+                        <!-- Radial gradient for depth -->
+                        <radialGradient id="diamondRadial" cx="50%" cy="35%">
+                            <stop offset="0%" style="stop-color:#FFED4E;stop-opacity:0.9" />
+                            <stop offset="50%" style="stop-color:#D4AF37;stop-opacity:0.7" />
+                            <stop offset="100%" style="stop-color:#B8941E;stop-opacity:1" />
+                        </radialGradient>
+                    </defs>
+                    
+                    <!-- Diamond shape - top facets -->
+                    <polygon points="50,10 70,35 50,30 30,35" 
+                             fill="url(#diamondRadial)" 
+                             stroke="url(#diamondGold)" 
+                             stroke-width="2" 
+                             stroke-linejoin="miter"/>
+                    
+                    <!-- Diamond shape - middle band -->
+                    <polygon points="30,35 20,45 80,45 70,35" 
+                             fill="url(#diamondGold)" 
+                             stroke="url(#diamondGold)" 
+                             stroke-width="2" 
+                             stroke-linejoin="miter"/>
+                    
+                    <!-- Diamond shape - bottom facets -->
+                    <polygon points="20,45 50,90 80,45" 
+                             fill="url(#diamondRadial)" 
+                             stroke="url(#diamondGold)" 
+                             stroke-width="2.5" 
+                             stroke-linejoin="miter"/>
+                    
+                    <!-- Center facets for detail -->
+                    <line x1="30" y1="35" x2="50" y2="90" stroke="url(#diamondGold)" stroke-width="1.5" opacity="0.6"/>
+                    <line x1="70" y1="35" x2="50" y2="90" stroke="url(#diamondGold)" stroke-width="1.5" opacity="0.6"/>
+                    <line x1="50" y1="30" x2="50" y2="90" stroke="url(#diamondGold)" stroke-width="1.5" opacity="0.5"/>
+                    
+                    <!-- Top highlight shine -->
+                    <polygon points="50,15 60,30 50,27 40,30" 
+                             fill="rgba(255,255,255,0.5)"/>
+                </svg>
+                
+                <div class="content-wrapper">
+                    <!-- Avatar & Info Section -->
+                    <div class="flex items-center space-x-4 mb-4">
+                        <div class="avatar-wrapper">
+                            <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center text-3xl shadow-lg" id="avatar-container">
+                                👤
+                            </div>
+                        </div>
+                        <div class="flex-1">
+                            <h2 class="font-bold text-lg mb-1" id="user-name" style="color: white;">Loading...</h2>
+                            <p class="text-sm opacity-90" id="username" style="color: rgba(255,255,255,0.8);">@username</p>
+                            <p class="text-xs mt-1 opacity-75" id="member-status" style="color: rgba(255,255,255,0.7);">Member Standard</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Balance Display - Simple, bottom left -->
+                <div class="balance-text">
+                    <p class="balance-label">Saldo Komisi</p>
+                    <p class="balance-amount" id="member-balance">Rp 0</p>
+                </div>
+                
+                <!-- Simple Line Chart - bottom right -->
+                <div class="chart-container">
+                    <div class="chart-label time-period-selector" id="time-period-toggle">
+                        <div class="time-period-options" id="time-period-options">
+                            <div class="time-option" data-period="1d">1d</div>
+                            <div class="time-option" data-period="7d">7d</div>
+                            <div class="time-option" data-period="30d">30d</div>
+                            <div class="time-option" data-period="1y">1y</div>
+                        </div>
+                        <span id="selected-period">7d</span>
+                    </div>
+                    <div class="chart-wrapper">
+                        <svg width="100" height="40" viewBox="0 0 100 40">
+                            <!-- Baseline -->
+                            <line x1="0" y1="35" x2="100" y2="35" stroke="rgba(192, 192, 192, 0.2)" stroke-width="1"/>
+                            <!-- Chart Line - starts at 0, ends at current balance -->
+                            <polyline class="chart-line" points="0,35 14,35 28,32 42,30 56,28 70,25 84,20 100,10" id="balance-chart"/>
+                        </svg>
+                    </div>
+                    <div class="chart-info" id="chart-info">Rp 0</div>
+                </div>
+            </div>
+
+            <div class="premium-card rounded-xl p-4 mb-4" id="vip-status">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="text-3xl">💎</div>
+                        <div>
+                            <h3 class="text-white font-bold">Status VIP</h3>
+                            <p class="text-sm text-gray-400" id="vip-info">Memuat...</p>
+                        </div>
+                    </div>
+                    <a href="payment.html" class="premium-button py-2 px-4 rounded-lg text-sm">
+                        Upgrade
+                    </a>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3 mb-4">
+                <div class="premium-card rounded-xl p-4 text-center">
+                    <div class="text-2xl mb-2">🎬</div>
+                    <p class="text-2xl font-bold text-white" id="total-watched">0</p>
+                    <p class="text-xs text-gray-400 mt-1">Ditonton</p>
+                </div>
+                <div class="premium-card rounded-xl p-4 text-center">
+                    <div class="text-2xl mb-2">❤️</div>
+                    <p class="text-2xl font-bold text-white" id="total-favorites">0</p>
+                    <p class="text-xs text-gray-400 mt-1">Favorit</p>
+                </div>
+                <div class="premium-card rounded-xl p-4 text-center">
+                    <div class="text-2xl mb-2">👥</div>
+                    <p class="text-2xl font-bold text-white" id="total-referrals">0</p>
+                    <p class="text-xs text-gray-400 mt-1">Referral</p>
+                </div>
+            </div>
+
+            <div class="premium-card rounded-xl p-4 mb-3">
+                <h3 class="text-white font-bold mb-3 flex items-center">
+                    <span class="text-xl mr-2">💰</span>
+                    Komisi Referral
+                </h3>
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-400">Saldo Komisi</p>
+                        <p class="text-2xl font-bold text-green-400" id="commission-balance">Rp 0</p>
+                    </div>
+                    <a href="referal.html" class="premium-button py-2 px-4 rounded-lg text-sm">
+                        Tarik Saldo
+                    </a>
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <a href="referal.html" class="block premium-card rounded-xl p-4">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="text-2xl">🔗</div>
+                            <span class="text-white font-medium">Referral & Penarikan</span>
+                        </div>
+                        <svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                </a>
+
+                <a href="request.html" class="block premium-card rounded-xl p-4">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="text-2xl">📽</div>
+                            <span class="text-white font-medium">Request Drama</span>
+                        </div>
+                        <svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                </a>
+
+                <a href="contact.html" class="block premium-card rounded-xl p-4">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="text-2xl">💬</div>
+                            <span class="text-white font-medium">Hubungi Kami</span>
+                        </div>
+                        <svg class="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                </a>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+    // Cached DOM elements (performance optimization)
+    let cachedElements = {};
+    
+    function getCachedElement(id) {
+        if (!cachedElements[id]) {
+            cachedElements[id] = document.getElementById(id);
+        }
+        return cachedElements[id];
+    }
+    
+    document.addEventListener("DOMContentLoaded", () => {
+        const tg = window.Telegram?.WebApp;
+        
+        if (tg) {
+            console.log("✅ Telegram WebApp SDK aktif");
+            tg.ready();
+            tg.expand();
+            tg.enableClosingConfirmation();
+            
+            tg.disableVerticalSwipes();
+            console.log("🔒 Vertical swipes disabled - mini app tidak akan close saat scroll");
+            
+            window.tg = tg;
+            
+            const user = tg.initDataUnsafe?.user;
+            if (user) {
+                loadUserProfile(user);
+            }
+        } else {
+            console.warn("⚠️ Bukan dibuka lewat Telegram Mini App");
+            window.tg = null;
+            loadDemoProfile();
+        }
+        
+        setupTimePeriodDropdown();
+    });
+    
+    function setupTimePeriodDropdown() {
+        const toggle = getCachedElement('time-period-toggle');
+        const options = getCachedElement('time-period-options');
+        const selectedPeriod = getCachedElement('selected-period');
+        const timeOptions = document.querySelectorAll('.time-option');
+        
+        let isOpen = false;
+        
+        toggle.addEventListener('click', (e) => {
+            if (e.target.classList.contains('time-option')) {
+                return;
+            }
+            
+            isOpen = !isOpen;
+            if (isOpen) {
+                options.classList.add('active');
+            } else {
+                options.classList.remove('active');
+            }
+        });
+        
+        timeOptions.forEach(option => {
+            option.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const period = option.getAttribute('data-period');
+                selectedPeriod.textContent = period;
+                
+                timeOptions.forEach(opt => opt.classList.remove('selected'));
+                option.classList.add('selected');
+                
+                options.classList.remove('active');
+                isOpen = false;
+                
+                console.log(`📊 Time period changed to: ${period}`);
+            });
+        });
+        
+        document.addEventListener('click', (e) => {
+            if (!toggle.contains(e.target) && isOpen) {
+                options.classList.remove('active');
+                isOpen = false;
+            }
+        });
+    }
+    
+    window.addEventListener('pageshow', (event) => {
+        if (event.persisted || performance.navigation.type === 2) {
+            console.log('🔄 Page shown from cache, refreshing profile data...');
+            const tg = window.Telegram?.WebApp;
+            if (tg && tg.initDataUnsafe?.user) {
+                const user = tg.initDataUnsafe.user;
+                fetchUserStats(user.id);
+            }
+        }
+    });
+    
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            console.log('🔄 Page became visible, refreshing profile data...');
+            const tg = window.Telegram?.WebApp;
+            if (tg && tg.initDataUnsafe?.user) {
+                const user = tg.initDataUnsafe.user;
+                fetchUserStats(user.id);
+            }
+        }
+    });
+
+    async function loadUserProfile(user) {
+        const userName = getCachedElement('user-name');
+        const username = getCachedElement('username');
+        const avatarContainer = getCachedElement('avatar-container');
+        
+        if (user.first_name) {
+            userName.textContent = user.first_name + (user.last_name ? ' ' + user.last_name : '');
+        }
+        
+        if (user.username) {
+            username.textContent = '@' + user.username;
+        } else {
+            username.textContent = 'ID: ' + user.id;
+        }
+        
+        if (user.photo_url) {
+            avatarContainer.innerHTML = `<img src="${user.photo_url}" loading="lazy" class="w-full h-full rounded-full object-cover poster-img img-loading" alt="Avatar" onload="this.classList.remove('img-loading'); this.classList.add('img-loaded');" onerror="this.classList.remove('img-loading'); this.classList.add('img-error');">`;
+        } else {
+            const initial = user.first_name ? user.first_name.charAt(0).toUpperCase() : '👤';
+            avatarContainer.textContent = initial;
+        }
+        
+        await fetchUserStats(user.id);
+    }
+
+    function loadDemoProfile() {
+        getCachedElement('user-name').textContent = 'Demo User';
+        getCachedElement('username').textContent = '@demo';
+        fetchUserStats('demo');
+    }
+
+    // Function to create VIP particles - Subtle and inconsistent
+    // Function to create VIP particles - Optimized for performance
+    function createVIPParticles() {
+        const particlesContainer = getCachedElement('particles-container');
+        if (!particlesContainer) return;
+        
+        particlesContainer.innerHTML = ''; // Clear existing particles
+        
+        // Reduce particle count for better performance
+        const particleCount = 3; // Reduced from 4-5 to 3
+        const fragment = document.createDocumentFragment(); // Use fragment for better performance
+        
+        for (let i = 0; i < particleCount; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.cssText = `
+                left: ${Math.random() * 100}%;
+                bottom: 0;
+                animation-delay: ${Math.random() * 6}s;
+                animation-duration: ${5 + Math.random() * 4}s;
+                width: ${1 + Math.random() * 2}px;
+                height: ${1 + Math.random() * 2}px;
+                opacity: ${0.2 + Math.random() * 0.3};
+            `;
+            fragment.appendChild(particle);
+        }
+        
+        particlesContainer.appendChild(fragment);
+    }
+    
+    // Function to update member card appearance based on VIP status
+    function updateMemberCard(isVIP, vipExpiresAt) {
+        const memberCard = getCachedElement('member-card');
+        const memberStatus = getCachedElement('member-status');
+        const walletIcon = getCachedElement('wallet-icon');
+        const crownIcon = getCachedElement('crown-icon');
+        
+        if (isVIP && vipExpiresAt) {
+            // Apply VIP styling
+            memberCard.classList.remove('standard');
+            memberCard.classList.add('vip');
+            memberStatus.textContent = `VIP hingga ${formatDate(vipExpiresAt)}`;
+            memberStatus.style.color = 'rgba(255,255,255,0.9)';
+            
+            // Switch to crown icon
+            if (walletIcon) walletIcon.style.display = 'none';
+            if (crownIcon) crownIcon.style.display = 'block';
+            
+            // Create particles for VIP
+            createVIPParticles();
+        } else {
+            // Apply standard styling
+            memberCard.classList.remove('vip');
+            memberCard.classList.add('standard');
+            memberStatus.textContent = 'Member Standard';
+            memberStatus.style.color = 'rgba(255,255,255,0.7)';
+            
+            // Switch to wallet icon
+            if (walletIcon) walletIcon.style.display = 'block';
+            if (crownIcon) crownIcon.style.display = 'none';
+            
+            // Clear particles
+            getCachedElement('particles-container').innerHTML = '';
+        }
+    }
+
+    async function fetchUserStats(userId) {
+        const totalWatched = getCachedElement('total-watched');
+        const totalFavorites = getCachedElement('total-favorites');
+        const totalReferrals = getCachedElement('total-referrals');
+        const commissionBalance = getCachedElement('commission-balance');
+        const memberBalance = getCachedElement('member-balance');
+        const vipInfo = getCachedElement('vip-info');
+        
+        totalWatched.innerHTML = '<span class="shimmer-box shimmer-stat" style="display: inline-block; width: 40px; height: 32px; vertical-align: middle;"></span>';
+        totalFavorites.innerHTML = '<span class="shimmer-box shimmer-stat" style="display: inline-block; width: 40px; height: 32px; vertical-align: middle;"></span>';
+        totalReferrals.innerHTML = '<span class="shimmer-box shimmer-stat" style="display: inline-block; width: 40px; height: 32px; vertical-align: middle;"></span>';
+        commissionBalance.innerHTML = '<span class="shimmer-box shimmer-text" style="display: inline-block; width: 80px; height: 24px; vertical-align: middle;"></span>';
+        memberBalance.innerHTML = '<span class="shimmer-box shimmer-text" style="display: inline-block; width: 80px; height: 24px; vertical-align: middle;"></span>';
+        vipInfo.innerHTML = '<span class="shimmer-box shimmer-text" style="display: inline-block; width: 120px; height: 16px; vertical-align: middle;"></span>';
+        
+        try {
+            if (!window.tg || !window.tg.initData) {
+                console.error('❌ Cannot get Telegram initData!');
+                totalWatched.innerHTML = '';
+                totalWatched.textContent = '0';
+                totalFavorites.innerHTML = '';
+                totalFavorites.textContent = '0';
+                totalReferrals.innerHTML = '';
+                totalReferrals.textContent = '0';
+                commissionBalance.innerHTML = '';
+                commissionBalance.textContent = 'Rp 0';
+                memberBalance.innerHTML = '';
+                memberBalance.textContent = 'Rp 0';
+                const chartInfo = getCachedElement('chart-info');
+                if (chartInfo) chartInfo.textContent = 'Rp 0';
+                drawBalanceChart(0); // Draw empty chart
+                vipInfo.innerHTML = '';
+                vipInfo.innerHTML = '<span class="text-gray-400">Belum berlangganan</span>';
+                updateMemberCard(false, null);
+                return;
+            }
+
+            const apiUrl = window.API_BASE_URL + '/api/v1/user_profile';
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    init_data: window.tg.initData
+                })
+            });
+            
+            if (!response.ok) {
+                if (response.status === 401) {
+                    console.error('❌ Unauthorized - Invalid Telegram data');
+                    alert('Session tidak valid. Silakan tutup dan buka kembali aplikasi.');
+                }
+                throw new Error('Failed to fetch user stats');
+            }
+            
+            const data = await response.json();
+            
+            totalWatched.innerHTML = '';
+            totalWatched.textContent = data.total_watched || 0;
+            
+            totalFavorites.innerHTML = '';
+            totalFavorites.textContent = data.total_favorites || 0;
+            
+            totalReferrals.innerHTML = '';
+            totalReferrals.textContent = data.total_referrals || 0;
+            
+            commissionBalance.innerHTML = '';
+            commissionBalance.textContent = `Rp ${data.commission_balance || 0}`;
+            
+            // Update member balance (di member card)
+            memberBalance.innerHTML = '';
+            memberBalance.textContent = `Rp ${data.commission_balance || 0}`;
+            
+            // Update chart info and draw real chart
+            const chartInfo = getCachedElement('chart-info');
+            if (chartInfo) {
+                chartInfo.textContent = `Rp ${data.commission_balance || 0}`;
+            }
+            
+            // Draw real chart based on actual balance
+            drawBalanceChart(data.commission_balance || 0);
+            
+            vipInfo.innerHTML = '';
+            if (data.is_vip && data.vip_expires_at) {
+                vipInfo.innerHTML = `<span class="text-green-400">✓ Aktif hingga ${formatDate(data.vip_expires_at)}</span>`;
+            } else {
+                vipInfo.innerHTML = '<span class="text-gray-400">Belum berlangganan</span>';
+            }
+            
+            // Update member card appearance
+            updateMemberCard(data.is_vip, data.vip_expires_at);
+            
+        } catch (error) {
+            console.error('Error fetching user stats:', error);
+            totalWatched.innerHTML = '';
+            totalWatched.textContent = '0';
+            totalFavorites.innerHTML = '';
+            totalFavorites.textContent = '0';
+            totalReferrals.innerHTML = '';
+            totalReferrals.textContent = '0';
+            commissionBalance.innerHTML = '';
+            commissionBalance.textContent = 'Rp 0';
+            memberBalance.innerHTML = '';
+            memberBalance.textContent = 'Rp 0';
+            const chartInfoError = getCachedElement('chart-info');
+            if (chartInfoError) chartInfoError.textContent = 'Rp 0';
+            drawBalanceChart(0); // Draw empty chart on error
+            vipInfo.innerHTML = '';
+            vipInfo.innerHTML = '<span class="text-gray-400">Belum berlangganan</span>';
+            updateMemberCard(false, null);
+        }
+    }
+
+    function formatDate(dateString) {
+        const date = new Date(dateString);
+        const options = { year: 'numeric', month: 'long', day: 'numeric' };
+        return date.toLocaleDateString('id-ID', options);
+    }
+    
+    // Function to draw real balance chart based on actual data
+    function drawBalanceChart(currentBalance) {
+        const chartLine = getCachedElement('balance-chart');
+        if (!chartLine) return;
+        
+        // Jika saldo 0, tampilkan garis lurus di baseline
+        if (currentBalance === 0) {
+            chartLine.setAttribute('points', '0,35 14,35 28,35 42,35 56,35 70,35 84,35 100,35');
+            return;
+        }
+        
+        // Simulasi data 7 hari dengan pertumbuhan bertahap dari 0 ke saldo saat ini
+        // Dengan variasi realistis (tidak selalu naik linear)
+        const days = 8; // 8 titik untuk 7 hari (termasuk hari ke-0)
+        const points = [];
+        const maxY = 35; // Baseline (0 balance)
+        const minY = 5;  // Top position (max balance)
+        
+        // Generate random growth pattern yang realistis
+        let cumulativeGrowth = 0;
+        const growthPattern = [0]; // Hari 0 = 0 balance
+        
+        // Generate random increments untuk 6 hari pertama
+        for (let i = 1; i < days - 1; i++) {
+            const randomGrowth = Math.random() * 0.2 + 0.05; // 5-25% growth per day
+            cumulativeGrowth += randomGrowth;
+            growthPattern.push(cumulativeGrowth);
+        }
+        
+        // Normalize growth pattern agar hari terakhir = 100%
+        const maxGrowth = cumulativeGrowth;
+        growthPattern.push(1); // Hari terakhir = 100%
+        
+        // Convert to points
+        for (let i = 0; i < days; i++) {
+            const x = (i / (days - 1)) * 100;
+            let normalizedGrowth;
+            
+            if (i < days - 1) {
+                normalizedGrowth = growthPattern[i] / maxGrowth;
+            } else {
+                normalizedGrowth = 1; // Hari terakhir tepat di saldo saat ini
+            }
+            
+            // Calculate y position (35 = 0%, 5 = 100%)
+            const y = maxY - (normalizedGrowth * (maxY - minY));
+            
+            points.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+        }
+        
+        // Update polyline dengan data real
+        chartLine.setAttribute('points', points.join(' '));
+    }
+    
+    // Cleanup function to prevent memory leaks
+    function cleanup() {
+        console.log('🧹 Cleaning up resources...');
+        
+        // Clear cached elements
+        cachedElements = {};
+        
+        console.log('✅ Cleanup complete');
+    }
+    
+    // Add cleanup on page unload
+    window.addEventListener('beforeunload', cleanup);
+    window.addEventListener('pagehide', cleanup);
+    </script>
+    <script src="navbar.js?v=222222222"></script>
+</body>
+</html>

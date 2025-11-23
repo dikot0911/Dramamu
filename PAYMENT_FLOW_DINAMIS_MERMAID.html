@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Flow - Sistem Dinamis DOKU</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #fafafa;
+        }
+        .header {
+            text-align: center;
+            padding: 25px;
+            background: #f0f0f0;
+            border-bottom: 2px solid #333;
+            margin-bottom: 25px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .header p {
+            margin: 5px 0 0 0;
+            font-size: 14px;
+            color: #555;
+        }
+        .section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+        }
+        .section h2 {
+            font-size: 18px;
+            margin: 0 0 15px 0;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 8px;
+        }
+        .info {
+            background: #fafafa;
+            padding: 12px;
+            border-left: 3px solid #666;
+            margin: 12px 0;
+            font-size: 13px;
+        }
+        .mermaid {
+            padding: 15px;
+            background: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Payment Flow - Sistem Dinamis (DOKU Gateway)</h1>
+        <p>Alur pembayaran dengan payment gateway eksternal</p>
+    </div>
+
+    <div class="section">
+        <h2>1. Arsitektur Sistem</h2>
+        <div class="info">Sistem menggunakan DOKU sebagai payment gateway eksternal. Setiap pembayaran diproses real-time, harga fleksibel, dan aktivasi VIP instant tanpa intervensi manual.</div>
+        <div class="mermaid">
+graph TB
+    TG["👤 Telegram User"]
+    MA["📱 Mini App"]
+    API["🔧 FastAPI Backend"]
+    DOKU["🏦 DOKU Gateway"]
+    DB["📊 Database"]
+    BOT["🤖 Bot Notification"]
+    
+    TG --> MA
+    MA --> API
+    API --> DOKU
+    DOKU --> API
+    API --> DB
+    API --> BOT
+    BOT --> TG
+    
+    style TG fill:#e1f5ff
+    style MA fill:#f3e5f5
+    style API fill:#fff3e0
+    style DOKU fill:#fce4ec
+    style DB fill:#e8f5e9
+    style BOT fill:#f1f8e9
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>2. Payment Flow - Step by Step</h2>
+        <div class="info">Dari user memilih paket VIP sampai VIP aktif dengan processing otomatis.</div>
+        <div class="mermaid">
+sequenceDiagram
+    participant User
+    participant App as Mini App
+    participant Backend as FastAPI
+    participant Gateway as DOKU
+    participant DB as Database
+    
+    User->>App: Pilih paket VIP
+    App->>Backend: POST /create-payment
+    Backend->>DB: Save order_id
+    Backend->>Gateway: Request checkout
+    Gateway-->>Backend: payment_url
+    Backend-->>App: Return URL
+    
+    App->>User: Redirect to DOKU
+    User->>Gateway: Bayar
+    
+    Note over Gateway: Processing...
+    
+    Gateway->>Backend: Webhook callback
+    Backend->>Backend: Verify signature
+    Backend->>DB: Update payment
+    Backend->>DB: Activate VIP
+    DB-->>Backend: Done
+    Backend->>User: Notifikasi
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>3. Database State</h2>
+        <div class="info">Update database during payment processing.</div>
+        <div class="mermaid">
+graph LR
+    A["1. Create<br/>status: pending"] --> B["2. User<br/>bayar"]
+    B --> C["3. Update<br/>status: success"]
+    C --> D["4. Activate<br/>VIP"]
+    D --> E["5. Notify<br/>user"]
+    
+    style A fill:#fff9c4
+    style B fill:#bbdefb
+    style C fill:#c8e6c9
+    style D fill:#c8e6c9
+    style E fill:#c8e6c9
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>4. Status Flow</h2>
+        <div class="mermaid">
+stateDiagram-v2
+    [*] --> pending
+    pending --> success
+    pending --> failed
+    success --> vip_active
+    failed --> retry
+    retry --> pending
+    vip_active --> [*]
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>5. Security - Signature Verification</h2>
+        <div class="info">Setiap webhook dari DOKU diverifikasi menggunakan HMAC SHA256 signature untuk memastikan authenticity.</div>
+        <div class="mermaid">
+graph LR
+    A["DOKU<br/>Calculate signature"] --> B["Send callback<br/>+ signature"]
+    B --> C["Backend<br/>Recalculate sig"]
+    C --> D{Match?}
+    D -->|Yes| E["✅ Valid<br/>Process"]
+    D -->|No| F["❌ Invalid<br/>Reject"]
+    
+    style A fill:#fff9c4
+    style B fill:#fff9c4
+    style C fill:#bbdefb
+    style D fill:#ffccbc
+    style E fill:#c8e6c9
+    style F fill:#ffcdd2
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Karakteristik Sistem Dinamis:</h2>
+        <ul style="margin: 0; padding-left: 20px; line-height: 1.8; font-size: 14px;">
+            <li>Harga dapat disesuaikan kapan saja (tidak hardcoded)</li>
+            <li>Aktivasi VIP instant setelah pembayaran verified</li>
+            <li>Setiap order mendapat ID unik</li>
+            <li>Webhook callback real-time dari DOKU</li>
+            <li>Signature verification untuk security</li>
+            <li>Tidak perlu admin manual verification</li>
+            <li>Scalable untuk ribuan transaksi</li>
+            <li>Referral commission otomatis diproses</li>
+        </ul>
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: dramamu-bot-backend
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python runner.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: RENDER
+        value: true
+      - key: PORT
+        value: 5000
+    healthCheckPath: /health
+    autoDeploy: true

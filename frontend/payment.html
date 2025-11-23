@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Beli VIP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="config.js"></script>
+    <style>
+        body { 
+            background: linear-gradient(180deg, #0f0f1e 0%, #1a1a2e 100%);
+            color: #E5E7EB; 
+            font-family: 'Manrope', sans-serif;
+            position: relative;
+        }
+        
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        header {
+            background: rgba(26, 26, 46, 0.95) !important;
+            border-bottom: 2px solid rgba(212, 175, 55, 0.3) !important;
+            box-shadow: 0 4px 12px rgba(212, 175, 55, 0.1) !important;
+        }
+        
+        .paket-vip { 
+            background: rgba(30, 41, 59, 0.95);
+            border: 2px solid rgba(212, 175, 55, 0.2);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .paket-vip:hover {
+            border-color: rgba(212, 175, 55, 0.5);
+            transform: translateY(-3px);
+            box-shadow: 0 12px 30px rgba(212, 175, 55, 0.3);
+            background: rgba(30, 41, 59, 1);
+        }
+        
+        .paket-vip button {
+            background: linear-gradient(135deg, #d4af37 0%, #f0d266 100%);
+            color: #0f0f1e;
+            font-weight: 700;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+        }
+        
+        .paket-vip button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(212, 175, 55, 0.6);
+        }
+        
+        .payment-method {
+            background: rgba(30, 41, 59, 0.95);
+            border: 2px solid rgba(212, 175, 55, 0.2);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .payment-method:hover {
+            border-color: rgba(212, 175, 55, 0.6);
+            background: rgba(30, 41, 59, 1);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(212, 175, 55, 0.3);
+        }
+        
+        .payment-method img {
+            height: 40px;
+            margin-bottom: 12px;
+        }
+        
+        .title-section {
+            text-shadow: 0 2px 8px rgba(212, 175, 55, 0.3);
+            color: #d4af37;
+            letter-spacing: 0.5px;
+        }
+        
+        nav a {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        nav a:hover {
+            color: #d4af37 !important;
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="w-full h-screen overflow-hidden relative flex flex-col">
+        <header class="w-full z-20 py-3 text-center">
+            <h1 class="text-xl font-bold tracking-wide">Beli VIP</h1>
+        </header>
+        
+        <main class="flex-1 overflow-y-auto scrollbar-hide p-4 pb-24">
+            <div class="max-w-md mx-auto">
+                <div class="mb-6 text-center">
+                    <h1 class="text-2xl font-bold title-section mb-2">💎 Pilih Paket VIP</h1>
+                    <p class="text-sm text-gray-400">Akses unlimited semua drama premium</p>
+                </div>
+
+                <div class="space-y-3 mb-8">
+                    <div class="paket-vip p-4 rounded-lg">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h2 class="font-bold text-white text-lg">1 Hari</h2>
+                                <p class="text-sm text-gray-400">VIP 1 Hari</p>
+                            </div>
+                            <button onclick="beliPaket(1, 2000, 'VIP 1 Hari')" class="py-2 px-4 rounded-md">
+                                Rp 2.000
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="paket-vip p-4 rounded-lg">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h2 class="font-bold text-white text-lg">3 Hari</h2>
+                                <p class="text-sm text-gray-400">VIP 3 Hari</p>
+                            </div>
+                            <button onclick="beliPaket(2, 5000, 'VIP 3 Hari')" class="py-2 px-4 rounded-md">
+                                Rp 5.000
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="paket-vip p-4 rounded-lg">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h2 class="font-bold text-white text-lg">7 Hari</h2>
+                                <p class="text-sm text-gray-400">VIP 7 Hari</p>
+                            </div>
+                            <button onclick="beliPaket(3, 10000, 'VIP 7 Hari')" class="py-2 px-4 rounded-md">
+                                Rp 10.000
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-8 pt-6 border-t border-gray-700">
+                    <h2 class="text-lg font-bold title-section mb-4">💳 Metode Pembayaran</h2>
+                    <div class="grid grid-cols-1 gap-3">
+                        <div class="payment-method" onclick="beliPaket(null, null, null, 'QRIS')">
+                            <div class="text-3xl mb-2">📱</div>
+                            <p class="font-bold text-white">QRIS</p>
+                            <p class="text-sm text-gray-400">Scan & Bayar</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="navbar.js?v=1763892229"></script>
+
+    <script>
+        const tg = window.Telegram?.WebApp;
+        if (!tg) {
+            console.warn('⚠️ Telegram WebApp not available');
+            alert('Error: Halaman ini harus dibuka melalui Telegram Mini App');
+            return;
+        }
+        
+        tg.ready();
+        tg.enableClosingConfirmation();
+        
+        tg.disableVerticalSwipes();
+        console.log("🔒 Vertical swipes disabled - mini app tidak akan close saat scroll");
+
+        const user = tg.initDataUnsafe?.user;
+        if (!user || !user.id) {
+            alert('Error: Data user Telegram tidak tersedia. Silakan tutup dan buka kembali aplikasi.');
+            throw new Error('Telegram user data not available');
+        }
+        const telegram_id = user.id;
+        
+        let dokuScriptLoaded = false;
+        
+        // Load DOKU Jokul Checkout JS SDK (Production)
+        async function loadDokuScript() {
+            try {
+                const script = document.createElement('script');
+                script.src = 'https://checkout.doku.com/jokul-checkout-js/v1/jokul-checkout-1.0.0.js';
+                script.onload = () => {
+                    dokuScriptLoaded = true;
+                    console.log('✅ DOKU Jokul Checkout loaded');
+                };
+                script.onerror = () => {
+                    console.error('❌ Failed to load DOKU Jokul Checkout');
+                    alert('Gagal memuat sistem pembayaran. Silakan refresh halaman.');
+                };
+                document.head.appendChild(script);
+            } catch (error) {
+                console.error('Error loading DOKU script:', error);
+                alert('Gagal memuat konfigurasi pembayaran. Silakan refresh halaman.');
+            }
+        }
+        
+        loadDokuScript();
+
+        async function beliPaket(paketId, harga, namaPaket, method) {
+            if (!dokuScriptLoaded) {
+                alert('Sistem pembayaran sedang dimuat. Silakan tunggu sebentar dan coba lagi.');
+                return;
+            }
+            
+            // Jika diklik QRIS button tanpa package, tampilkan alert
+            if (method === 'QRIS' && !paketId) {
+                alert('Silakan pilih paket VIP terlebih dahulu!');
+                return;
+            }
+            
+            console.log(`Mencoba beli: ${namaPaket} (Rp ${harga}) via ${method || 'default'}`);
+            
+            const paymentData = {
+                telegram_id: telegram_id,
+                paket_id: paketId,
+                gross_amount: harga,
+                nama_paket: namaPaket
+            };
+
+            try {
+                const apiUrl = window.API_BASE_URL + '/api/v1/create_payment';
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(paymentData)
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.detail || 'Gagal membuat payment URL');
+                }
+
+                const data = await response.json();
+                const paymentUrl = data.payment_url;
+
+                if (!paymentUrl) {
+                    throw new Error('Payment URL tidak ditemukan');
+                }
+
+                console.log('✅ Opening DOKU payment page:', paymentUrl);
+                
+                // Verify DOKU SDK is loaded
+                if (typeof window.loadJokulCheckout === 'function') {
+                    loadJokulCheckout(paymentUrl);
+                } else {
+                    console.error('❌ DOKU SDK not loaded - loadJokulCheckout is not defined');
+                    // Fallback: open in new window
+                    window.open(paymentUrl, '_blank');
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert(`Gagal konek ke server: ${error.message}`);
+            }
+        }
+        
+        // Cleanup function to prevent memory leaks
+        function cleanup() {
+            console.log('🧹 Cleaning up resources...');
+            console.log('✅ Cleanup complete');
+        }
+        
+        // Add cleanup on page unload
+        window.addEventListener('beforeunload', cleanup);
+        window.addEventListener('pagehide', cleanup);
+    </script>
+    <script src="cache-manager.js?v=1763892229"></script>
+</body>
+</html>

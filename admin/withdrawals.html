@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="id" translate="no">
+<head>
+    <base href="/panel/">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <meta name="google" content="notranslate">
+    <title>Penarikan - Admin Panel</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles-mobile.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="icons.js"></script>
+    <script src="themeToggle.js"></script>
+    <script src="sidebar.js"></script>
+    <script src="expand.js"></script>
+</head>
+<body data-page="withdrawals">
+    <div class="admin-layout">
+        <!-- Desktop Sidebar - Static (tidak reload) -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <img src="assets/logo-dramamu.jpg" alt="Dramamu Logo">
+                </div>
+                <h2>Dramamu Admin</h2>
+                <p class="admin-subtitle">Panel Kontrol</p>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="dashboard.html" class="nav-item" data-page="dashboard">
+                    <span class="nav-icon" data-icon="dashboard" data-icon-size="md"></span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="analytics.html" class="nav-item" data-page="analytics">
+                    <span class="nav-icon" data-icon="barChart" data-icon-size="md"></span>
+                    <span>Analytics</span>
+                </a>
+                <a href="users.html" class="nav-item" data-page="users">
+                    <span class="nav-icon" data-icon="users" data-icon-size="md"></span>
+                    <span>Pengguna</span>
+                </a>
+                <a href="movies.html" class="nav-item" data-page="movies">
+                    <span class="nav-icon" data-icon="movie" data-icon-size="md"></span>
+                    <span>Drama</span>
+                </a>
+                <a href="requests.html" class="nav-item" data-page="requests">
+                    <span class="nav-icon" data-icon="fileText" data-icon-size="md"></span>
+                    <span>Permintaan</span>
+                    <span class="request-notification-badge notification-badge"></span>
+                </a>
+                <a href="withdrawals.html" class="nav-item" data-page="withdrawals">
+                    <span class="nav-icon" data-icon="dollarSign" data-icon-size="md"></span>
+                    <span>Penarikan</span>
+                    <span class="withdrawal-notification-badge notification-badge"></span>
+                </a>
+                <a href="payments.html" class="nav-item" data-page="payments">
+                    <span class="nav-icon" data-icon="creditCard" data-icon-size="md"></span>
+                    <span>Pembayaran</span>
+                </a>
+                <a href="settings.html" class="nav-item" data-page="settings">
+                    <span class="nav-icon" data-icon="settings" data-icon-size="md"></span>
+                    <span>Pengaturan</span>
+                </a>
+                <a href="admin-users.html" class="nav-item" data-page="admin-users" style="display: none;">
+                    <span class="nav-icon" data-icon="shield" data-icon-size="md"></span>
+                    <span>Admin Users</span>
+                </a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="header">
+                <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <div class="breadcrumb">
+                    <span>Penarikan</span>
+                </div>
+                <div class="header-actions">
+                    <div id="themeToggleContainer"></div>
+                    <div class="user-info">
+                        <span data-icon="user" data-icon-size="sm" style="margin-right: 6px;"></span>
+                        <span id="adminUsername">Admin</span>
+                    </div>
+                    <button class="btn btn-secondary" onclick="AdminPanel.logout()">
+                        <span data-icon="logOut" data-icon-size="sm"></span>
+                        <span>Logout</span>
+                    </button>
+                </div>
+            </header>
+
+            <div class="content">
+                <h1 class="page-title">Manajemen Penarikan</h1>
+
+                <div class="card" style="margin-bottom: 20px;">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                        <h2 style="margin: 0;">
+                            <span data-icon="calendar" data-icon-size="sm" style="margin-right: 8px;"></span>
+                            Filter Periode Penarikan
+                        </h2>
+                        <div class="date-filter-group" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button class="btn btn-sm btn-filter" onclick="setWithdrawalsDateFilter('7days')" data-filter="7days">7 Hari</button>
+                            <button class="btn btn-sm btn-filter" onclick="setWithdrawalsDateFilter('14days')" data-filter="14days">14 Hari</button>
+                            <button class="btn btn-sm btn-filter active" onclick="setWithdrawalsDateFilter('30days')" data-filter="30days">30 Hari</button>
+                            <button class="btn btn-sm btn-filter" onclick="setWithdrawalsDateFilter('60days')" data-filter="60days">60 Hari</button>
+                            <button class="btn btn-sm btn-secondary" onclick="openWithdrawalsCustomDateModal()">
+                                <span data-icon="calendar" data-icon-size="sm"></span>
+                                <span>Custom</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #667eea, #764ba2)">
+                            <span data-icon="dollarSign" data-icon-size="md"></span>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="totalWithdrawalsCount">-</h3>
+                            <p>Total Penarikan</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb, #f5576c)">
+                            <span data-icon="clock" data-icon-size="md"></span>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="pendingAmount">-</h3>
+                            <p>Jumlah Tertunda</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe, #00f2fe)">
+                            <span data-icon="check" data-icon-size="md"></span>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="approvedAmount">-</h3>
+                            <p>Jumlah Disetujui</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #43e97b, #38f9d7)">
+                            <span data-icon="trendingUp" data-icon-size="md"></span>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="totalVolume">-</h3>
+                            <p>Total Volume</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-grid" style="margin-bottom: 30px;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2>
+                                <span data-icon="pieChart" data-icon-size="sm" style="margin-right: 8px;"></span>
+                                Status Penarikan
+                            </h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="withdrawalStatusChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h2>
+                                <span data-icon="trendingUp" data-icon-size="sm" style="margin-right: 8px;"></span>
+                                Withdrawal Volume Trend (7 Days)
+                            </h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="withdrawalVolumeChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <div class="table-header">
+                        <div class="filter-group">
+                            <select id="statusFilter" onchange="filterWithdrawals()">
+                                <option value="">Semua Status</option>
+                                <option value="pending">Pending</option>
+                                <option value="approved">Disetujui</option>
+                                <option value="rejected">Ditolak</option>
+                            </select>
+                            <button class="btn btn-secondary" onclick="loadWithdrawals(currentPage); loadWithdrawalStats();" title="Refresh data">
+                                <span data-icon="refreshCw" data-icon-size="sm"></span>
+                                <span>Refresh</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="tableContent">
+                        <div class="loading">Memuat penarikan...</div>
+                    </div>
+
+                    <div id="paginationContainer"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="detailModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Withdrawal Details</h2>
+                <button class="modal-close" onclick="closeDetailModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="withdrawalDetails"></div>
+            </div>
+            <div class="modal-footer" id="modalActions">
+            </div>
+        </div>
+    </div>
+
+    <div id="withdrawalsCustomDateModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Pilih Periode Custom</h2>
+                <button class="modal-close" onclick="closeWithdrawalsCustomDateModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Dari Tanggal</label>
+                    <input type="date" id="withdrawalsCustomStartDate" max="">
+                </div>
+                <div class="form-group">
+                    <label>Sampai Tanggal</label>
+                    <input type="date" id="withdrawalsCustomEndDate" max="">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeWithdrawalsCustomDateModal()">Batal</button>
+                <button class="btn btn-primary" onclick="applyWithdrawalsCustomDateFilter()">Terapkan</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+    <script>
+        let currentPage = 1;
+        let currentWithdrawalId = null;
+        let currentWithdrawal = null;
+        let withdrawalStatusChart = null;
+        let withdrawalVolumeChart = null;
+        let currentWithdrawalsDateFilter = '30days';
+        let currentWithdrawalsCustomDates = null;
+
+        function setWithdrawalsDateFilter(filter) {
+            currentWithdrawalsDateFilter = filter;
+            currentWithdrawalsCustomDates = null;
+            
+            document.querySelectorAll('.btn-filter').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-filter="${filter}"]`)?.classList.add('active');
+            
+            loadWithdrawalStats();
+        }
+
+        function openWithdrawalsCustomDateModal() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('withdrawalsCustomStartDate').max = today;
+            document.getElementById('withdrawalsCustomEndDate').max = today;
+            
+            if (currentWithdrawalsCustomDates) {
+                document.getElementById('withdrawalsCustomStartDate').value = currentWithdrawalsCustomDates.start;
+                document.getElementById('withdrawalsCustomEndDate').value = currentWithdrawalsCustomDates.end;
+            }
+            
+            document.getElementById('withdrawalsCustomDateModal').classList.add('show');
+        }
+
+        function closeWithdrawalsCustomDateModal() {
+            document.getElementById('withdrawalsCustomDateModal').classList.remove('show');
+        }
+
+        function applyWithdrawalsCustomDateFilter() {
+            const startDate = document.getElementById('withdrawalsCustomStartDate').value;
+            const endDate = document.getElementById('withdrawalsCustomEndDate').value;
+            
+            if (!startDate || !endDate) {
+                AdminPanel.showToast('Mohon pilih tanggal mulai dan akhir', 'error');
+                return;
+            }
+            
+            if (new Date(startDate) > new Date(endDate)) {
+                AdminPanel.showToast('Tanggal mulai tidak boleh lebih dari tanggal akhir', 'error');
+                return;
+            }
+            
+            currentWithdrawalsCustomDates = { start: startDate, end: endDate };
+            currentWithdrawalsDateFilter = 'custom';
+            
+            document.querySelectorAll('.btn-filter').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            closeWithdrawalsCustomDateModal();
+            loadWithdrawalStats();
+        }
+
+        function getWithdrawalsDays() {
+            if (currentWithdrawalsDateFilter === 'custom' && currentWithdrawalsCustomDates) {
+                const start = new Date(currentWithdrawalsCustomDates.start);
+                const end = new Date(currentWithdrawalsCustomDates.end);
+                const diffTime = Math.abs(end - start);
+                return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+            }
+            
+            const daysMap = {
+                '7days': 7,
+                '14days': 14,
+                '30days': 30,
+                '60days': 60
+            };
+            return daysMap[currentWithdrawalsDateFilter] || 30;
+        }
+
+        function generateWithdrawalsDays() {
+            const numDays = getWithdrawalsDays();
+            const days = [];
+            const today = new Date();
+            for (let i = numDays - 1; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                days.push(date.toLocaleDateString('id-ID', { month: 'short', day: 'numeric' }));
+            }
+            return days;
+        }
+
+        async function loadWithdrawalStats() {
+            try {
+                const allWithdrawals = await AdminPanel.apiCall('/admin/withdrawals?page=1&limit=1000');
+                const withdrawals = allWithdrawals.withdrawals || [];
+                
+                document.getElementById('totalWithdrawalsCount').textContent = withdrawals.length.toLocaleString();
+                
+                const statusCount = {
+                    pending: 0,
+                    approved: 0,
+                    rejected: 0
+                };
+                
+                let pendingAmount = 0;
+                let approvedAmount = 0;
+                let totalVolume = 0;
+                
+                withdrawals.forEach(w => {
+                    const amount = w.amount || 0;
+                    totalVolume += amount;
+                    
+                    if (w.status === 'pending') {
+                        statusCount.pending++;
+                        pendingAmount += amount;
+                    } else if (w.status === 'approved') {
+                        statusCount.approved++;
+                        approvedAmount += amount;
+                    } else if (w.status === 'rejected') {
+                        statusCount.rejected++;
+                    }
+                });
+                
+                document.getElementById('pendingAmount').textContent = AdminPanel.formatCurrency(pendingAmount);
+                document.getElementById('approvedAmount').textContent = AdminPanel.formatCurrency(approvedAmount);
+                document.getElementById('totalVolume').textContent = AdminPanel.formatCurrency(totalVolume);
+                
+                initWithdrawalCharts(withdrawals, statusCount);
+            } catch (error) {
+                AdminPanel.showToast(error.message, 'error');
+            }
+        }
+
+        function initWithdrawalCharts(withdrawals, statusCount) {
+            const isDark = AdminPanel.getCurrentTheme() === 'dark';
+            const chartConfig = AdminPanel.getChartConfig(isDark);
+            
+            if (withdrawalStatusChart) withdrawalStatusChart.destroy();
+            withdrawalStatusChart = new Chart(document.getElementById('withdrawalStatusChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Pending', 'Disetujui', 'Ditolak'],
+                    datasets: [{
+                        data: [
+                            statusCount.pending,
+                            statusCount.approved,
+                            statusCount.rejected
+                        ],
+                        backgroundColor: [
+                            isDark ? '#feca57' : 'rgba(254, 202, 87, 0.8)',
+                            isDark ? '#4ade80' : 'rgba(74, 222, 128, 0.8)',
+                            isDark ? '#f87171' : 'rgba(248, 113, 113, 0.8)'
+                        ],
+                        borderWidth: isDark ? 2 : 0,
+                        borderColor: isDark ? '#1e293b' : 'transparent'
+                    }]
+                },
+                options: {
+                    ...chartConfig,
+                    plugins: {
+                        ...chartConfig.plugins,
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                ...chartConfig.plugins.legend.labels,
+                                padding: 15,
+                                usePointStyle: true,
+                                pointStyle: 'circle'
+                            }
+                        }
+                    }
+                }
+            });
+            
+            const days = generateWithdrawalsDays();
+            const numDays = getWithdrawalsDays();
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const datesList = [];
+            for (let i = numDays - 1; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                datesList.push(date);
+            }
+            
+            const volumeByDay = new Array(numDays).fill(0);
+            withdrawals.forEach(withdrawal => {
+                if (!withdrawal?.created_at) return;
+                
+                try {
+                    const withdrawalDate = AdminPanel.toWIBDate(withdrawal.created_at);
+                    if (!withdrawalDate) return;
+                    
+                    for (let i = 0; i < numDays; i++) {
+                        if (withdrawalDate.getTime() === datesList[i].getTime()) {
+                            volumeByDay[i] += withdrawal.amount || 0;
+                            break;
+                        }
+                    }
+                } catch (e) {}
+            });
+            
+            if (withdrawalVolumeChart) withdrawalVolumeChart.destroy();
+            withdrawalVolumeChart = new Chart(document.getElementById('withdrawalVolumeChart'), {
+                type: 'line',
+                data: {
+                    labels: days,
+                    datasets: [{
+                        label: 'Volume',
+                        data: volumeByDay,
+                        borderColor: isDark ? '#60a5fa' : '#667eea',
+                        backgroundColor: isDark ? 'rgba(96, 165, 250, 0.1)' : 'rgba(102, 126, 234, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    ...chartConfig,
+                    plugins: {
+                        ...chartConfig.plugins,
+                        legend: { display: false },
+                        tooltip: {
+                            ...chartConfig.plugins.tooltip,
+                            callbacks: {
+                                label: function(context) {
+                                    return AdminPanel.formatCurrency(context.parsed.y);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        ...chartConfig.scales,
+                        y: {
+                            ...chartConfig.scales.y,
+                            beginAtZero: true,
+                            ticks: {
+                                ...chartConfig.scales.y.ticks,
+                                callback: function(value) {
+                                    return 'Rp ' + (value / 1000).toFixed(0) + 'K';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function generateLast7Days() {
+            const days = [];
+            const today = new Date();
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                days.push(date.toLocaleDateString('id-ID', { month: 'short', day: 'numeric' }));
+            }
+            return days;
+        }
+
+        async function loadWithdrawals(page = 1) {
+            const user = await AdminPanel.checkAuth();
+            if (!user) return;
+
+            document.getElementById('adminUsername').textContent = user.username;
+
+            const status = document.getElementById('statusFilter').value;
+            const params = new URLSearchParams({ page, limit: 20 });
+            if (status) params.append('status', status);
+
+            try {
+                const data = await AdminPanel.apiCall(`/admin/withdrawals?${params}`);
+                
+                const tableContent = document.getElementById('tableContent');
+                if (data.withdrawals.length === 0) {
+                    tableContent.innerHTML = '<div class="empty-state">Tidak ada penarikan</div>';
+                    document.getElementById('paginationContainer').innerHTML = '';
+                    return;
+                }
+
+                tableContent.innerHTML = `
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Telegram ID</th>
+                                    <th>Jumlah</th>
+                                    <th>Payment Method</th>
+                                    <th>Status</th>
+                                    <th>Dibuat</th>
+                                    <th>Processed</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.withdrawals.map(w => `
+                                    <tr>
+                                        <td>${w.id}</td>
+                                        <td>${AdminPanel.formatIdWithCopy(w.telegram_id)}</td>
+                                        <td><strong>${AdminPanel.formatCurrency(w.amount)}</strong></td>
+                                        <td>${w.payment_method}</td>
+                                        <td>
+                                            <span class="badge ${getStatusBadge(w.status)}">
+                                                ${w.status}
+                                            </span>
+                                        </td>
+                                        <td>${AdminPanel.formatDate(w.created_at)}</td>
+                                        <td>${AdminPanel.formatDate(w.processed_at)}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-primary" onclick='openDetailModal(${JSON.stringify(w).replace(/'/g, "&apos;")})'>
+                                                Details
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+
+                currentPage = page;
+                const paginationEl = AdminPanel.createPagination(data.page, data.total_pages, loadWithdrawals);
+                document.getElementById('paginationContainer').innerHTML = '';
+                document.getElementById('paginationContainer').appendChild(paginationEl);
+
+            } catch (error) {
+                AdminPanel.showToast(error.message, 'error');
+            }
+        }
+
+        function getStatusBadge(status) {
+            const badges = {
+                'pending': 'badge-warning',
+                'approved': 'badge-success',
+                'rejected': 'badge-danger'
+            };
+            return badges[status] || 'badge-secondary';
+        }
+
+        function filterWithdrawals() {
+            loadWithdrawals(1);
+        }
+
+        function openDetailModal(withdrawal) {
+            currentWithdrawal = withdrawal;
+            currentWithdrawalId = withdrawal.id;
+
+            document.getElementById('withdrawalDetails').innerHTML = `
+                <div style="display: grid; gap: 15px;">
+                    <div>
+                        <strong>Withdrawal ID:</strong> ${withdrawal.id}
+                    </div>
+                    <div>
+                        <strong>Telegram ID:</strong> ${AdminPanel.formatIdWithCopy(withdrawal.telegram_id)}
+                    </div>
+                    <div>
+                        <strong>Amount:</strong> ${AdminPanel.formatCurrency(withdrawal.amount)}
+                    </div>
+                    <div>
+                        <strong>Payment Method:</strong> ${withdrawal.payment_method}
+                    </div>
+                    <div>
+                        <strong>Account Number:</strong> ${withdrawal.account_number}
+                    </div>
+                    <div>
+                        <strong>Account Name:</strong> ${withdrawal.account_name}
+                    </div>
+                    <div>
+                        <strong>Status:</strong> 
+                        <span class="badge ${getStatusBadge(withdrawal.status)}">
+                            ${withdrawal.status}
+                        </span>
+                    </div>
+                    <div>
+                        <strong>Created:</strong> ${AdminPanel.formatDate(withdrawal.created_at)}
+                    </div>
+                    ${withdrawal.processed_at ? `
+                        <div>
+                            <strong>Processed:</strong> ${AdminPanel.formatDate(withdrawal.processed_at)}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+
+            const modalActions = document.getElementById('modalActions');
+            if (withdrawal.status === 'pending') {
+                modalActions.innerHTML = `
+                    <button class="btn btn-secondary" onclick="closeDetailModal()">Tutup</button>
+                    <button class="btn btn-danger" onclick="updateWithdrawalStatus('rejected')">Tolak</button>
+                    <button class="btn btn-success" onclick="updateWithdrawalStatus('approved')">Setujui</button>
+                `;
+            } else {
+                modalActions.innerHTML = `
+                    <button class="btn btn-secondary" onclick="closeDetailModal()">Tutup</button>
+                `;
+            }
+
+            document.getElementById('detailModal').classList.add('show');
+        }
+
+        function closeDetailModal() {
+            document.getElementById('detailModal').classList.remove('show');
+            currentWithdrawalId = null;
+            currentWithdrawal = null;
+        }
+
+        async function updateWithdrawalStatus(status) {
+            if (!currentWithdrawalId) return;
+
+            const action = status === 'approved' ? 'approve' : 'reject';
+            if (!AdminPanel.confirmAction(`Are you sure you want to ${action} this withdrawal?`)) return;
+
+            try {
+                await AdminPanel.apiCall(`/admin/withdrawals/${currentWithdrawalId}/status`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ status })
+                });
+
+                AdminPanel.showToast(`Withdrawal ${action}d successfully`, 'success');
+                closeDetailModal();
+                loadWithdrawals(currentPage);
+            } catch (error) {
+                AdminPanel.showToast(error.message, 'error');
+            }
+        }
+
+        function toggleTheme() {
+            AdminPanel.toggleTheme();
+            updateThemeIcon();
+            
+            if (withdrawalStatusChart || withdrawalVolumeChart) {
+                loadWithdrawalStats();
+            }
+        }
+
+        function updateThemeIcon() {
+            const currentTheme = AdminPanel.getCurrentTheme();
+            const themeToggle = document.getElementById('themeToggle');
+            const icon = currentTheme === 'dark' ? 'sun' : 'moon';
+            themeToggle.innerHTML = `<span data-icon="${icon}" data-icon-size="md"></span>`;
+            if (window.Icons && window.Icons.renderIcons) {
+                window.Icons.renderIcons();
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', function() {
+            updateThemeIcon();
+            AdminPanel.initSidebarUserInfo();
+            AdminPanel.initMobileSidebarAdminUsers();
+            AdminPanel.init();
+            loadWithdrawalStats();
+            loadWithdrawals();
+        });
+    </script>
+
+    <!-- Bottom Navigation for Mobile -->
+    <nav class="bottom-nav">
+        <div class="bottom-nav-items">
+            <a href="dashboard.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="dashboard" data-icon-size="md"></span>
+            </a>
+            <a href="users.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="users" data-icon-size="md"></span>
+            </a>
+            <a href="movies.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="movie" data-icon-size="md"></span>
+            </a>
+            <a href="requests.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="fileText" data-icon-size="md"></span>
+            </a>
+            <a href="withdrawals.html" class="bottom-nav-item active">
+                <span class="nav-icon" data-icon="dollarSign" data-icon-size="md"></span>
+            </a>
+            <a href="payments.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="creditCard" data-icon-size="md"></span>
+            </a>
+        </div>
+    </nav>
+    <script>
+        // Start auto-refresh untuk update real-time
+        AdminPanel.startAutoRefresh();
+    </script>
+</html>
+
+<!-- MOBILE SIDEBAR -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<aside class="sidebar-mobile" id="sidebarMobile">
+    <div class="sidebar-header">
+        <div class="logo">
+            <img src="assets/logo-dramamu.jpg" alt="Dramamu Logo">
+        </div>
+        <h2>Dramamu Admin</h2>
+        <p class="admin-subtitle">Panel Kontrol</p>
+        <button class="sidebar-close" id="sidebarMobileClose" aria-label="Close Menu">
+            <span data-icon="x" data-icon-size="md"></span>
+        </button>
+    </div>
+    <nav class="sidebar-nav">
+        <a href="dashboard.html" class="nav-item" data-page="dashboard"><span class="nav-icon" data-icon="dashboard" data-icon-size="md"></span><span>Dashboard</span></a>
+        <a href="analytics.html" class="nav-item" data-page="analytics"><span class="nav-icon" data-icon="barChart" data-icon-size="md"></span><span>Analytics</span></a>
+        <a href="users.html" class="nav-item" data-page="users"><span class="nav-icon" data-icon="users" data-icon-size="md"></span><span>Pengguna</span></a>
+        <a href="movies.html" class="nav-item" data-page="movies"><span class="nav-icon" data-icon="movie" data-icon-size="md"></span><span>Drama</span></a>
+        <a href="requests.html" class="nav-item" data-page="requests"><span class="nav-icon" data-icon="fileText" data-icon-size="md"></span><span>Permintaan</span></a>
+        <a href="withdrawals.html" class="nav-item" data-page="withdrawals"><span class="nav-icon" data-icon="dollarSign" data-icon-size="md"></span><span>Penarikan</span></a>
+        <a href="payments.html" class="nav-item" data-page="payments"><span class="nav-icon" data-icon="creditCard" data-icon-size="md"></span><span>Pembayaran</span></a>
+        <a href="settings.html" class="nav-item" data-page="settings"><span class="nav-icon" data-icon="settings" data-icon-size="md"></span><span>Pengaturan</span></a>
+        <a href="admin-users.html" class="nav-item" data-page="admin-users" style="display: none;"><span class="nav-icon" data-icon="shield" data-icon-size="md"></span><span>Admin Users</span></a>
+    </nav>
+    <div id="sidebarMobileAdminUsers" class="sidebar-mobile-content"><div class="loading-message">Memuat...</div></div>
+</aside>
+</body>

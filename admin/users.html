@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="id" translate="no">
+<head>
+    <base href="/panel/">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <meta name="google" content="notranslate">
+    <title>Manajemen Pengguna - Admin Panel</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles-mobile.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="icons.js"></script>
+    <script src="themeToggle.js"></script>
+    <script src="sidebar.js"></script>
+    <script src="expand.js"></script>
+</head>
+<body data-page="users">
+    <div class="admin-layout">
+        <!-- Desktop Sidebar - Static (tidak reload) -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <img src="assets/logo-dramamu.jpg" alt="Dramamu Logo">
+                </div>
+                <h2>Dramamu Admin</h2>
+                <p class="admin-subtitle">Panel Kontrol</p>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="dashboard.html" class="nav-item" data-page="dashboard">
+                    <span class="nav-icon" data-icon="dashboard" data-icon-size="md"></span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="analytics.html" class="nav-item" data-page="analytics">
+                    <span class="nav-icon" data-icon="barChart" data-icon-size="md"></span>
+                    <span>Analytics</span>
+                </a>
+                <a href="users.html" class="nav-item" data-page="users">
+                    <span class="nav-icon" data-icon="users" data-icon-size="md"></span>
+                    <span>Pengguna</span>
+                </a>
+                <a href="movies.html" class="nav-item" data-page="movies">
+                    <span class="nav-icon" data-icon="movie" data-icon-size="md"></span>
+                    <span>Drama</span>
+                </a>
+                <a href="requests.html" class="nav-item" data-page="requests">
+                    <span class="nav-icon" data-icon="fileText" data-icon-size="md"></span>
+                    <span>Permintaan</span>
+                    <span class="request-notification-badge notification-badge"></span>
+                </a>
+                <a href="withdrawals.html" class="nav-item" data-page="withdrawals">
+                    <span class="nav-icon" data-icon="dollarSign" data-icon-size="md"></span>
+                    <span>Penarikan</span>
+                    <span class="withdrawal-notification-badge notification-badge"></span>
+                </a>
+                <a href="payments.html" class="nav-item" data-page="payments">
+                    <span class="nav-icon" data-icon="creditCard" data-icon-size="md"></span>
+                    <span>Pembayaran</span>
+                </a>
+                <a href="settings.html" class="nav-item" data-page="settings">
+                    <span class="nav-icon" data-icon="settings" data-icon-size="md"></span>
+                    <span>Pengaturan</span>
+                </a>
+                <a href="admin-users.html" class="nav-item" data-page="admin-users" style="display: none;">
+                    <span class="nav-icon" data-icon="shield" data-icon-size="md"></span>
+                    <span>Admin Users</span>
+                </a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="header">
+                <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <div class="breadcrumb">
+                    <span>Manajemen Pengguna</span>
+                </div>
+                <div class="header-actions">
+                    <div id="themeToggleContainer"></div>
+                    <div class="user-info">
+                        <span data-icon="user" data-icon-size="sm" style="margin-right: 6px;"></span>
+                        <span id="adminUsername">Admin</span>
+                    </div>
+                    <button class="btn btn-secondary" onclick="AdminPanel.logout()">
+                        <span data-icon="logOut" data-icon-size="sm"></span>
+                        <span>Logout</span>
+                    </button>
+                </div>
+            </header>
+
+            <div class="content">
+                <h1 class="page-title">Manajemen Pengguna</h1>
+
+                <div class="card" style="margin-bottom: 20px;">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                        <h2 style="margin: 0;">
+                            <span data-icon="calendar" data-icon-size="sm" style="margin-right: 8px;"></span>
+                            Filter Periode Pengguna
+                        </h2>
+                        <div class="date-filter-group" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button class="btn btn-sm btn-filter" onclick="setUsersDateFilter('7days')" data-filter="7days">7 Hari</button>
+                            <button class="btn btn-sm btn-filter" onclick="setUsersDateFilter('14days')" data-filter="14days">14 Hari</button>
+                            <button class="btn btn-sm btn-filter active" onclick="setUsersDateFilter('30days')" data-filter="30days">30 Hari</button>
+                            <button class="btn btn-sm btn-filter" onclick="setUsersDateFilter('60days')" data-filter="60days">60 Hari</button>
+                            <button class="btn btn-sm btn-secondary" onclick="openUsersCustomDateModal()">
+                                <span data-icon="calendar" data-icon-size="sm"></span>
+                                <span>Custom</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #667eea, #764ba2)">
+                            <span data-icon="users" data-icon-size="md"></span>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="totalUsersCount">-</h3>
+                            <p>Total Pengguna</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb, #f5576c)">
+                            <span data-icon="star" data-icon-size="md"></span>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="vipUsersCount">-</h3>
+                            <p>Pengguna VIP</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe, #00f2fe)">
+                            <span data-icon="user" data-icon-size="md"></span>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="regularUsersCount">-</h3>
+                            <p>Pengguna Reguler</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #43e97b, #38f9d7)">
+                            <span data-icon="pieChart" data-icon-size="md"></span>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="vipPercentage">-</h3>
+                            <p>Persentase VIP</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-grid" style="margin-bottom: 30px;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2>
+                                <span data-icon="users" data-icon-size="sm" style="margin-right: 8px;"></span>
+                                Distribusi Tipe Pengguna
+                            </h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="userTypeChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h2>
+                                <span data-icon="trendingUp" data-icon-size="sm" style="margin-right: 8px;"></span>
+                                Pertumbuhan Pengguna (7 Hari)
+                            </h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="userGrowthChartUsers"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <div class="table-header">
+                        <div class="search-box">
+                            <input type="text" id="searchInput" placeholder="Cari berdasarkan username atau Telegram ID...">
+                            <button class="btn btn-primary" onclick="searchUsers()">
+                                <span data-icon="search" data-icon-size="sm"></span>
+                                <span>Cari</span>
+                            </button>
+                            <button class="btn btn-secondary" onclick="loadUsers(currentPage); loadUserStats();" title="Refresh data">
+                                <span data-icon="refreshCw" data-icon-size="sm"></span>
+                                <span>Refresh</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="tableContent">
+                        <div class="loading">Memuat pengguna...</div>
+                    </div>
+
+                    <div id="paginationContainer"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="userDetailModal" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h2>Detail Pengguna</h2>
+                <button class="modal-close" onclick="closeUserDetailModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="userDetailContent" class="loading">Memuat...</div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeUserDetailModal()">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="vipModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Update Status VIP</h2>
+                <button class="modal-close" onclick="closeVIPModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Status VIP</label>
+                    <select id="vipStatus">
+                        <option value="true">VIP</option>
+                        <option value="false">Reguler</option>
+                    </select>
+                </div>
+                <div class="form-group" id="vipDaysGroup">
+                    <label>Durasi VIP (hari)</label>
+                    <input type="number" id="vipDays" min="1" value="30">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeVIPModal()">Batal</button>
+                <button class="btn btn-primary" onclick="saveVIPStatus()">Simpan</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="usersCustomDateModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Pilih Periode Custom</h2>
+                <button class="modal-close" onclick="closeUsersCustomDateModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Dari Tanggal</label>
+                    <input type="date" id="usersCustomStartDate" max="">
+                </div>
+                <div class="form-group">
+                    <label>Sampai Tanggal</label>
+                    <input type="date" id="usersCustomEndDate" max="">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeUsersCustomDateModal()">Batal</button>
+                <button class="btn btn-primary" onclick="applyUsersCustomDateFilter()">Terapkan</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+    <script>
+        let currentPage = 1;
+        let currentUserId = null;
+        let userTypeChart = null;
+        let userGrowthChartUsers = null;
+        let currentUsersDateFilter = '30days';
+        let currentUsersCustomDates = null;
+
+        function setUsersDateFilter(filter) {
+            currentUsersDateFilter = filter;
+            currentUsersCustomDates = null;
+            
+            document.querySelectorAll('.btn-filter').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-filter="${filter}"]`)?.classList.add('active');
+            
+            loadUserStats();
+        }
+
+        function openUsersCustomDateModal() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('usersCustomStartDate').max = today;
+            document.getElementById('usersCustomEndDate').max = today;
+            
+            if (currentUsersCustomDates) {
+                document.getElementById('usersCustomStartDate').value = currentUsersCustomDates.start;
+                document.getElementById('usersCustomEndDate').value = currentUsersCustomDates.end;
+            }
+            
+            document.getElementById('usersCustomDateModal').classList.add('show');
+        }
+
+        function closeUsersCustomDateModal() {
+            document.getElementById('usersCustomDateModal').classList.remove('show');
+        }
+
+        function applyUsersCustomDateFilter() {
+            const startDate = document.getElementById('usersCustomStartDate').value;
+            const endDate = document.getElementById('usersCustomEndDate').value;
+            
+            if (!startDate || !endDate) {
+                AdminPanel.showToast('Mohon pilih tanggal mulai dan akhir', 'error');
+                return;
+            }
+            
+            if (new Date(startDate) > new Date(endDate)) {
+                AdminPanel.showToast('Tanggal mulai tidak boleh lebih dari tanggal akhir', 'error');
+                return;
+            }
+            
+            currentUsersCustomDates = { start: startDate, end: endDate };
+            currentUsersDateFilter = 'custom';
+            
+            document.querySelectorAll('.btn-filter').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            closeUsersCustomDateModal();
+            loadUserStats();
+        }
+
+        function getUsersDays() {
+            if (currentUsersDateFilter === 'custom' && currentUsersCustomDates) {
+                const start = new Date(currentUsersCustomDates.start);
+                const end = new Date(currentUsersCustomDates.end);
+                const diffTime = Math.abs(end - start);
+                return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+            }
+            
+            const daysMap = {
+                '7days': 7,
+                '14days': 14,
+                '30days': 30,
+                '60days': 60
+            };
+            return daysMap[currentUsersDateFilter] || 30;
+        }
+
+        function generateUsersDays() {
+            const numDays = getUsersDays();
+            const days = [];
+            const today = new Date();
+            for (let i = numDays - 1; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                days.push(date.toLocaleDateString('id-ID', { month: 'short', day: 'numeric' }));
+            }
+            return days;
+        }
+
+        async function loadUserStats() {
+            try {
+                const data = await AdminPanel.apiCall('/admin/dashboard/stats');
+                
+                document.getElementById('totalUsersCount').textContent = data.stats.total_users.toLocaleString();
+                document.getElementById('vipUsersCount').textContent = data.stats.vip_users.toLocaleString();
+                const regularUsers = data.stats.total_users - data.stats.vip_users;
+                document.getElementById('regularUsersCount').textContent = regularUsers.toLocaleString();
+                const vipPercentage = data.stats.total_users > 0 
+                    ? ((data.stats.vip_users / data.stats.total_users) * 100).toFixed(1) + '%'
+                    : '0%';
+                document.getElementById('vipPercentage').textContent = vipPercentage;
+
+                initUserCharts(data);
+            } catch (error) {
+                AdminPanel.showToast(error.message, 'error');
+            }
+        }
+
+        function initUserCharts(data) {
+            const isDark = AdminPanel.getCurrentTheme() === 'dark';
+            const chartConfig = AdminPanel.getChartConfig(isDark);
+            const recentUsers = data?.recent_users || [];
+            
+            const vipUsers = data.stats.vip_users;
+            const regularUsers = data.stats.total_users - data.stats.vip_users;
+
+            if (userTypeChart) userTypeChart.destroy();
+            userTypeChart = new Chart(document.getElementById('userTypeChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Pengguna VIP', 'Pengguna Reguler'],
+                    datasets: [{
+                        data: [vipUsers, regularUsers],
+                        backgroundColor: [
+                            isDark ? '#f093fb' : 'rgba(240, 147, 251, 0.8)',
+                            isDark ? '#94a3b8' : 'rgba(148, 163, 184, 0.8)'
+                        ],
+                        borderWidth: isDark ? 2 : 0,
+                        borderColor: isDark ? '#1e293b' : 'transparent'
+                    }]
+                },
+                options: {
+                    ...chartConfig,
+                    plugins: {
+                        ...chartConfig.plugins,
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                ...chartConfig.plugins.legend.labels,
+                                padding: 15,
+                                usePointStyle: true,
+                                pointStyle: 'circle'
+                            }
+                        }
+                    }
+                }
+            });
+
+            const days = generateUsersDays();
+            const numDays = getUsersDays();
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const datesList = [];
+            for (let i = numDays - 1; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                datesList.push(date);
+            }
+
+            const userGrowthByDay = new Array(numDays).fill(0);
+            recentUsers.forEach(user => {
+                if (!user?.created_at) return;
+                
+                try {
+                    const userDate = AdminPanel.toWIBDate(user.created_at);
+                    if (!userDate) return;
+                    
+                    for (let i = 0; i < numDays; i++) {
+                        if (userDate.getTime() === datesList[i].getTime()) {
+                            userGrowthByDay[i]++;
+                            break;
+                        }
+                    }
+                } catch (e) {}
+            });
+
+            if (userGrowthChartUsers) userGrowthChartUsers.destroy();
+            userGrowthChartUsers = new Chart(document.getElementById('userGrowthChartUsers'), {
+                type: 'line',
+                data: {
+                    labels: days,
+                    datasets: [{
+                        label: 'New Users',
+                        data: userGrowthByDay,
+                        borderColor: isDark ? '#60a5fa' : '#667eea',
+                        backgroundColor: isDark ? 'rgba(96, 165, 250, 0.1)' : 'rgba(102, 126, 234, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    ...chartConfig,
+                    plugins: {
+                        ...chartConfig.plugins,
+                        legend: { display: false }
+                    },
+                    scales: {
+                        ...chartConfig.scales,
+                        y: {
+                            ...chartConfig.scales.y,
+                            beginAtZero: true,
+                            ticks: {
+                                ...chartConfig.scales.y.ticks,
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function generateLast7Days() {
+            const days = [];
+            const today = new Date();
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                days.push(date.toLocaleDateString('id-ID', { month: 'short', day: 'numeric' }));
+            }
+            return days;
+        }
+
+        async function loadUsers(page = 1) {
+            const user = await AdminPanel.checkAuth();
+            if (!user) return;
+
+            document.getElementById('adminUsername').textContent = user.username;
+
+            const search = document.getElementById('searchInput').value;
+            const params = new URLSearchParams({ page, limit: 20 });
+            if (search) params.append('search', search);
+
+            try {
+                const data = await AdminPanel.apiCall(`/admin/users?${params}`);
+                
+                const tableContent = document.getElementById('tableContent');
+                if (!data || !data.users || data.users.length === 0) {
+                    tableContent.innerHTML = '<div class="empty-state">Tidak ada pengguna</div>';
+                    document.getElementById('paginationContainer').innerHTML = '';
+                    return;
+                }
+
+                tableContent.innerHTML = `
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Username</th>
+                                    <th>Telegram ID</th>
+                                    <th>Status</th>
+                                    <th>VIP Berakhir</th>
+                                    <th>Saldo</th>
+                                    <th>Referral</th>
+                                    <th>Bergabung</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.users.map(u => `
+                                    <tr>
+                                        <td>${u.id}</td>
+                                        <td>${u.username || '-'}</td>
+                                        <td>${AdminPanel.formatIdWithCopy(u.telegram_id)}</td>
+                                        <td>
+                                            <span class="badge ${u.is_vip ? 'badge-success' : 'badge-secondary'}">
+                                                ${u.is_vip ? 'VIP' : 'Reguler'}
+                                            </span>
+                                        </td>
+                                        <td>${AdminPanel.formatDate(u.vip_expires_at)}</td>
+                                        <td>${AdminPanel.formatCurrency(u.commission_balance)}</td>
+                                        <td>${u.total_referrals}</td>
+                                        <td>${AdminPanel.formatDate(u.created_at)}</td>
+                                        <td>
+                                            <div class="actions">
+                                                <button class="btn btn-sm btn-secondary" onclick="openUserDetailModal(${u.id})" title="Lihat Detail">
+                                                    <span data-icon="info" data-icon-size="sm"></span>
+                                                </button>
+                                                <button class="btn btn-sm btn-primary" onclick="openVIPModal(${u.id}, ${u.is_vip})">
+                                                    VIP
+                                                </button>
+                                                <button class="btn btn-sm btn-danger" onclick="deleteUser(${u.id})">
+                                                    Hapus
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+
+                currentPage = page;
+                const paginationEl = AdminPanel.createPagination(data.page, data.total_pages, loadUsers);
+                document.getElementById('paginationContainer').innerHTML = '';
+                document.getElementById('paginationContainer').appendChild(paginationEl);
+
+                if (window.initIcons) {
+                    initIcons();
+                }
+
+            } catch (error) {
+                AdminPanel.showToast(error.message, 'error');
+            }
+        }
+
+        function searchUsers() {
+            loadUsers(1);
+        }
+
+        document.getElementById('searchInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchUsers();
+        });
+
+        function openVIPModal(userId, isVip) {
+            currentUserId = userId;
+            document.getElementById('vipStatus').value = isVip.toString();
+            document.getElementById('vipDays').value = '30';
+            document.getElementById('vipModal').classList.add('show');
+            updateVIPDaysVisibility();
+        }
+
+        function closeVIPModal() {
+            document.getElementById('vipModal').classList.remove('show');
+            currentUserId = null;
+        }
+
+        document.getElementById('vipStatus').addEventListener('change', updateVIPDaysVisibility);
+
+        function updateVIPDaysVisibility() {
+            const isVip = document.getElementById('vipStatus').value === 'true';
+            document.getElementById('vipDaysGroup').style.display = isVip ? 'flex' : 'none';
+        }
+
+        async function saveVIPStatus() {
+            if (!currentUserId) return;
+
+            const isVip = document.getElementById('vipStatus').value === 'true';
+            const vipDays = isVip ? parseInt(document.getElementById('vipDays').value) : null;
+
+            try {
+                await AdminPanel.apiCall(`/admin/users/${currentUserId}/vip`, {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        is_vip: isVip,
+                        vip_days: vipDays
+                    })
+                });
+
+                AdminPanel.showToast('VIP status updated successfully', 'success');
+                closeVIPModal();
+                loadUsers(currentPage);
+            } catch (error) {
+                AdminPanel.showToast(error.message, 'error');
+            }
+        }
+
+        async function openUserDetailModal(userId) {
+            document.getElementById('userDetailModal').classList.add('show');
+            document.getElementById('userDetailContent').innerHTML = '<div class="loading">Memuat...</div>';
+            
+            try {
+                const user = await AdminPanel.apiCall(`/admin/users/${userId}`);
+                
+                const vipHistory = user.vip_history || [];
+                const vipCount = vipHistory.length;
+                const totalVipRevenue = vipHistory.reduce((sum, h) => sum + (h.amount || 0), 0);
+                
+                document.getElementById('userDetailContent').innerHTML = `
+                    <div style="display: grid; gap: 20px;">
+                        <div class="detail-section">
+                            <h3 style="color: var(--primary); margin: 0 0 12px 0; font-size: var(--font-heading-md);">
+                                <span data-icon="user" data-icon-size="sm" style="margin-right: 6px;"></span>
+                                Informasi Dasar
+                            </h3>
+                            <div class="detail-grid">
+                                <div class="detail-item">
+                                    <span class="detail-label">User ID</span>
+                                    <span class="detail-value">${user.id}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Telegram ID</span>
+                                    <span class="detail-value">${AdminPanel.formatIdWithCopy(user.telegram_id, 16)}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Username</span>
+                                    <span class="detail-value">${user.username || '-'}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Bergabung</span>
+                                    <span class="detail-value">${AdminPanel.formatDate(user.created_at)}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="detail-section">
+                            <h3 style="color: var(--primary); margin: 0 0 12px 0; font-size: var(--font-heading-md);">
+                                <span data-icon="star" data-icon-size="sm" style="margin-right: 6px;"></span>
+                                Status & Membership
+                            </h3>
+                            <div class="detail-grid">
+                                <div class="detail-item">
+                                    <span class="detail-label">Status</span>
+                                    <span class="detail-value">
+                                        <span class="badge ${user.is_vip ? 'badge-success' : 'badge-secondary'}">
+                                            ${user.is_vip ? 'VIP' : 'Reguler'}
+                                        </span>
+                                    </span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">VIP Berakhir</span>
+                                    <span class="detail-value">${AdminPanel.formatDate(user.vip_expires_at)}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Total Berlangganan VIP</span>
+                                    <span class="detail-value"><strong>${vipCount}x</strong></span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Total Revenue VIP</span>
+                                    <span class="detail-value"><strong>${AdminPanel.formatCurrency(totalVipRevenue)}</strong></span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="detail-section">
+                            <h3 style="color: var(--primary); margin: 0 0 12px 0; font-size: var(--font-heading-md);">
+                                <span data-icon="dollarSign" data-icon-size="sm" style="margin-right: 6px;"></span>
+                                Keuangan & Referral
+                            </h3>
+                            <div class="detail-grid">
+                                <div class="detail-item">
+                                    <span class="detail-label">Saldo Komisi</span>
+                                    <span class="detail-value"><strong>${AdminPanel.formatCurrency(user.commission_balance)}</strong></span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Total Referral</span>
+                                    <span class="detail-value"><strong>${user.total_referrals || 0}</strong></span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Kode Referral</span>
+                                    <span class="detail-value">${AdminPanel.formatIdWithCopy(user.referral_code, 16)}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        ${vipHistory.length > 0 ? `
+                        <div class="detail-section">
+                            <h3 style="color: var(--primary); margin: 0 0 12px 0; font-size: var(--font-heading-md);">
+                                <span data-icon="calendar" data-icon-size="sm" style="margin-right: 6px;"></span>
+                                Riwayat Berlangganan VIP
+                            </h3>
+                            <div class="vip-history-list" style="max-height: 250px; overflow-y: auto;">
+                                ${vipHistory.map((h, idx) => `
+                                    <div class="vip-history-item" style="padding: 12px; background: var(--bg-tertiary); border-radius: 6px; margin-bottom: 8px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                            <strong style="font-size: var(--font-md);">#${idx + 1} - ${h.package_name || 'VIP Package'}</strong>
+                                            <span class="badge badge-success">${h.status || 'settlement'}</span>
+                                        </div>
+                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: var(--font-sm); color: var(--text-secondary);">
+                                            <div>💰 ${AdminPanel.formatCurrency(h.amount || 0)}</div>
+                                            <div>📅 ${AdminPanel.formatDate(h.paid_at || h.created_at)}</div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+                
+                if (window.initIcons) {
+                    setTimeout(() => window.initIcons(), 50);
+                }
+            } catch (error) {
+                document.getElementById('userDetailContent').innerHTML = `
+                    <div class="empty-state" style="color: var(--danger);">
+                        Error: ${error.message}
+                    </div>
+                `;
+            }
+        }
+        
+        function closeUserDetailModal() {
+            document.getElementById('userDetailModal').classList.remove('show');
+        }
+
+        async function deleteUser(userId) {
+            if (!AdminPanel.confirmAction('Apakah Anda yakin ingin menghapus pengguna ini?')) return;
+
+            try {
+                await AdminPanel.apiCall(`/admin/users/${userId}`, { method: 'DELETE' });
+                AdminPanel.showToast('Pengguna berhasil dihapus', 'success');
+                loadUsers(currentPage);
+            } catch (error) {
+                AdminPanel.showToast(error.message, 'error');
+            }
+        }
+
+        function toggleTheme() {
+            AdminPanel.toggleTheme();
+            updateThemeIcon();
+            
+            if (userTypeChart || userGrowthChartUsers) {
+                loadUserStats();
+            }
+        }
+
+        function updateThemeIcon() {
+            const currentTheme = AdminPanel.getCurrentTheme();
+            const themeToggle = document.getElementById('themeToggle');
+            const icon = currentTheme === 'dark' ? 'sun' : 'moon';
+            themeToggle.innerHTML = `<span data-icon="${icon}" data-icon-size="md"></span>`;
+            if (window.Icons && window.Icons.renderIcons) {
+                window.Icons.renderIcons();
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', function() {
+            updateThemeIcon();
+            AdminPanel.initSidebarUserInfo();
+            AdminPanel.initMobileSidebarAdminUsers();
+            AdminPanel.init();
+            loadUserStats();
+            loadUsers();
+        });
+    </script>
+
+    <!-- Bottom Navigation for Mobile -->
+    <nav class="bottom-nav">
+        <div class="bottom-nav-items">
+            <a href="dashboard.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="dashboard" data-icon-size="md"></span>
+            </a>
+            <a href="users.html" class="bottom-nav-item active">
+                <span class="nav-icon" data-icon="users" data-icon-size="md"></span>
+            </a>
+            <a href="movies.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="movie" data-icon-size="md"></span>
+            </a>
+            <a href="requests.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="fileText" data-icon-size="md"></span>
+            </a>
+            <a href="withdrawals.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="dollarSign" data-icon-size="md"></span>
+            </a>
+            <a href="payments.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="creditCard" data-icon-size="md"></span>
+            </a>
+        </div>
+    </nav>
+    <script>
+        // Start auto-refresh untuk update real-time
+        AdminPanel.startAutoRefresh();
+    </script>
+</html>
+
+<!-- MOBILE SIDEBAR -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<aside class="sidebar-mobile" id="sidebarMobile">
+    <div class="sidebar-header">
+        <div class="logo">
+            <img src="assets/logo-dramamu.jpg" alt="Dramamu Logo">
+        </div>
+        <h2>Dramamu Admin</h2>
+        <p class="admin-subtitle">Panel Kontrol</p>
+        <button class="sidebar-close" id="sidebarMobileClose" aria-label="Close Menu">
+            <span data-icon="x" data-icon-size="md"></span>
+        </button>
+    </div>
+    <nav class="sidebar-nav">
+        <a href="dashboard.html" class="nav-item" data-page="dashboard"><span class="nav-icon" data-icon="dashboard" data-icon-size="md"></span><span>Dashboard</span></a>
+        <a href="analytics.html" class="nav-item" data-page="analytics"><span class="nav-icon" data-icon="barChart" data-icon-size="md"></span><span>Analytics</span></a>
+        <a href="users.html" class="nav-item" data-page="users"><span class="nav-icon" data-icon="users" data-icon-size="md"></span><span>Pengguna</span></a>
+        <a href="movies.html" class="nav-item" data-page="movies"><span class="nav-icon" data-icon="movie" data-icon-size="md"></span><span>Drama</span></a>
+        <a href="requests.html" class="nav-item" data-page="requests"><span class="nav-icon" data-icon="fileText" data-icon-size="md"></span><span>Permintaan</span></a>
+        <a href="withdrawals.html" class="nav-item" data-page="withdrawals"><span class="nav-icon" data-icon="dollarSign" data-icon-size="md"></span><span>Penarikan</span></a>
+        <a href="payments.html" class="nav-item" data-page="payments"><span class="nav-icon" data-icon="creditCard" data-icon-size="md"></span><span>Pembayaran</span></a>
+        <a href="settings.html" class="nav-item" data-page="settings"><span class="nav-icon" data-icon="settings" data-icon-size="md"></span><span>Pengaturan</span></a>
+        <a href="admin-users.html" class="nav-item" data-page="admin-users" style="display: none;"><span class="nav-icon" data-icon="shield" data-icon-size="md"></span><span>Admin Users</span></a>
+    </nav>
+    <div id="sidebarMobileAdminUsers" class="sidebar-mobile-content"><div class="loading-message">Memuat...</div></div>
+</aside>
+</body>

@@ -1,0 +1,1960 @@
+<!DOCTYPE html>
+<html lang="id" translate="no">
+<head>
+    <base href="/panel/">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <meta name="google" content="notranslate">
+    <title>Manajemen Drama - Admin Panel</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles-mobile.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="icons.js"></script>
+    <script src="themeToggle.js"></script>
+    <script src="sidebar.js"></script>
+    <style>
+        .actions {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            justify-content: flex-start;
+        }
+        
+        .actions .btn-sm {
+            padding: 4px 10px !important;
+            font-size: 0.85em !important;
+            white-space: nowrap;
+            min-width: 70px;
+        }
+    </style>
+    <script src="expand.js"></script>
+</head>
+<body data-page="movies">
+    <div class="admin-layout">
+        <!-- Desktop Sidebar - Static (tidak reload) -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <img src="assets/logo-dramamu.jpg" alt="Dramamu Logo">
+                </div>
+                <h2>Dramamu Admin</h2>
+                <p class="admin-subtitle">Panel Kontrol</p>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="dashboard.html" class="nav-item" data-page="dashboard">
+                    <span class="nav-icon" data-icon="dashboard" data-icon-size="md"></span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="analytics.html" class="nav-item" data-page="analytics">
+                    <span class="nav-icon" data-icon="barChart" data-icon-size="md"></span>
+                    <span>Analytics</span>
+                </a>
+                <a href="users.html" class="nav-item" data-page="users">
+                    <span class="nav-icon" data-icon="users" data-icon-size="md"></span>
+                    <span>Pengguna</span>
+                </a>
+                <a href="movies.html" class="nav-item" data-page="movies">
+                    <span class="nav-icon" data-icon="movie" data-icon-size="md"></span>
+                    <span>Drama</span>
+                </a>
+                <a href="requests.html" class="nav-item" data-page="requests">
+                    <span class="nav-icon" data-icon="fileText" data-icon-size="md"></span>
+                    <span>Permintaan</span>
+                    <span class="request-notification-badge notification-badge"></span>
+                </a>
+                <a href="withdrawals.html" class="nav-item" data-page="withdrawals">
+                    <span class="nav-icon" data-icon="dollarSign" data-icon-size="md"></span>
+                    <span>Penarikan</span>
+                    <span class="withdrawal-notification-badge notification-badge"></span>
+                </a>
+                <a href="payments.html" class="nav-item" data-page="payments">
+                    <span class="nav-icon" data-icon="creditCard" data-icon-size="md"></span>
+                    <span>Pembayaran</span>
+                </a>
+                <a href="settings.html" class="nav-item" data-page="settings">
+                    <span class="nav-icon" data-icon="settings" data-icon-size="md"></span>
+                    <span>Pengaturan</span>
+                </a>
+                <a href="admin-users.html" class="nav-item" data-page="admin-users" style="display: none;">
+                    <span class="nav-icon" data-icon="shield" data-icon-size="md"></span>
+                    <span>Admin Users</span>
+                </a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="header">
+                <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <div class="breadcrumb">
+                    <span>Manajemen Drama</span>
+                </div>
+                <div class="header-actions">
+                    <div id="themeToggleContainer"></div>
+                    <div class="user-info">
+                        <span data-icon="user" data-icon-size="sm" style="margin-right: 6px;"></span>
+                        <span id="adminUsername">Admin</span>
+                    </div>
+                    <button class="btn btn-secondary" onclick="AdminPanel.logout()">
+                        <span data-icon="logOut" data-icon-size="sm"></span>
+                        <span>Logout</span>
+                    </button>
+                </div>
+            </header>
+
+            <div class="content">
+                <h1 class="page-title">Manajemen Drama</h1>
+
+                <div class="card" style="margin-bottom: 20px;">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                        <h2 style="margin: 0;">
+                            <span data-icon="calendar" data-icon-size="sm" style="margin-right: 8px;"></span>
+                            Filter Periode Drama
+                        </h2>
+                        <div class="date-filter-group" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button class="btn btn-sm btn-filter" onclick="setMoviesDateFilter('7days')" data-filter="7days">7 Hari</button>
+                            <button class="btn btn-sm btn-filter" onclick="setMoviesDateFilter('14days')" data-filter="14days">14 Hari</button>
+                            <button class="btn btn-sm btn-filter active" onclick="setMoviesDateFilter('30days')" data-filter="30days">30 Hari</button>
+                            <button class="btn btn-sm btn-filter" onclick="setMoviesDateFilter('60days')" data-filter="60days">60 Hari</button>
+                            <button class="btn btn-sm btn-secondary" onclick="openMoviesCustomDateModal()">
+                                <span data-icon="calendar" data-icon-size="sm"></span>
+                                <span>Custom</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #667eea, #764ba2)">
+                            <span data-icon="movie" data-icon-size="md"></span>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="totalMoviesCount">-</h3>
+                            <p>Total Drama</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb, #f5576c)">
+                            <span data-icon="tag" data-icon-size="md"></span>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="topCategory">-</h3>
+                            <p>Kategori Teratas</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe, #00f2fe)">
+                            <span data-icon="eye" data-icon-size="md"></span>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="totalViews">-</h3>
+                            <p>Total Ditonton</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #43e97b, #38f9d7)">
+                            <span data-icon="calendar" data-icon-size="md"></span>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="recentAdditions">-</h3>
+                            <p>Ditambah (7 Hari)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-grid" style="margin-bottom: 30px;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2>
+                                <span data-icon="tag" data-icon-size="sm" style="margin-right: 8px;"></span>
+                                Distribusi Kategori
+                            </h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="categoryChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h2>
+                                <span data-icon="trendingUp" data-icon-size="sm" style="margin-right: 8px;"></span>
+                                Drama Ditambahkan (7 Hari)
+                            </h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="moviesTimelineChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <div class="table-header">
+                        <div class="search-box">
+                            <input type="text" id="searchInput" placeholder="Cari drama...">
+                            <button class="btn btn-primary" onclick="searchMovies()">
+                                <span data-icon="search" data-icon-size="sm"></span>
+                                <span>Cari</span>
+                            </button>
+                            <button class="btn btn-secondary" onclick="loadMovies(currentPage); loadMovieStats();" title="Refresh data">
+                                <span data-icon="refreshCw" data-icon-size="sm"></span>
+                                <span>Refresh</span>
+                            </button>
+                        </div>
+                        <div class="filter-group">
+                            <select id="categoryFilter" onchange="filterMovies()">
+                                <option value="">Semua Kategori</option>
+                                <option value="Romance">Romance</option>
+                                <option value="Fantasy">Fantasy</option>
+                                <option value="Action">Action</option>
+                                <option value="Comedy">Comedy</option>
+                                <option value="Drama">Drama</option>
+                            </select>
+                            <div style="display: flex; align-items: center; gap: 8px; background: var(--bg-secondary); padding: 8px 12px; border-radius: 6px;">
+                                <label style="font-size: 0.85em; color: var(--text-secondary); font-weight: 500; margin: 0; white-space: nowrap;">Tampilkan:</label>
+                                <select id="entriesPerPage" onchange="changeEntriesPerPage()" style="padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); cursor: pointer; font-weight: 500; min-width: 60px; transition: all 0.2s ease; font-size: 0.9em;">
+                                    <option value="10">10</option>
+                                    <option value="25" selected>25</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                </select>
+                            </div>
+                            <button class="btn btn-primary" onclick="openAddModal()">
+                                <span data-icon="plus" data-icon-size="sm"></span>
+                                <span>Tambah Drama</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="tableContent">
+                        <div class="loading">Memuat drama...</div>
+                    </div>
+
+                    <div id="paginationContainer"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="movieModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Tambah Drama</h2>
+                <button class="modal-close" onclick="closeMovieModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="movieForm">
+                    <input type="hidden" id="movieId">
+                    
+                    <div class="form-group">
+                        <label>Kategori</label>
+                        <select id="movieCategory">
+                            <option value="">Pilih Kategori</option>
+                            <option value="Romance">Romance</option>
+                            <option value="Fantasy">Fantasy</option>
+                            <option value="Action">Action</option>
+                            <option value="Comedy">Comedy</option>
+                            <option value="Drama">Drama</option>
+                        </select>
+                    </div>
+                    
+                    <div id="normalMovieFields" style="display: none;">
+                    </div>
+                    <div class="form-group">
+                        <label>Judul Film</label>
+                        <input type="text" id="movieTitleMain" placeholder="Masukkan judul film" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Deskripsi</label>
+                        <textarea id="movieDescription" rows="4" placeholder="Masukkan deskripsi film"></textarea>
+                    </div>
+                    
+                    <details id="moviePendingPostersSection" style="margin: 20px 0;">
+                        <summary style="cursor: pointer; padding: 10px; background: var(--bg-primary); border-radius: 6px; font-weight: 500;">
+                            🖼 Pilih dari Poster yang Baru Diupload
+                        </summary>
+                        <div style="margin-top: 10px; padding: 10px;">
+                            <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+                                <button type="button" class="btn btn-sm btn-secondary" onclick="refreshMoviePendingPosters()" style="font-size: 0.85em;">
+                                    🔄 Refresh
+                                </button>
+                            </div>
+                            <div id="moviePendingPostersList">
+                                <div class="loading" style="padding: 10px; text-align: center;">Memuat...</div>
+                            </div>
+                            <p style="margin-top: 10px; font-size: 0.9em; color: var(--text-secondary);">
+                                <strong>💡 Tips:</strong> Pilih poster di atas untuk auto-fill File ID, atau isi manual di bawah
+                            </p>
+                        </div>
+                    </details>
+                    
+                    <details id="moviePendingVideosSection" style="margin: 20px 0;">
+                        <summary style="cursor: pointer; padding: 10px; background: var(--bg-primary); border-radius: 6px; font-weight: 500;">
+                            📹 Pilih dari Video yang Baru Diupload
+                        </summary>
+                        <div style="margin-top: 10px; padding: 10px;">
+                            <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+                                <button type="button" class="btn btn-sm btn-secondary" onclick="refreshMoviePendingVideos()" style="font-size: 0.85em;">
+                                    🔄 Refresh
+                                </button>
+                            </div>
+                            <div id="moviePendingVideosList">
+                                <div class="loading" style="padding: 10px; text-align: center;">Memuat...</div>
+                            </div>
+                            <p style="margin-top: 10px; font-size: 0.9em; color: var(--text-secondary);">
+                                <strong>💡 Tips:</strong> Pilih video di atas untuk auto-fill data, atau isi manual di bawah
+                            </p>
+                        </div>
+                    </details>
+                    
+                    <details id="manualPosterSection" style="margin: 15px 0;">
+                        <summary style="cursor: pointer; padding: 10px; background: var(--bg-secondary, #f1f5f9); border-radius: 6px; font-weight: 500;">
+                            ⚙️ Input Manual - Telegram File ID Poster
+                        </summary>
+                        <div style="margin-top: 15px; padding: 10px;">
+                            <div class="form-group">
+                                <label>🖼 Telegram File ID Poster</label>
+                                <input type="text" id="moviePosterFileId" placeholder="Paste File ID dari bot" onblur="previewPosterManual(this.value)">
+                                <small style="color: #667eea; font-size: 0.9em; display: block; margin-top: 4px;">
+                                    💡 Upload poster di Telegram, copy File ID, paste di sini. Poster akan otomatis muncul di bot & Mini App.
+                                </small>
+                                <div id="moviePosterPreview" style="margin-top: 10px;"></div>
+                            </div>
+                        </div>
+                    </details>
+                    
+                    <details id="manualDataFilmSection" style="margin: 15px 0;">
+                        <summary style="cursor: pointer; padding: 10px; background: var(--bg-secondary, #f1f5f9); border-radius: 6px; font-weight: 500;">
+                            ⚙️ Input Manual - Kode Video
+                        </summary>
+                        <div style="margin-top: 15px; padding: 10px;">
+                            <div class="form-group">
+                                <label>🎬 Movie ID / Kode Video</label>
+                                <input type="text" id="movieTitle" placeholder="Masukkan Movie ID atau kode video">
+                                <small style="color: #667eea; font-size: 0.9em; display: block; margin-top: 4px;">
+                                    💡 Masukkan kode unik untuk video ini (contoh: drama_001, movie_abc, dll)
+                                </small>
+                            </div>
+                        </div>
+                    </details>
+                    <label class="series-toggle-card" for="movieIsSeries">
+                        <div class="series-toggle-icon">📺</div>
+                        <div class="series-toggle-content">
+                            <div class="series-toggle-title">Film Series</div>
+                            <div class="series-toggle-subtitle">Film ini punya multiple parts/episode</div>
+                        </div>
+                        <div class="series-toggle-switch">
+                            <input type="checkbox" id="movieIsSeries" class="series-checkbox">
+                            <span class="series-switch-slider"></span>
+                        </div>
+                    </label>
+                    
+                    <div id="seriesUploadSection" style="display: none; margin-top: 20px; padding: 20px; background: var(--bg-secondary); border-radius: 8px; border: 2px solid var(--border-color);">
+                        <h3 style="margin: 0 0 15px 0; color: var(--primary-color); font-size: 1.1em; font-weight: 600;">📹 Upload Film Series</h3>
+                        
+                        <details id="seriesPendingUploadsSection" style="margin-bottom: 20px;">
+                            <summary style="cursor: pointer; padding: 10px; background: var(--bg-primary); border-radius: 6px; font-weight: 500;">
+                                📹 Pilih dari Video yang Baru Diupload
+                            </summary>
+                            <div style="margin-top: 10px; padding: 10px;">
+                                <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+                                    <button type="button" class="btn btn-sm btn-secondary" onclick="refreshSeriesPendingUploads()" style="font-size: 0.85em;">
+                                        🔄 Refresh
+                                    </button>
+                                </div>
+                                <div id="seriesPendingUploadsList">
+                                    <div class="loading" style="padding: 10px; text-align: center;">Memuat...</div>
+                                </div>
+                                <p style="margin-top: 10px; font-size: 0.9em; color: var(--text-secondary);">
+                                    <strong>💡 Tips:</strong> Pilih video di atas untuk auto-fill Movie ID, atau isi manual di bawah
+                                </p>
+                            </div>
+                        </details>
+                        
+                        <details style="margin-bottom: 20px;">
+                            <summary style="cursor: pointer; padding: 10px; background: var(--bg-secondary); border-radius: 6px; font-weight: 500; color: var(--text-secondary);">
+                                ⚙️ Input Manual - Data Film Series
+                            </summary>
+                            <div style="margin-top: 15px; padding: 10px;">
+                                <div class="form-group">
+                                    <label>Movie ID</label>
+                                    <input type="text" id="seriesMovieId" placeholder="Auto-fill dari video atau isi manual">
+                                    <small style="color: #888; font-size: 0.9em;">ID unik untuk film series ini</small>
+                                </div>
+                            </div>
+                        </details>
+                        
+                        <button type="button" class="btn btn-primary" onclick="saveSeriesMovie(event)" style="margin-top: 10px; width: 100%;">
+                            💾 Simpan & Lanjut ke Parts
+                        </button>
+                    </div>
+                    
+                    <div id="partsSection" style="display: none; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h3 style="margin: 0;">Parts Management</h3>
+                            <button type="button" class="btn btn-primary btn-sm" onclick="openAddPartModal()">+ Tambah Part</button>
+                        </div>
+                        <div id="partsTableContainer">
+                            <div class="loading">Memuat parts...</div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeMovieModal()">Batal</button>
+                <button class="btn btn-primary" onclick="saveMovie()">Simpan</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="partModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="partModalTitle">Tambah Part</h2>
+                <button class="modal-close" onclick="closePartModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="partForm">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Part Number</label>
+                            <input type="number" id="partNumber" min="1" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Title</label>
+                            <input type="text" id="partTitle" placeholder="e.g., Part 1, Part 2" required>
+                        </div>
+                    </div>
+                    
+                    <details id="pendingUploadsSection" style="margin: 20px 0;">
+                        <summary style="cursor: pointer; padding: 10px; background: var(--bg-primary); border-radius: 6px; font-weight: 500;">
+                            📹 Pilih dari Video yang Baru Diupload
+                        </summary>
+                        <div style="margin-top: 10px; padding: 10px;">
+                            <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+                                <button type="button" class="btn btn-sm btn-secondary" onclick="refreshPendingUploads()" style="font-size: 0.85em;">
+                                    🔄 Refresh
+                                </button>
+                            </div>
+                            <div id="pendingUploadsList">
+                                <div class="loading" style="padding: 10px; text-align: center;">Memuat...</div>
+                            </div>
+                            <p style="margin-top: 10px; font-size: 0.9em; color: var(--text-secondary);">
+                                <strong>💡 Tips:</strong> Pilih video di atas untuk auto-fill data, atau isi manual di bawah
+                            </p>
+                        </div>
+                    </details>
+                    
+                    <details id="manualFieldsSection" style="margin: 15px 0;">
+                        <summary style="cursor: pointer; padding: 10px; background: var(--bg-secondary, #f1f5f9); border-radius: 6px; font-weight: 500;">
+                            ⚙️ Input Manual - Telegram File ID Video
+                        </summary>
+                        <div style="margin-top: 15px; padding: 10px;">
+                            <div class="form-group">
+                                <label>Telegram File ID</label>
+                                <textarea id="partTelegramFileId" rows="3" placeholder="Paste file_id dari grup Telegram storage" onblur="previewVideoManual(this.value)"></textarea>
+                                <small style="color: #888; font-size: 0.9em;">📹 Upload video ke grup Telegram storage, lalu copy file_id yang dikirim bot</small>
+                                <div id="partVideoPreview" style="margin-top: 10px;"></div>
+                            </div>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Duration (seconds)</label>
+                                    <input type="number" id="partDuration" min="0" placeholder="Optional">
+                                </div>
+                                <div class="form-group">
+                                    <label>Telegram Chat ID</label>
+                                    <input type="text" id="partTelegramChatId" placeholder="Optional">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Telegram Message ID</label>
+                                <input type="text" id="partTelegramMessageId" placeholder="Optional">
+                            </div>
+                            <div class="form-group">
+                                <label>Thumbnail URL</label>
+                                <input type="url" id="partThumbnailUrl" placeholder="Optional">
+                            </div>
+                        </div>
+                    </details>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closePartModal()">Batal</button>
+                <button class="btn btn-primary" onclick="savePart()">Simpan</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="moviesCustomDateModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Pilih Periode Custom</h2>
+                <button class="modal-close" onclick="closeMoviesCustomDateModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Dari Tanggal</label>
+                    <input type="date" id="moviesCustomStartDate" max="">
+                </div>
+                <div class="form-group">
+                    <label>Sampai Tanggal</label>
+                    <input type="date" id="moviesCustomEndDate" max="">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeMoviesCustomDateModal()">Batal</button>
+                <button class="btn btn-primary" onclick="applyMoviesCustomDateFilter()">Terapkan</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+    <script>
+        let currentPage = 1;
+        let currentLimit = 25;
+        let isEditMode = false;
+        let editMovieId = null;
+        let categoryChart = null;
+        let moviesTimelineChart = null;
+        let currentMoviesDateFilter = '30days';
+        let currentMoviesCustomDates = null;
+
+        function changeEntriesPerPage() {
+            const select = document.getElementById('entriesPerPage');
+            currentLimit = parseInt(select.value);
+            loadMovies(1);
+        }
+
+        function setMoviesDateFilter(filter) {
+            currentMoviesDateFilter = filter;
+            currentMoviesCustomDates = null;
+            
+            document.querySelectorAll('.btn-filter').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-filter="${filter}"]`)?.classList.add('active');
+            
+            loadMovieStats();
+        }
+
+        function openMoviesCustomDateModal() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('moviesCustomStartDate').max = today;
+            document.getElementById('moviesCustomEndDate').max = today;
+            
+            if (currentMoviesCustomDates) {
+                document.getElementById('moviesCustomStartDate').value = currentMoviesCustomDates.start;
+                document.getElementById('moviesCustomEndDate').value = currentMoviesCustomDates.end;
+            }
+            
+            document.getElementById('moviesCustomDateModal').classList.add('show');
+        }
+
+        function closeMoviesCustomDateModal() {
+            document.getElementById('moviesCustomDateModal').classList.remove('show');
+        }
+
+        function applyMoviesCustomDateFilter() {
+            const startDate = document.getElementById('moviesCustomStartDate').value;
+            const endDate = document.getElementById('moviesCustomEndDate').value;
+            
+            if (!startDate || !endDate) {
+                AdminPanel.showToast('Mohon pilih tanggal mulai dan akhir', 'error');
+                return;
+            }
+            
+            if (new Date(startDate) > new Date(endDate)) {
+                AdminPanel.showToast('Tanggal mulai tidak boleh lebih dari tanggal akhir', 'error');
+                return;
+            }
+            
+            currentMoviesCustomDates = { start: startDate, end: endDate };
+            currentMoviesDateFilter = 'custom';
+            
+            document.querySelectorAll('.btn-filter').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            closeMoviesCustomDateModal();
+            loadMovieStats();
+        }
+
+        function getMoviesDays() {
+            if (currentMoviesDateFilter === 'custom' && currentMoviesCustomDates) {
+                const start = new Date(currentMoviesCustomDates.start);
+                const end = new Date(currentMoviesCustomDates.end);
+                const diffTime = Math.abs(end - start);
+                return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+            }
+            
+            const daysMap = {
+                '7days': 7,
+                '14days': 14,
+                '30days': 30,
+                '60days': 60
+            };
+            return daysMap[currentMoviesDateFilter] || 30;
+        }
+
+        function generateMoviesDays() {
+            const numDays = getMoviesDays();
+            const days = [];
+            const today = new Date();
+            for (let i = numDays - 1; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                days.push(date.toLocaleDateString('id-ID', { month: 'short', day: 'numeric' }));
+            }
+            return days;
+        }
+
+        async function loadMovieStats() {
+            try {
+                const allMovies = await AdminPanel.apiCall('/admin/movies?page=1&limit=1000');
+                const movies = allMovies.movies || [];
+                
+                const totalMoviesEl = document.getElementById('totalMoviesCount');
+                const topCategoryEl = document.getElementById('topCategory');
+                const totalViewsEl = document.getElementById('totalViews');
+                const recentAdditionsEl = document.getElementById('recentAdditions');
+                
+                if (totalMoviesEl) totalMoviesEl.textContent = movies.length.toLocaleString();
+                
+                const categoryCount = {};
+                let totalViews = 0;
+                movies.forEach(m => {
+                    if (m && m.category) {
+                        categoryCount[m.category] = (categoryCount[m.category] || 0) + 1;
+                    }
+                    totalViews += (m && m.views) || 0;
+                });
+                
+                const topCategory = Object.entries(categoryCount).sort((a, b) => b[1] - a[1])[0];
+                if (topCategoryEl) {
+                    topCategoryEl.textContent = topCategory ? `${topCategory[0]} (${topCategory[1]})` : 'N/A';
+                }
+                if (totalViewsEl) {
+                    totalViewsEl.textContent = totalViews.toLocaleString();
+                }
+                
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const sevenDaysAgo = new Date(today);
+                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+                const recentCount = movies.filter(m => {
+                    if (!m || !m.created_at) return false;
+                    try {
+                        const createdDate = AdminPanel.toWIBDate(m.created_at);
+                        if (!createdDate) return false;
+                        return createdDate >= sevenDaysAgo;
+                    } catch (e) {
+                        console.error('Error parsing date:', e);
+                        return false;
+                    }
+                }).length;
+                if (recentAdditionsEl) {
+                    recentAdditionsEl.textContent = recentCount.toLocaleString();
+                }
+                
+                initMovieCharts(movies);
+            } catch (error) {
+                console.error('Error loading movie stats:', error);
+                AdminPanel.showToast('Gagal memuat statistik drama: ' + error.message, 'error');
+                
+                document.getElementById('totalMoviesCount').textContent = '0';
+                document.getElementById('topCategory').textContent = 'N/A';
+                document.getElementById('totalViews').textContent = '0';
+                document.getElementById('recentAdditions').textContent = '0';
+                
+                initMovieCharts([]);
+            }
+        }
+
+        function initMovieCharts(movies) {
+            const isDark = AdminPanel.getCurrentTheme() === 'dark';
+            const chartConfig = AdminPanel.getChartConfig(isDark);
+            const donutConfig = AdminPanel.getDonutChartConfig(isDark);
+            
+            if (categoryChart) categoryChart.destroy();
+            
+            const categoryCount = {};
+            movies.forEach(m => {
+                if (m && m.category) {
+                    categoryCount[m.category] = (categoryCount[m.category] || 0) + 1;
+                }
+            });
+            
+            const categories = Object.keys(categoryCount);
+            const counts = Object.values(categoryCount);
+            const colors = ['#667eea', '#f093fb', '#4facfe', '#43e97b', '#feca57'];
+            
+            const categoryChartCanvas = document.getElementById('categoryChart');
+            if (categoryChartCanvas) {
+                const categoryContainer = categoryChartCanvas.parentElement;
+                
+                if (categories.length === 0) {
+                    categoryChartCanvas.style.display = 'none';
+                    
+                    let emptyMsg = categoryContainer.querySelector('.empty-chart-message');
+                    if (!emptyMsg) {
+                        emptyMsg = document.createElement('div');
+                        emptyMsg.className = 'empty-chart-message';
+                        emptyMsg.style.cssText = 'text-align: center; padding: 40px 20px; color: var(--text-secondary); font-size: 0.9em;';
+                        categoryContainer.appendChild(emptyMsg);
+                    }
+                    emptyMsg.textContent = '📊 Belum ada data kategori';
+                    emptyMsg.style.display = 'block';
+                } else {
+                    categoryChartCanvas.style.display = 'block';
+                    const emptyMsg = categoryContainer.querySelector('.empty-chart-message');
+                    if (emptyMsg) emptyMsg.style.display = 'none';
+                    
+                    categoryChart = new Chart(categoryChartCanvas, {
+                        type: 'doughnut',
+                        data: {
+                            labels: categories,
+                            datasets: [{
+                                data: counts,
+                                backgroundColor: colors.slice(0, categories.length).map((c, i) => 
+                                    isDark ? c : c + 'cc'
+                                ),
+                                borderWidth: isDark ? 2 : 0,
+                                borderColor: isDark ? '#1e293b' : 'transparent'
+                            }]
+                        },
+                        options: donutConfig
+                    });
+                }
+            }
+            
+            const days = generateMoviesDays();
+            const numDays = getMoviesDays();
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const datesList = [];
+            for (let i = numDays - 1; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                datesList.push(date);
+            }
+            
+            const moviesByDay = new Array(numDays).fill(0);
+            movies.forEach(movie => {
+                if (!movie?.created_at) return;
+                
+                try {
+                    const movieDate = AdminPanel.toWIBDate(movie.created_at);
+                    if (!movieDate) return;
+                    
+                    for (let i = 0; i < numDays; i++) {
+                        if (movieDate.getTime() === datesList[i].getTime()) {
+                            moviesByDay[i]++;
+                            break;
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error processing movie date:', e);
+                }
+            });
+            
+            if (moviesTimelineChart) moviesTimelineChart.destroy();
+            
+            const timelineCtx = document.getElementById('moviesTimelineChart');
+            if (timelineCtx) {
+                const timelineContainer = timelineCtx.parentElement;
+                const hasData = movies.length > 0;
+                
+                if (!hasData) {
+                    timelineCtx.style.display = 'none';
+                    
+                    let emptyMsg = timelineContainer.querySelector('.empty-chart-message');
+                    if (!emptyMsg) {
+                        emptyMsg = document.createElement('div');
+                        emptyMsg.className = 'empty-chart-message';
+                        emptyMsg.style.cssText = 'text-align: center; padding: 40px 20px; color: var(--text-secondary); font-size: 0.9em;';
+                        timelineContainer.appendChild(emptyMsg);
+                    }
+                    emptyMsg.textContent = '📈 Belum ada data drama';
+                    emptyMsg.style.display = 'block';
+                } else {
+                    timelineCtx.style.display = 'block';
+                    const emptyMsg = timelineContainer.querySelector('.empty-chart-message');
+                    if (emptyMsg) emptyMsg.style.display = 'none';
+                    
+                    moviesTimelineChart = new Chart(timelineCtx, {
+                        type: 'line',
+                        data: {
+                            labels: days,
+                            datasets: [{
+                                label: 'Drama Ditambahkan',
+                                data: moviesByDay,
+                                borderColor: isDark ? '#60a5fa' : '#667eea',
+                                backgroundColor: isDark ? 'rgba(96, 165, 250, 0.1)' : 'rgba(102, 126, 234, 0.1)',
+                                tension: 0.4,
+                                fill: true,
+                                borderWidth: 2
+                            }]
+                        },
+                        options: {
+                            ...chartConfig,
+                            plugins: {
+                                ...chartConfig.plugins,
+                                legend: { display: false }
+                            },
+                            scales: {
+                                ...chartConfig.scales,
+                                y: {
+                                    ...chartConfig.scales.y,
+                                    beginAtZero: true,
+                                    ticks: {
+                                        ...chartConfig.scales.y.ticks,
+                                        stepSize: 1,
+                                        precision: 0
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+        }
+
+        function generateLast7Days() {
+            const days = [];
+            const today = new Date();
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                days.push(date.toLocaleDateString('id-ID', { month: 'short', day: 'numeric' }));
+            }
+            return days;
+        }
+
+        async function loadMovies(page = 1) {
+            const user = await AdminPanel.checkAuth();
+            if (!user) return;
+
+            document.getElementById('adminUsername').textContent = user.username;
+
+            const search = document.getElementById('searchInput').value;
+            const category = document.getElementById('categoryFilter').value;
+            const params = new URLSearchParams({ page, limit: currentLimit });
+            if (search) params.append('search', search);
+            if (category) params.append('category', category);
+
+            try {
+                const data = await AdminPanel.apiCall(`/admin/movies?${params}`);
+                
+                const tableContent = document.getElementById('tableContent');
+                if (data.movies.length === 0) {
+                    tableContent.innerHTML = '<div class="empty-state">Tidak ada drama</div>';
+                    document.getElementById('paginationContainer').innerHTML = '';
+                    return;
+                }
+
+                tableContent.innerHTML = `
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Poster</th>
+                                    <th>ID</th>
+                                    <th>Judul</th>
+                                    <th>Kategori</th>
+                                    <th>Ditonton</th>
+                                    <th>Dibuat</th>
+                                    <th>Kode Video</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.movies.map(m => `
+                                    <tr>
+                                        <td>
+                                            <div class="poster-thumbnail">
+                                                <img src="${m.poster_file_id ? '/api/poster/' + m.poster_file_id : (m.poster_url || '/api/placeholder/80/120')}" 
+                                                     alt="${m.title}"
+                                                     onerror="this.src='/api/placeholder/80/120'">
+                                            </div>
+                                        </td>
+                                        <td>${AdminPanel.formatIdWithCopy(m.id, 10)}</td>
+                                        <td>
+                                            <strong>${m.title}</strong>
+                                            ${m.is_series ? '<span class="badge" style="background: #667eea; color: white; margin-left: 8px; font-size: 0.75em;">📺 Series</span>' : ''}
+                                            <br>
+                                            <small>${m.description ? m.description.substring(0, 50) + '...' : '-'}</small>
+                                            ${m.is_series && m.total_parts ? `<br><small style="color: #667eea;">Parts: ${m.total_parts}</small>` : ''}
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-primary">${m.category || 'N/A'}</span>
+                                        </td>
+                                        <td>${m.views.toLocaleString()}</td>
+                                        <td>${AdminPanel.formatDate(m.created_at)}</td>
+                                        <td>
+                                            ${m.telegram_file_id ? `<code style="background: var(--bg-secondary); padding: 4px 8px; border-radius: 4px; font-size: 0.85em; word-break: break-all;">...${m.telegram_file_id.slice(-10)}</code>` : '<span style="color: var(--text-secondary);">-</span>'}
+                                        </td>
+                                        <td>
+                                            <div class="actions">
+                                                <button class="btn btn-sm btn-primary" onclick="openEditModal('${m.id.replace(/'/g, "\\'")}')">
+                                                    Edit
+                                                </button>
+                                                <button class="btn btn-sm btn-danger" onclick="deleteMovie('${m.id.replace(/'/g, "\\'")}')">
+                                                    Hapus
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+
+                currentPage = page;
+                const paginationEl = AdminPanel.createPagination(data.page, data.total_pages, loadMovies);
+                document.getElementById('paginationContainer').innerHTML = '';
+                document.getElementById('paginationContainer').appendChild(paginationEl);
+
+            } catch (error) {
+                AdminPanel.showToast(error.message, 'error');
+            }
+        }
+
+        function searchMovies() {
+            loadMovies(1);
+        }
+
+        function filterMovies() {
+            loadMovies(1);
+        }
+
+        document.getElementById('searchInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchMovies();
+        });
+
+        function openAddModal() {
+            isEditMode = false;
+            editMovieId = null;
+            selectedPendingPosterId = null;
+            document.getElementById('modalTitle').textContent = 'Tambah Drama';
+            document.getElementById('movieForm').reset();
+            document.getElementById('movieId').disabled = false;
+            document.getElementById('movieIsSeries').checked = false;
+            document.querySelector('.series-toggle-card')?.classList.remove('active');
+            document.getElementById('normalMovieFields').style.display = 'grid';
+            document.getElementById('seriesUploadSection').style.display = 'none';
+            document.getElementById('partsSection').style.display = 'none';
+            document.getElementById('manualDataFilmSection').style.display = 'block';
+            document.getElementById('manualPosterSection').style.display = 'block';
+            document.getElementById('moviePendingVideosSection').style.display = 'block';
+            document.getElementById('movieModal').classList.add('show');
+            document.body.style.overflow = 'hidden';
+            
+            loadMoviePendingVideos();
+            loadMoviePendingPosters();
+            setupIsSeriesListener();
+        }
+        
+        function setupIsSeriesListener() {
+            const isSeriesCheckbox = document.getElementById('movieIsSeries');
+            const seriesCard = document.querySelector('.series-toggle-card');
+            
+            isSeriesCheckbox.onchange = async function() {
+                const normalMovieFields = document.getElementById('normalMovieFields');
+                const seriesUploadSection = document.getElementById('seriesUploadSection');
+                const partsSection = document.getElementById('partsSection');
+                const manualDataFilmSection = document.getElementById('manualDataFilmSection');
+                const manualPosterSection = document.getElementById('manualPosterSection');
+                const moviePendingVideosSection = document.getElementById('moviePendingVideosSection');
+                
+                if (this.checked) {
+                    seriesCard?.classList.add('active');
+                    manualDataFilmSection.style.display = 'none';
+                    manualPosterSection.style.display = 'none';
+                    moviePendingVideosSection.style.display = 'none';
+                } else {
+                    seriesCard?.classList.remove('active');
+                    manualDataFilmSection.style.display = 'block';
+                    manualPosterSection.style.display = 'block';
+                    moviePendingVideosSection.style.display = 'block';
+                }
+                
+                if (this.checked && isEditMode && editMovieId) {
+                    normalMovieFields.style.display = 'none';
+                    seriesUploadSection.style.display = 'none';
+                    partsSection.style.display = 'block';
+                    loadParts(editMovieId);
+                } else if (this.checked && !isEditMode) {
+                    normalMovieFields.style.display = 'none';
+                    seriesUploadSection.style.display = 'block';
+                    partsSection.style.display = 'none';
+                    
+                    const existingMovieId = document.getElementById('movieId').value.trim();
+                    
+                    document.getElementById('seriesMovieId').value = existingMovieId;
+                    
+                    loadSeriesPendingUploads();
+                } else {
+                    normalMovieFields.style.display = 'grid';
+                    seriesUploadSection.style.display = 'none';
+                    partsSection.style.display = 'none';
+                }
+            };
+        }
+        
+        async function loadSeriesPendingUploads() {
+            const container = document.getElementById('seriesPendingUploadsList');
+            container.innerHTML = '<div class="loading" style="padding: 10px; text-align: center;">Memuat...</div>';
+            
+            try {
+                const data = await AdminPanel.apiCall('/admin/pending-uploads?page=1&limit=10');
+                
+                if (!data.uploads || data.uploads.length === 0) {
+                    container.innerHTML = `
+                        <div style="padding: 15px; text-align: center; color: #666;">
+                            <p style="margin: 0;">📹 Belum ada video yang diupload.</p>
+                            <p style="margin: 5px 0 0 0; font-size: 0.9em;">Upload video ke grup Telegram dulu.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                container.innerHTML = `
+                    <div style="max-height: 250px; overflow-y: auto;">
+                        ${data.uploads.map(upload => {
+                            const timeAgo = getTimeAgo(upload.created_at);
+                            const duration = upload.duration ? formatDuration(upload.duration) : 'Unknown';
+                            const fileSize = upload.file_size ? formatFileSize(upload.file_size) : 'Unknown';
+                            const fileIdPreview = upload.telegram_file_id 
+                                ? upload.telegram_file_id.substring(0, 20) + '...' 
+                                : 'Unknown';
+                            
+                            return `
+                                <div class="series-upload-item" 
+                                     onclick="selectSeriesPendingUpload(event, '${upload.telegram_file_id}')">
+                                    <div style="display: flex; justify-content: space-between; align-items: start; gap: 10px;">
+                                        ${upload.thumbnail_url ? `
+                                            <div style="flex-shrink: 0;">
+                                                <img src="/admin/telegram-file/${upload.thumbnail_url}" 
+                                                     alt="Video preview" 
+                                                     style="width: 80px; height: 60px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border-color);"
+                                                     onerror="this.style.display='none'">
+                                            </div>
+                                        ` : ''}
+                                        <div style="flex: 1; min-width: 0;">
+                                            <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">
+                                                📹 Video #${upload.id}
+                                            </div>
+                                            <div style="font-size: 0.85em; color: var(--text-secondary);">
+                                                ⏱️ ${duration} • 💾 ${fileSize}
+                                            </div>
+                                            <div style="font-size: 0.8em; color: var(--text-tertiary); margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                                📄 ${fileIdPreview}
+                                            </div>
+                                            <div style="font-size: 0.8em; color: var(--text-tertiary); margin-top: 2px;">
+                                                🕒 ${timeAgo}
+                                            </div>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-primary" style="flex-shrink: 0; font-size: 0.8em; padding: 4px 12px;">
+                                            Pilih
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            } catch (error) {
+                container.innerHTML = `
+                    <div style="padding: 15px; text-align: center; color: #ef4444;">
+                        <p>❌ Error memuat uploads: ${error.message}</p>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="loadSeriesPendingUploads()" style="margin-top: 8px;">
+                            Coba Lagi
+                        </button>
+                    </div>
+                `;
+            }
+        }
+        
+        function selectSeriesPendingUpload(e, fileId) {
+            document.getElementById('seriesMovieId').value = fileId;
+            
+            const allItems = document.querySelectorAll('.series-upload-item');
+            allItems.forEach(item => item.classList.remove('selected'));
+            
+            if (e && e.currentTarget) {
+                e.currentTarget.classList.add('selected');
+            }
+            
+            AdminPanel.showToast('Video dipilih! Movie ID sudah di-set.', 'success');
+        }
+        
+        function refreshSeriesPendingUploads() {
+            loadSeriesPendingUploads();
+            AdminPanel.showToast('Refreshing pending uploads...', 'info');
+        }
+        
+        let selectedPendingPosterId = null;
+        
+        async function loadMoviePendingPosters() {
+            const container = document.getElementById('moviePendingPostersList');
+            container.innerHTML = '<div class="loading" style="padding: 10px; text-align: center;">Memuat...</div>';
+            
+            try {
+                const data = await AdminPanel.apiCall('/admin/pending-uploads?content_type=poster&page=1&limit=10');
+                
+                if (!data.uploads || data.uploads.length === 0) {
+                    container.innerHTML = `
+                        <div style="padding: 15px; text-align: center; color: #666;">
+                            <p style="margin: 0;">🖼 Belum ada poster yang diupload.</p>
+                            <p style="margin: 5px 0 0 0; font-size: 0.9em;">Upload poster ke grup Telegram dulu, atau isi manual di bawah.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                container.innerHTML = `
+                    <div style="max-height: 250px; overflow-y: auto;">
+                        ${data.uploads.map(upload => {
+                            const timeAgo = getTimeAgo(upload.created_at);
+                            const fileSize = upload.file_size ? formatFileSize(upload.file_size) : 'Unknown';
+                            const dimensions = upload.poster_width && upload.poster_height 
+                                ? `${upload.poster_width} x ${upload.poster_height}` 
+                                : 'Unknown';
+                            const fileIdPreview = upload.telegram_file_id 
+                                ? upload.telegram_file_id.substring(0, 20) + '...' 
+                                : 'Unknown';
+                            
+                            return `
+                                <div class="pending-upload-item" 
+                                     onclick="selectMoviePendingPoster(${upload.id}, '${upload.telegram_file_id}')">
+                                    <div style="display: flex; justify-content: space-between; align-items: start; gap: 10px;">
+                                        ${upload.telegram_file_id ? `
+                                            <div style="flex-shrink: 0;">
+                                                <img src="/admin/telegram-file/${upload.telegram_file_id}" 
+                                                     alt="Poster preview" 
+                                                     style="width: 60px; height: 80px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border-color);"
+                                                     onerror="this.style.display='none'">
+                                            </div>
+                                        ` : ''}
+                                        <div style="flex: 1; min-width: 0;">
+                                            <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">
+                                                🖼 Poster #${upload.id}
+                                            </div>
+                                            <div style="font-size: 0.85em; color: var(--text-secondary);">
+                                                📐 ${dimensions} • 💾 ${fileSize}
+                                            </div>
+                                            <div style="font-size: 0.8em; color: var(--text-tertiary); margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                                🆔 ${fileIdPreview}
+                                            </div>
+                                            <div style="font-size: 0.8em; color: var(--text-tertiary); margin-top: 4px;">
+                                                🕒 ${timeAgo}
+                                            </div>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-primary" style="flex-shrink: 0; font-size: 0.8em; padding: 4px 12px;">
+                                            Pilih
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            } catch (error) {
+                container.innerHTML = `
+                    <div style="padding: 15px; text-align: center; color: #ef4444;">
+                        <p>❌ Error memuat posters: ${error.message}</p>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="loadMoviePendingPosters()" style="margin-top: 8px;">
+                            Coba Lagi
+                        </button>
+                    </div>
+                `;
+            }
+        }
+        
+        function selectMoviePendingPoster(uploadId, fileId) {
+            selectedPendingPosterId = uploadId;
+            
+            document.getElementById('moviePosterFileId').value = fileId;
+            
+            const allItems = document.querySelectorAll('#moviePendingPostersList .pending-upload-item');
+            allItems.forEach(item => item.classList.remove('selected'));
+            
+            event.currentTarget.classList.add('selected');
+            
+            AdminPanel.showToast('Poster dipilih! File ID sudah di-populate.', 'success');
+        }
+        
+        function refreshMoviePendingPosters() {
+            loadMoviePendingPosters();
+            AdminPanel.showToast('Refreshing pending posters...', 'info');
+        }
+        
+        async function loadMoviePendingVideos() {
+            const container = document.getElementById('moviePendingVideosList');
+            container.innerHTML = '<div class="loading" style="padding: 10px; text-align: center;">Memuat...</div>';
+            
+            try {
+                const data = await AdminPanel.apiCall('/admin/pending-uploads?content_type=video&page=1&limit=10');
+                
+                if (!data.uploads || data.uploads.length === 0) {
+                    container.innerHTML = `
+                        <div style="padding: 15px; text-align: center; color: #666;">
+                            <p style="margin: 0;">📹 Belum ada video yang diupload.</p>
+                            <p style="margin: 5px 0 0 0; font-size: 0.9em;">Upload video ke grup Telegram dulu, atau isi manual di bawah.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                container.innerHTML = `
+                    <div style="max-height: 250px; overflow-y: auto;">
+                        ${data.uploads.map(upload => {
+                            const timeAgo = getTimeAgo(upload.created_at);
+                            const duration = upload.duration ? formatDuration(upload.duration) : 'Unknown';
+                            const fileSize = upload.file_size ? formatFileSize(upload.file_size) : 'Unknown';
+                            const fileIdPreview = upload.telegram_file_id 
+                                ? upload.telegram_file_id.substring(0, 20) + '...' 
+                                : 'Unknown';
+                            
+                            return `
+                                <div class="pending-upload-item" 
+                                     onclick="selectMoviePendingVideo(${upload.id}, '${upload.telegram_file_id}', '${upload.telegram_chat_id}', '${upload.telegram_message_id}', ${upload.duration}, ${upload.file_size}, '${upload.thumbnail_url || ''}')">
+                                    <div style="display: flex; justify-content: space-between; align-items: start; gap: 10px;">
+                                        ${upload.thumbnail_url ? `
+                                            <div style="flex-shrink: 0;">
+                                                <img src="/admin/telegram-file/${upload.thumbnail_url}" 
+                                                     alt="Video preview" 
+                                                     style="width: 80px; height: 60px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border-color);"
+                                                     onerror="this.style.display='none'">
+                                            </div>
+                                        ` : ''}
+                                        <div style="flex: 1; min-width: 0;">
+                                            <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">
+                                                📹 Video #${upload.id}
+                                            </div>
+                                            <div style="font-size: 0.85em; color: var(--text-secondary);">
+                                                ⏱️ ${duration} • 💾 ${fileSize}
+                                            </div>
+                                            <div style="font-size: 0.8em; color: var(--text-tertiary); margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                                📄 ${fileIdPreview}
+                                            </div>
+                                            <div style="font-size: 0.8em; color: var(--text-tertiary); margin-top: 2px;">
+                                                🕒 ${timeAgo}
+                                            </div>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-primary" style="font-size: 0.8em; padding: 4px 12px;">
+                                            Pilih
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            } catch (error) {
+                container.innerHTML = `
+                    <div style="padding: 15px; text-align: center; color: #ef4444;">
+                        <p>❌ Error memuat videos: ${error.message}</p>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="loadMoviePendingVideos()" style="margin-top: 8px;">
+                            Coba Lagi
+                        </button>
+                    </div>
+                `;
+            }
+        }
+        
+        function selectMoviePendingVideo(uploadId, fileId, chatId, messageId, duration, fileSize, thumbnailUrl) {
+            document.getElementById('movieId').value = fileId;
+            
+            const allItems = document.querySelectorAll('#moviePendingVideosList .pending-upload-item');
+            allItems.forEach(item => item.classList.remove('selected'));
+            
+            event.currentTarget.classList.add('selected');
+            
+            AdminPanel.showToast('Video dipilih! Movie ID sudah di-set dari File ID.', 'success');
+        }
+        
+        function refreshMoviePendingVideos() {
+            loadMoviePendingVideos();
+            AdminPanel.showToast('Refreshing pending videos...', 'info');
+        }
+        
+        async function saveSeriesMovie(e) {
+            const movieId = document.getElementById('seriesMovieId').value.trim();
+            const movieTitle = document.getElementById('movieTitleMain').value.trim();
+            
+            if (!movieId || !movieTitle) {
+                AdminPanel.showToast('Mohon isi Movie ID dan Judul terlebih dahulu', 'error');
+                return;
+            }
+            
+            const saveButton = e && e.target ? e.target : null;
+            const originalText = saveButton ? saveButton.innerHTML : '';
+            
+            if (saveButton) {
+                saveButton.disabled = true;
+                saveButton.innerHTML = '⏳ Menyimpan...';
+            }
+            
+            try {
+                const movieData = {
+                    id: movieId,
+                    title: movieTitle,
+                    category: document.getElementById('movieCategory').value || null,
+                    poster_file_id: document.getElementById('moviePosterFileId').value || null,
+                    description: document.getElementById('movieDescription').value || null,
+                    is_series: true
+                };
+                
+                await AdminPanel.apiCall('/admin/movies', {
+                    method: 'POST',
+                    body: JSON.stringify(movieData)
+                });
+                
+                document.getElementById('movieId').value = movieId;
+                document.getElementById('movieTitle').value = movieTitle;
+                
+                isEditMode = true;
+                editMovieId = movieId;
+                document.getElementById('modalTitle').textContent = 'Edit Drama';
+                document.getElementById('movieId').disabled = true;
+                
+                AdminPanel.showToast('Film series berhasil disimpan! 🎉', 'success');
+                
+                document.getElementById('normalMovieFields').style.display = 'none';
+                document.getElementById('seriesUploadSection').style.display = 'none';
+                document.getElementById('partsSection').style.display = 'block';
+                await loadParts(movieId);
+                
+                if (saveButton) {
+                    saveButton.disabled = false;
+                    saveButton.innerHTML = originalText;
+                }
+            } catch (error) {
+                if (saveButton) {
+                    saveButton.disabled = false;
+                    saveButton.innerHTML = originalText;
+                }
+                AdminPanel.showToast(error.message, 'error');
+            }
+        }
+
+        async function openEditModal(movieId) {
+            isEditMode = true;
+            editMovieId = movieId;
+            document.getElementById('modalTitle').textContent = 'Edit Drama';
+
+            try {
+                const movie = await AdminPanel.apiCall(`/admin/movies/${movieId}`);
+                document.getElementById('movieId').value = movie.id;
+                document.getElementById('movieId').disabled = true;
+                document.getElementById('movieTitle').value = movie.title;
+                document.getElementById('movieTitleMain').value = movie.title;
+                document.getElementById('movieCategory').value = movie.category || '';
+                document.getElementById('moviePosterFileId').value = movie.poster_file_id || '';
+                document.getElementById('movieDescription').value = movie.description || '';
+                document.getElementById('movieIsSeries').checked = movie.is_series || false;
+                
+                const seriesCard = document.querySelector('.series-toggle-card');
+                const manualDataFilmSection = document.getElementById('manualDataFilmSection');
+                const manualPosterSection = document.getElementById('manualPosterSection');
+                
+                if (movie.is_series) {
+                    seriesCard?.classList.add('active');
+                    manualDataFilmSection.style.display = 'none';
+                    manualPosterSection.style.display = 'none';
+                } else {
+                    seriesCard?.classList.remove('active');
+                    manualDataFilmSection.style.display = 'block';
+                    manualPosterSection.style.display = 'block';
+                }
+                
+                setupIsSeriesListener();
+                
+                if (movie.is_series) {
+                    document.getElementById('normalMovieFields').style.display = 'none';
+                    document.getElementById('seriesUploadSection').style.display = 'none';
+                    document.getElementById('partsSection').style.display = 'block';
+                    await loadParts(movieId);
+                } else {
+                    document.getElementById('normalMovieFields').style.display = 'grid';
+                    document.getElementById('seriesUploadSection').style.display = 'none';
+                    document.getElementById('partsSection').style.display = 'none';
+                }
+                
+                document.getElementById('movieModal').classList.add('show');
+                document.body.style.overflow = 'hidden';
+            } catch (error) {
+                AdminPanel.showToast(error.message, 'error');
+            }
+        }
+
+        function closeMovieModal() {
+            document.getElementById('movieModal').classList.remove('show');
+            document.getElementById('movieForm').reset();
+            document.body.style.overflow = '';
+            isEditMode = false;
+            editMovieId = null;
+        }
+
+        async function saveMovie() {
+            const isSeries = document.getElementById('movieIsSeries').checked;
+            const titleMain = document.getElementById('movieTitleMain').value.trim();
+            const titleManual = document.getElementById('movieTitle').value.trim();
+            const finalTitle = titleMain || titleManual;
+            
+            let movieId = document.getElementById('movieId').value.trim();
+            if (!movieId && titleManual) {
+                movieId = titleManual;
+            }
+            
+            const movieData = {
+                id: movieId,
+                title: finalTitle,
+                category: document.getElementById('movieCategory').value || null,
+                poster_file_id: document.getElementById('moviePosterFileId').value || null,
+                description: document.getElementById('movieDescription').value || null,
+                is_series: isSeries
+            };
+
+            if (!movieData.title || (!isEditMode && !movieData.id)) {
+                AdminPanel.showToast('Mohon isi Judul Film dan Kode Video', 'error');
+                return;
+            }
+            
+            if (!isSeries) {
+                AdminPanel.showToast('Untuk film non-series, gunakan parts dengan 1 part', 'info');
+            }
+
+            try {
+                if (isEditMode) {
+                    await AdminPanel.apiCall(`/admin/movies/${editMovieId}`, {
+                        method: 'PUT',
+                        body: JSON.stringify(movieData)
+                    });
+                    AdminPanel.showToast('Drama berhasil diupdate', 'success');
+                } else {
+                    const response = await AdminPanel.apiCall('/admin/movies', {
+                        method: 'POST',
+                        body: JSON.stringify(movieData)
+                    });
+                    
+                    if (response.warning === 'duplicate') {
+                        const confirmMsg = `${response.message}\n\nFilm yang sudah ada:\n- Judul: ${response.existing_movie.title}\n- Kategori: ${response.existing_movie.category}\n\nTetap lanjutkan?`;
+                        if (AdminPanel.confirmAction(confirmMsg)) {
+                            movieData.force_duplicate = true;
+                            const duplicateResponse = await AdminPanel.apiCall('/admin/movies', {
+                                method: 'POST',
+                                body: JSON.stringify(movieData)
+                            });
+                            
+                            if (duplicateResponse.new_id) {
+                                AdminPanel.showToast(`✅ Film berhasil ditambahkan dengan ID baru: ${duplicateResponse.new_id}`, 'success');
+                            } else {
+                                AdminPanel.showToast('Drama berhasil ditambahkan', 'success');
+                            }
+                        } else {
+                            return;
+                        }
+                    } else {
+                        AdminPanel.showToast('Drama berhasil ditambahkan', 'success');
+                    }
+                }
+
+                closeMovieModal();
+                loadMovies(currentPage);
+                loadMovieStats();
+            } catch (error) {
+                AdminPanel.showToast(error.message, 'error');
+            }
+        }
+
+        async function deleteMovie(movieId) {
+            if (!AdminPanel.confirmAction('Apakah Anda yakin ingin menghapus drama ini?')) return;
+
+            try {
+                await AdminPanel.apiCall(`/admin/movies/${movieId}`, { method: 'DELETE' });
+                AdminPanel.showToast('Drama berhasil dihapus', 'success');
+                loadMovies(currentPage);
+            } catch (error) {
+                AdminPanel.showToast(error.message, 'error');
+            }
+        }
+
+        function toggleTheme() {
+            AdminPanel.toggleTheme();
+            updateThemeIcon();
+            
+            if (categoryChart || moviesTimelineChart) {
+                loadMovieStats();
+            }
+        }
+
+        function updateThemeIcon() {
+            const currentTheme = AdminPanel.getCurrentTheme();
+            const themeToggle = document.getElementById('themeToggle');
+            const icon = currentTheme === 'dark' ? 'sun' : 'moon';
+            themeToggle.innerHTML = `<span data-icon="${icon}" data-icon-size="md"></span>`;
+            if (window.Icons && window.Icons.renderIcons) {
+                window.Icons.renderIcons();
+            }
+        }
+
+
+        let isEditPartMode = false;
+        let editPartId = null;
+        let selectedPendingUploadId = null;
+
+        async function loadPendingUploads() {
+            const container = document.getElementById('pendingUploadsList');
+            container.innerHTML = '<div class="loading" style="padding: 10px; text-align: center;">Memuat...</div>';
+            
+            try {
+                const data = await AdminPanel.apiCall('/admin/pending-uploads?page=1&limit=10');
+                
+                if (!data.uploads || data.uploads.length === 0) {
+                    container.innerHTML = `
+                        <div style="padding: 15px; text-align: center; color: #666;">
+                            <p style="margin: 0;">📹 Belum ada video yang diupload.</p>
+                            <p style="margin: 5px 0 0 0; font-size: 0.9em;">Upload video ke grup Telegram dulu, atau isi manual di bawah.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                container.innerHTML = `
+                    <div style="max-height: 250px; overflow-y: auto;">
+                        ${data.uploads.map(upload => {
+                            const timeAgo = getTimeAgo(upload.created_at);
+                            const duration = upload.duration ? formatDuration(upload.duration) : 'Unknown';
+                            const fileSize = upload.file_size ? formatFileSize(upload.file_size) : 'Unknown';
+                            
+                            return `
+                                <div class="pending-upload-item" 
+                                     onclick="selectPendingUpload(${upload.id}, '${upload.telegram_file_id}', '${upload.telegram_chat_id}', '${upload.telegram_message_id}', ${upload.duration || 0}, '${upload.thumbnail_url || ''}')">
+                                    <div style="display: flex; justify-content: space-between; align-items: start; gap: 10px;">
+                                        ${upload.thumbnail_url ? `
+                                            <div style="flex-shrink: 0;">
+                                                <img src="/admin/telegram-file/${upload.thumbnail_url}" 
+                                                     alt="Video preview" 
+                                                     style="width: 80px; height: 60px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border-color);"
+                                                     onerror="this.style.display='none'">
+                                            </div>
+                                        ` : ''}
+                                        <div style="flex: 1; min-width: 0;">
+                                            <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">
+                                                📹 Video #${upload.id}
+                                            </div>
+                                            <div style="font-size: 0.85em; color: var(--text-secondary);">
+                                                ⏱️ ${duration} • 💾 ${fileSize}
+                                            </div>
+                                            <div style="font-size: 0.8em; color: var(--text-tertiary); margin-top: 4px;">
+                                                🕒 ${timeAgo}
+                                            </div>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-primary" style="flex-shrink: 0; font-size: 0.8em; padding: 4px 12px;">
+                                            Pilih
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            } catch (error) {
+                container.innerHTML = `
+                    <div style="padding: 15px; text-align: center; color: #ef4444;">
+                        <p>❌ Error memuat uploads: ${error.message}</p>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="loadPendingUploads()" style="margin-top: 8px;">
+                            Coba Lagi
+                        </button>
+                    </div>
+                `;
+            }
+        }
+        
+        function selectPendingUpload(uploadId, fileId, chatId, messageId, duration, thumbnailUrl) {
+            selectedPendingUploadId = uploadId;
+            
+            document.getElementById('partTelegramFileId').value = fileId;
+            document.getElementById('partTelegramChatId').value = chatId;
+            document.getElementById('partTelegramMessageId').value = messageId;
+            document.getElementById('partDuration').value = duration || '';
+            document.getElementById('partThumbnailUrl').value = thumbnailUrl || '';
+            
+            const allItems = document.querySelectorAll('.pending-upload-item');
+            allItems.forEach(item => item.classList.remove('selected'));
+            
+            event.currentTarget.classList.add('selected');
+            
+            AdminPanel.showToast('Video dipilih! Fields sudah di-populate.', 'success');
+        }
+        
+        function refreshPendingUploads() {
+            loadPendingUploads();
+            AdminPanel.showToast('Refreshing pending uploads...', 'info');
+        }
+        
+        function formatDuration(seconds) {
+            if (!seconds) return 'Unknown';
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+        
+        function formatFileSize(bytes) {
+            if (!bytes) return 'Unknown';
+            const mb = (bytes / (1024 * 1024)).toFixed(1);
+            return `${mb} MB`;
+        }
+        
+        function getTimeAgo(dateString) {
+            if (!dateString) return 'Unknown';
+            
+            let uploadDate;
+            if (dateString.endsWith('Z') || dateString.includes('+')) {
+                uploadDate = new Date(dateString);
+            } else {
+                uploadDate = new Date(dateString + 'Z');
+            }
+            
+            if (isNaN(uploadDate.getTime())) {
+                uploadDate = new Date(dateString);
+            }
+            
+            if (isNaN(uploadDate.getTime())) {
+                return 'Unknown';
+            }
+            
+            const nowWIB = AdminPanel.getNowWIB();
+            const now = nowWIB.getTime();
+            const diff = Math.floor((now - uploadDate.getTime()) / 1000);
+            
+            if (diff < 0) return 'Baru saja';
+            if (diff < 60) return 'Baru saja';
+            if (diff < 3600) return `${Math.floor(diff / 60)} menit lalu`;
+            if (diff < 86400) return `${Math.floor(diff / 3600)} jam lalu`;
+            return `${Math.floor(diff / 86400)} hari lalu`;
+        }
+
+        async function loadParts(movieId) {
+            const container = document.getElementById('partsTableContainer');
+            container.innerHTML = '<div class="loading">Memuat parts...</div>';
+
+            try {
+                const data = await AdminPanel.apiCall(`/admin/movies/${movieId}/parts`);
+                
+                if (!data.parts || data.parts.length === 0) {
+                    container.innerHTML = '<div class="empty-state">Belum ada part. Klik "Tambah Part" untuk mulai.</div>';
+                    return;
+                }
+
+                container.innerHTML = `
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Part</th>
+                                    <th>Title</th>
+                                    <th>Source</th>
+                                    <th>Views</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.parts.map(part => `
+                                    <tr>
+                                        <td><strong>#${part.part_number}</strong></td>
+                                        <td>${part.title}</td>
+                                        <td>
+                                            <span class="badge" style="background: #667eea; color: white;">📱 Telegram</span>
+                                        </td>
+                                        <td>${part.views || 0}</td>
+                                        <td>
+                                            <div class="actions">
+                                                <button type="button" class="btn btn-sm btn-primary" onclick="openEditPartModal(${part.id})">
+                                                    Edit
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-danger" onclick="deletePart(${part.id})">
+                                                    Hapus
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            } catch (error) {
+                container.innerHTML = '<div class="empty-state">Error memuat parts: ' + error.message + '</div>';
+                AdminPanel.showToast(error.message, 'error');
+            }
+        }
+
+        function openAddPartModal() {
+            if (!editMovieId) {
+                AdminPanel.showToast('Error: Movie ID tidak ditemukan', 'error');
+                return;
+            }
+            
+            isEditPartMode = false;
+            editPartId = null;
+            selectedPendingUploadId = null;
+            document.getElementById('partModalTitle').textContent = 'Tambah Part';
+            document.getElementById('partForm').reset();
+            document.getElementById('partModal').classList.add('show');
+            document.body.style.overflow = 'hidden';
+            
+            loadPendingUploads();
+        }
+
+        async function openEditPartModal(partId) {
+            if (!editMovieId) {
+                AdminPanel.showToast('Error: Movie ID tidak ditemukan', 'error');
+                return;
+            }
+            
+            isEditPartMode = true;
+            editPartId = partId;
+            document.getElementById('partModalTitle').textContent = 'Edit Part';
+
+            try {
+                const data = await AdminPanel.apiCall(`/admin/movies/${editMovieId}/parts`);
+                const part = data.parts.find(p => p.id === partId);
+                
+                if (!part) {
+                    throw new Error('Part tidak ditemukan');
+                }
+
+                document.getElementById('partNumber').value = part.part_number;
+                document.getElementById('partTitle').value = part.title;
+                document.getElementById('partTelegramFileId').value = part.telegram_file_id || '';
+                document.getElementById('partDuration').value = part.duration || '';
+                document.getElementById('partTelegramChatId').value = part.telegram_chat_id || '';
+                document.getElementById('partTelegramMessageId').value = part.telegram_message_id || '';
+                document.getElementById('partThumbnailUrl').value = part.thumbnail_url || '';
+                
+                document.getElementById('partModal').classList.add('show');
+                document.body.style.overflow = 'hidden';
+            } catch (error) {
+                AdminPanel.showToast(error.message, 'error');
+            }
+        }
+
+        function closePartModal() {
+            document.getElementById('partModal').classList.remove('show');
+            document.getElementById('partForm').reset();
+            document.body.style.overflow = '';
+            isEditPartMode = false;
+            editPartId = null;
+            selectedPendingUploadId = null;
+        }
+
+        async function savePart() {
+            if (!editMovieId) {
+                AdminPanel.showToast('Error: Movie ID tidak ditemukan', 'error');
+                return;
+            }
+
+            const partNumber = parseInt(document.getElementById('partNumber').value);
+            const title = document.getElementById('partTitle').value;
+            
+            if (!partNumber || !title) {
+                AdminPanel.showToast('Mohon isi Part Number dan Title', 'error');
+                return;
+            }
+
+            const partData = {
+                part_number: partNumber,
+                title: title
+            };
+            
+            if (selectedPendingUploadId) {
+                partData.pending_upload_id = selectedPendingUploadId;
+                partData.telegram_file_id = document.getElementById('partTelegramFileId').value || null;
+                partData.telegram_chat_id = document.getElementById('partTelegramChatId').value || null;
+                partData.telegram_message_id = document.getElementById('partTelegramMessageId').value || null;
+                partData.duration = parseInt(document.getElementById('partDuration').value) || null;
+                partData.thumbnail_url = document.getElementById('partThumbnailUrl').value || null;
+            } else {
+                const telegramFileId = document.getElementById('partTelegramFileId').value;
+                if (!telegramFileId) {
+                    AdminPanel.showToast('Mohon pilih video dari list atau isi Telegram File ID manual', 'error');
+                    return;
+                }
+                
+                partData.telegram_file_id = telegramFileId;
+                partData.duration = parseInt(document.getElementById('partDuration').value) || null;
+                partData.telegram_chat_id = document.getElementById('partTelegramChatId').value || null;
+                partData.telegram_message_id = document.getElementById('partTelegramMessageId').value || null;
+                partData.thumbnail_url = document.getElementById('partThumbnailUrl').value || null;
+            }
+
+            try {
+                if (isEditPartMode && editPartId) {
+                    await AdminPanel.apiCall(`/admin/movies/${editMovieId}/parts/${editPartId}`, {
+                        method: 'PUT',
+                        body: JSON.stringify(partData)
+                    });
+                    AdminPanel.showToast('Part berhasil diupdate', 'success');
+                } else {
+                    const result = await AdminPanel.apiCall(`/admin/movies/${editMovieId}/parts`, {
+                        method: 'POST',
+                        body: JSON.stringify(partData)
+                    });
+                    
+                    if (result.from_pending_upload) {
+                        AdminPanel.showToast('Part berhasil ditambahkan dari pending upload! 🎉', 'success');
+                    } else {
+                        AdminPanel.showToast('Part berhasil ditambahkan', 'success');
+                    }
+                }
+
+                closePartModal();
+                await loadParts(editMovieId);
+                loadMovies(currentPage);
+            } catch (error) {
+                AdminPanel.showToast(error.message, 'error');
+            }
+        }
+
+        async function deletePart(partId) {
+            if (!editMovieId) {
+                AdminPanel.showToast('Error: Movie ID tidak ditemukan', 'error');
+                return;
+            }
+
+            if (!AdminPanel.confirmAction('Apakah Anda yakin ingin menghapus part ini?')) return;
+
+            try {
+                await AdminPanel.apiCall(`/admin/movies/${editMovieId}/parts/${partId}`, {
+                    method: 'DELETE'
+                });
+                AdminPanel.showToast('Part berhasil dihapus', 'success');
+                await loadParts(editMovieId);
+                loadMovies(currentPage);
+            } catch (error) {
+                AdminPanel.showToast(error.message, 'error');
+            }
+        }
+
+        function previewPosterManual(fileId) {
+            const previewDiv = document.getElementById('moviePosterPreview');
+            if (!previewDiv) return;
+            
+            if (!fileId || fileId.trim() === '') {
+                previewDiv.innerHTML = '';
+                return;
+            }
+            
+            const cleanFileId = fileId.trim();
+            previewDiv.innerHTML = `
+                <div style="padding: 10px; background: var(--bg-secondary); border-radius: 6px; border: 1px solid var(--border-color);">
+                    <div style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 8px;">📋 Preview:</div>
+                    <img src="/admin/telegram-file/${cleanFileId}" 
+                         alt="Poster preview" 
+                         style="max-width: 200px; max-height: 300px; border-radius: 4px; border: 1px solid var(--border-color);"
+                         onerror="this.parentElement.innerHTML='<div style=\\'color: #ef4444; font-size: 0.9em;\\'>❌ Error: File ID tidak valid atau tidak bisa dimuat</div>'">
+                    <div style="font-size: 0.85em; color: var(--text-tertiary); margin-top: 6px; word-break: break-all;">File ID: ${cleanFileId.substring(0, 50)}${cleanFileId.length > 50 ? '...' : ''}</div>
+                </div>
+            `;
+        }
+
+        function previewVideoManual(fileId) {
+            const previewDiv = document.getElementById('partVideoPreview');
+            if (!previewDiv) return;
+            
+            if (!fileId || fileId.trim() === '') {
+                previewDiv.innerHTML = '';
+                return;
+            }
+            
+            const cleanFileId = fileId.trim();
+            previewDiv.innerHTML = `
+                <div style="padding: 10px; background: var(--bg-secondary); border-radius: 6px; border: 1px solid var(--border-color);">
+                    <div style="font-size: 0.9em; color: var(--text-primary); margin-bottom: 4px;">✅ File ID Detected</div>
+                    <div style="font-size: 0.85em; color: var(--text-tertiary); word-break: break-all; font-family: monospace;">${cleanFileId.substring(0, 80)}${cleanFileId.length > 80 ? '...' : ''}</div>
+                    <div style="font-size: 0.8em; color: var(--text-secondary); margin-top: 6px;">📹 Video akan di-validate saat disimpan</div>
+                </div>
+            `;
+        }
+
+        window.addEventListener('DOMContentLoaded', function() {
+            updateThemeIcon();
+            AdminPanel.initSidebarUserInfo();
+            AdminPanel.initMobileSidebarAdminUsers();
+            AdminPanel.init();
+            loadMovieStats();
+            loadMovies();
+        });
+    </script>
+
+    <!-- Bottom Navigation for Mobile -->
+    <nav class="bottom-nav">
+        <div class="bottom-nav-items">
+            <a href="dashboard.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="dashboard" data-icon-size="md"></span>
+            </a>
+            <a href="users.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="users" data-icon-size="md"></span>
+            </a>
+            <a href="movies.html" class="bottom-nav-item active">
+                <span class="nav-icon" data-icon="movie" data-icon-size="md"></span>
+            </a>
+            <a href="requests.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="fileText" data-icon-size="md"></span>
+            </a>
+            <a href="withdrawals.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="dollarSign" data-icon-size="md"></span>
+            </a>
+            <a href="payments.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="creditCard" data-icon-size="md"></span>
+            </a>
+        </div>
+    </nav>
+    <script>
+        // Start auto-refresh untuk update real-time
+        AdminPanel.startAutoRefresh();
+    </script>
+</html>
+
+<!-- MOBILE SIDEBAR -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<aside class="sidebar-mobile" id="sidebarMobile">
+    <div class="sidebar-header">
+        <div class="logo">
+            <img src="assets/logo-dramamu.jpg" alt="Dramamu Logo">
+        </div>
+        <h2>Dramamu Admin</h2>
+        <p class="admin-subtitle">Panel Kontrol</p>
+        <button class="sidebar-close" id="sidebarMobileClose" aria-label="Close Menu">
+            <span data-icon="x" data-icon-size="md"></span>
+        </button>
+    </div>
+    <nav class="sidebar-nav">
+        <a href="dashboard.html" class="nav-item" data-page="dashboard"><span class="nav-icon" data-icon="dashboard" data-icon-size="md"></span><span>Dashboard</span></a>
+        <a href="analytics.html" class="nav-item" data-page="analytics"><span class="nav-icon" data-icon="barChart" data-icon-size="md"></span><span>Analytics</span></a>
+        <a href="users.html" class="nav-item" data-page="users"><span class="nav-icon" data-icon="users" data-icon-size="md"></span><span>Pengguna</span></a>
+        <a href="movies.html" class="nav-item" data-page="movies"><span class="nav-icon" data-icon="movie" data-icon-size="md"></span><span>Drama</span></a>
+        <a href="requests.html" class="nav-item" data-page="requests"><span class="nav-icon" data-icon="fileText" data-icon-size="md"></span><span>Permintaan</span></a>
+        <a href="withdrawals.html" class="nav-item" data-page="withdrawals"><span class="nav-icon" data-icon="dollarSign" data-icon-size="md"></span><span>Penarikan</span></a>
+        <a href="payments.html" class="nav-item" data-page="payments"><span class="nav-icon" data-icon="creditCard" data-icon-size="md"></span><span>Pembayaran</span></a>
+        <a href="settings.html" class="nav-item" data-page="settings"><span class="nav-icon" data-icon="settings" data-icon-size="md"></span><span>Pengaturan</span></a>
+        <a href="admin-users.html" class="nav-item" data-page="admin-users" style="display: none;"><span class="nav-icon" data-icon="shield" data-icon-size="md"></span><span>Admin Users</span></a>
+    </nav>
+    <div id="sidebarMobileAdminUsers" class="sidebar-mobile-content"><div class="loading-message">Memuat...</div></div>
+</aside>
+</body>

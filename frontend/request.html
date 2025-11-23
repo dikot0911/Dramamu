@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Request Drama</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="config.js?v=222222222-3"></script>
+    <link rel="stylesheet" href="premium-styles.css">
+    <script src="premium-icons.js"></script>
+    <script src="premium-init.js"></script>
+    <style>
+        body { 
+            background: linear-gradient(180deg, #0f0f1e 0%, #1a1a2e 100%);
+            color: #E5E7EB; 
+            font-family: 'Manrope', sans-serif;
+            position: relative;
+            min-height: 100vh;
+        }
+        
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        input, select {
+            background: rgba(15, 23, 42, 0.7);
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        input:focus, select:focus {
+            background: rgba(15, 23, 42, 0.9);
+            border-color: #d4af37;
+            box-shadow: 0 0 0 5px rgba(212, 175, 55, 0.2);
+            outline: none;
+        }
+        
+        input::placeholder {
+            color: rgba(255, 255, 255, 0.35);
+        }
+        
+        .premium-card {
+            background: rgba(30, 41, 59, 0.95);
+            border: 2px solid rgba(212, 175, 55, 0.2);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+    </style>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+</head>
+<body>
+    <div class="w-full h-screen overflow-hidden relative flex flex-col" style="position: relative; z-index: 1;">
+        
+        <header class="w-full z-20 py-3 text-center border-b" style="background: rgba(26, 26, 46, 0.95); border-color: rgba(212, 175, 55, 0.2); border-width: 1px;">
+            <h1 class="text-xl font-bold tracking-wide">Request Drama</h1>
+        </header>
+        
+        <main class="flex-1 overflow-y-auto scrollbar-hide p-4 pb-24">
+            <div class="max-w-md mx-auto">
+        <h1 class="text-lg font-semibold text-white mb-2">DRAMAMU REQUEST</h1>
+        <p class="text-gray-400 text-xs mb-4">
+            Ajukan request drama kamu di sini. <b>Limite 1 request per hari.</b>
+            Pastikan Judul BERBAHASA "INDONESIA".
+        </p>
+
+        <!-- History Request Section -->
+        <div id="request-history" class="mb-6"></div>
+
+        <form id="request-form" class="space-y-4">
+            <div>
+                <label for="username" class="block text-sm font-medium text-gray-300">Username Telegram</label>
+                <input type="text" id="username" readonly 
+                       class="w-full mt-1 p-2.5 rounded-md border text-gray-400" 
+                       placeholder="@username_kamu">
+            </div>
+            
+            <div>
+                <label for="judul_drama" class="block text-sm font-medium text-gray-300">Judul Drama</label>
+                <input type="text" id="judul_drama" required 
+                       class="w-full mt-1 p-2.5 rounded-md border text-white" 
+                       placeholder="Contoh: Cinta Beracun">
+            </div>
+            
+            <div>
+                <label for="nama_apk" class="block text-sm font-medium text-gray-300">Nama APK</label>
+                <select id="nama_apk" required 
+                        class="w-full mt-1 p-2.5 rounded-md border text-white">
+                    <option value="" disabled selected>Dari APK Mana</option>
+                    <option value="WeTV">WeTV</option>
+                    <option value="iQIYI">iQIYI</option>
+                    <option value="Viu">Viu</option>
+                    <option value="Netflix">Netflix</option>
+                    <option value="Lainnya">Lainnya</option>
+                </select>
+            </div>
+            
+            <button type="submit" 
+                    class="w-full font-bold py-3 rounded-md" style="background: linear-gradient(135deg, #d4af37 0%, #f0d266 100%); color: #0f0f1e; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4);" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 10px 30px rgba(212, 175, 55, 0.6)';" onmouseout="this.style.transform=''; this.style.boxShadow='0 6px 20px rgba(212, 175, 55, 0.4)';">
+                Kirim Request
+            </button>
+        </form>
+            </div>
+        </main>
+    </div>
+    
+    <script src="navbar.js?v=222222222"></script>
+
+    <script>
+        const tg = window.Telegram?.WebApp;
+        if (!tg) {
+            console.warn('⚠️ Telegram WebApp not available');
+            return;
+        }
+        
+        tg.ready();
+        tg.enableClosingConfirmation();
+        
+        tg.disableVerticalSwipes();
+        console.log("🔒 Vertical swipes disabled - mini app tidak akan close saat scroll");
+
+        const user = tg.initDataUnsafe?.user;
+        if (user) {
+            const usernameInput = document.getElementById('username');
+            if (user.username) {
+                usernameInput.value = "@" + user.username;
+            } else {
+                usernameInput.value = user.first_name + (user.last_name ? " " + user.last_name : "");
+            }
+        }
+
+        // Load request history
+        async function loadRequestHistory() {
+            if (!tg || !tg.initData) return;
+            
+            const historyContainer = document.getElementById('request-history');
+            
+            try {
+                const response = await fetch(window.API_BASE_URL + '/api/v1/drama_requests/list', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        init_data: tg.initData
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    if (result.requests && result.requests.length > 0) {
+                        displayRequestHistory(result.requests);
+                    } else {
+                        historyContainer.innerHTML = `
+                            <div class="premium-card rounded-lg p-3 mb-4">
+                                <div class="text-center text-gray-400 py-3">
+                                    <div class="text-xs">Belum ada request drama</div>
+                                    <div class="text-[10px] text-gray-500 mt-0.5">Request pertama kamu akan muncul di sini</div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                } else {
+                    historyContainer.innerHTML = `
+                        <div class="premium-card rounded-lg p-3 mb-4">
+                            <div class="text-center text-gray-400 py-2">
+                                <div class="text-xs mb-0.5">Gagal memuat history</div>
+                                <div class="text-[10px] text-gray-500">${result.detail || 'Terjadi kesalahan'}</div>
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading history:', error);
+                historyContainer.innerHTML = `
+                    <div class="premium-card rounded-lg p-3 mb-4">
+                        <div class="text-center text-gray-400 py-2">
+                            <div class="text-xs mb-0.5">Gagal memuat history</div>
+                            <div class="text-[10px] text-gray-500">Tidak dapat terhubung ke server</div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function displayRequestHistory(requests) {
+            const historyContainer = document.getElementById('request-history');
+            
+            const html = `
+                <div class="premium-card rounded-lg mb-4 h-72 flex flex-col">
+                    <div class="p-3 pb-2">
+                        <h2 class="text-sm font-semibold text-white">History Request</h2>
+                    </div>
+                    <div class="flex-1 overflow-y-auto scrollbar-hide px-3 pb-3" style="border-top: 1px solid rgba(212, 175, 55, 0.2);">
+                        ${requests.map((req, index) => {
+                            const statusText = {
+                                'pending': 'Menunggu',
+                                'approved': 'Disetujui',
+                                'rejected': 'Ditolak',
+                                'processing': 'Diproses'
+                            }[req.status] || req.status;
+                            
+                            const updatedDate = req.updated_at ? new Date(req.updated_at).toLocaleDateString('id-ID') : '';
+                            const hasUpdate = req.updated_at && req.updated_at !== req.created_at;
+                            
+                            return `
+                                <div class="py-2 text-xs ${index > 0 ? 'border-t border-gray-700' : 'pt-3'}">
+                                    <div class="text-white font-medium mb-0.5">${req.judul}</div>
+                                    <div class="text-gray-400">
+                                        ${req.apk_source ? `APK: ${req.apk_source} | ` : ''}Status: ${statusText}
+                                    </div>
+                                    <div class="text-gray-500 text-[10px]">
+                                        Dikirim: ${new Date(req.created_at).toLocaleDateString('id-ID')}
+                                        ${hasUpdate ? ` | Update: ${updatedDate}` : ''}
+                                    </div>
+                                    ${req.admin_notes ? `
+                                        <div class="mt-1 text-gray-300 text-[10px]">
+                                            Pesan Admin: ${req.admin_notes}
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+            
+            historyContainer.innerHTML = html;
+        }
+
+        // Load history on page load
+        loadRequestHistory();
+
+        document.getElementById('request-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            if (!tg || !tg.initData) {
+                alert('Telegram data tidak tersedia. Silakan tutup dan buka kembali aplikasi.');
+                return;
+            }
+            
+            const judul = document.getElementById('judul_drama').value;
+            const apk = document.getElementById('nama_apk').value;
+
+            if (!judul || !apk) {
+                alert("Isi semua data, bre!");
+                return;
+            }
+            
+            const submitButton = e.target.querySelector('button[type="submit"]');
+            const originalText = submitButton.textContent;
+            submitButton.disabled = true;
+            submitButton.textContent = 'Mengirim...';
+
+            try {
+                const response = await fetch(window.API_BASE_URL + '/api/v1/drama_request', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        init_data: tg.initData,
+                        judul: judul,
+                        apk_source: apk
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    // Reload history
+                    loadRequestHistory();
+                    // Reset form
+                    document.getElementById('judul_drama').value = '';
+                    document.getElementById('nama_apk').value = '';
+                    
+                    if (tg.showPopup) {
+                        tg.showPopup({
+                            title: 'Berhasil!',
+                            message: `Request kamu sudah diterima.\n\n${judul} (${apk})\n\nTim kami akan cek secepatnya. Terima kasih!`,
+                            buttons: [{type: 'ok'}]
+                        });
+                    } else {
+                        alert(`Request kamu sudah diterima.\n\n${judul} (${apk})\n\nTim kami akan cek secepatnya. Terima kasih!`);
+                    }
+                } else {
+                    alert(`Gagal: ${result.detail || 'Terjadi kesalahan'}`);
+                    submitButton.disabled = false;
+                    submitButton.textContent = originalText;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Gagal menghubungi server. Silakan coba lagi.');
+                submitButton.disabled = false;
+                submitButton.textContent = originalText;
+            }
+        });
+        
+        // Cleanup function to prevent memory leaks
+        function cleanup() {
+            console.log('🧹 Cleaning up resources...');
+            console.log('✅ Cleanup complete');
+        }
+        
+        // Add cleanup on page unload
+        window.addEventListener('beforeunload', cleanup);
+        window.addEventListener('pagehide', cleanup);
+    </script>
+    <script src="cache-manager?t=555555555".js?v=222222222"></script>
+</body>
+</html>

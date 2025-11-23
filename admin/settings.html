@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="id" translate="no">
+<head>
+    <base href="/panel/">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <meta name="google" content="notranslate">
+    <title>Pengaturan - Admin Panel</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles-mobile.css">
+    <script src="icons.js"></script>
+    <script src="themeToggle.js"></script>
+    <script src="sidebar.js"></script>
+    <script src="expand.js"></script>
+</head>
+<body data-page="settings">
+    <div class="admin-layout">
+        <!-- Desktop Sidebar - Static (tidak reload) -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <img src="assets/logo-dramamu.jpg" alt="Dramamu Logo">
+                </div>
+                <h2>Dramamu Admin</h2>
+                <p class="admin-subtitle">Panel Kontrol</p>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="dashboard.html" class="nav-item" data-page="dashboard">
+                    <span class="nav-icon" data-icon="dashboard" data-icon-size="md"></span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="analytics.html" class="nav-item" data-page="analytics">
+                    <span class="nav-icon" data-icon="barChart" data-icon-size="md"></span>
+                    <span>Analytics</span>
+                </a>
+                <a href="users.html" class="nav-item" data-page="users">
+                    <span class="nav-icon" data-icon="users" data-icon-size="md"></span>
+                    <span>Pengguna</span>
+                </a>
+                <a href="movies.html" class="nav-item" data-page="movies">
+                    <span class="nav-icon" data-icon="movie" data-icon-size="md"></span>
+                    <span>Drama</span>
+                </a>
+                <a href="requests.html" class="nav-item" data-page="requests">
+                    <span class="nav-icon" data-icon="fileText" data-icon-size="md"></span>
+                    <span>Permintaan</span>
+                    <span class="request-notification-badge notification-badge"></span>
+                </a>
+                <a href="withdrawals.html" class="nav-item" data-page="withdrawals">
+                    <span class="nav-icon" data-icon="dollarSign" data-icon-size="md"></span>
+                    <span>Penarikan</span>
+                    <span class="withdrawal-notification-badge notification-badge"></span>
+                </a>
+                <a href="payments.html" class="nav-item" data-page="payments">
+                    <span class="nav-icon" data-icon="creditCard" data-icon-size="md"></span>
+                    <span>Pembayaran</span>
+                </a>
+                <a href="settings.html" class="nav-item" data-page="settings">
+                    <span class="nav-icon" data-icon="settings" data-icon-size="md"></span>
+                    <span>Pengaturan</span>
+                </a>
+                <a href="admin-users.html" class="nav-item" data-page="admin-users" style="display: none;">
+                    <span class="nav-icon" data-icon="shield" data-icon-size="md"></span>
+                    <span>Admin Users</span>
+                </a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="header">
+                <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <div class="breadcrumb">
+                    <span>Pengaturan</span>
+                </div>
+                <div class="header-actions">
+                    <div id="themeToggleContainer"></div>
+                    <div class="user-info">
+                        <span data-icon="user" data-icon-size="sm" style="margin-right: 6px;"></span>
+                        <span id="adminUsername">Admin</span>
+                    </div>
+                    <button class="btn btn-secondary" onclick="AdminPanel.logout()">
+                        <span data-icon="logOut" data-icon-size="sm"></span>
+                        <span>Logout</span>
+                    </button>
+                </div>
+            </header>
+
+            <div class="content">
+                <div class="page-header">
+                    <h1 class="page-title">Pengaturan Sistem</h1>
+                    <div class="page-actions">
+                        <button class="btn btn-primary" onclick="addNewSetting()">
+                            <span data-icon="plus" data-icon-size="sm"></span>
+                            <span>Tambah Setting</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Konfigurasi Aplikasi</h2>
+                    </div>
+                    <div class="card-body">
+                        <div id="settingsList" class="loading">Memuat...</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Fitur Broadcast & Export</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="broadcast-section">
+                            <h3>Broadcast Message</h3>
+                            <p style="margin-bottom: 16px; color: var(--text-secondary);">
+                                Kirim pesan broadcast ke semua user atau hanya VIP users via Telegram bot.
+                            </p>
+                            <div class="form-group">
+                                <label>Target Audience</label>
+                                <select id="broadcastTarget" class="form-control">
+                                    <option value="all">Semua User</option>
+                                    <option value="vip">Hanya VIP</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Pesan</label>
+                                <textarea id="broadcastMessage" class="form-control" rows="5" placeholder="Tulis pesan broadcast..."></textarea>
+                            </div>
+                            <button class="btn btn-primary" onclick="sendBroadcast()">
+                                <span data-icon="send" data-icon-size="sm"></span>
+                                <span>Kirim Broadcast</span>
+                            </button>
+                        </div>
+
+                        <hr style="margin: 24px 0; border: 1px solid var(--border);">
+
+                        <div class="export-section">
+                            <h3>Export Data</h3>
+                            <p style="margin-bottom: 16px; color: var(--text-secondary);">
+                                Download data dalam format CSV untuk analisis lebih lanjut.
+                            </p>
+                            <div class="export-buttons">
+                                <button class="btn btn-secondary" onclick="exportData('users')">
+                                    <span data-icon="download" data-icon-size="sm"></span>
+                                    <span>Export Users</span>
+                                </button>
+                                <button class="btn btn-secondary" onclick="exportData('payments')">
+                                    <span data-icon="download" data-icon-size="sm"></span>
+                                    <span>Export Payments</span>
+                                </button>
+                                <button class="btn btn-secondary" onclick="exportData('withdrawals')">
+                                    <span data-icon="download" data-icon-size="sm"></span>
+                                    <span>Export Withdrawals</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="settingModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Tambah Setting</h2>
+                <button class="close-btn" onclick="closeSettingModal()">
+                    <span data-icon="x" data-icon-size="md"></span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="settingForm" onsubmit="saveSetting(event)">
+                    <div class="form-group">
+                        <label>Key</label>
+                        <input type="text" id="settingKey" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Value</label>
+                        <input type="text" id="settingValue" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Deskripsi</label>
+                        <textarea id="settingDescription" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="closeSettingModal()">Batal</button>
+                        <button type="submit" class="btn btn-primary">Simpan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+    <script>
+        let settings = [];
+
+        async function loadSettings() {
+            try {
+                const response = await AdminPanel.apiCall('/admin/settings');
+                settings = response.settings;
+                displaySettings();
+            } catch (error) {
+                console.error('Error loading settings:', error);
+                document.getElementById('settingsList').innerHTML = '<div class="empty-state">Gagal memuat settings</div>';
+            }
+        }
+
+        function displaySettings() {
+            const container = document.getElementById('settingsList');
+            
+            if (!settings || settings.length === 0) {
+                container.innerHTML = '<div class="empty-state">Belum ada setting. Klik "Tambah Setting" untuk membuat setting baru.</div>';
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="settings-list">
+                    ${settings.map(setting => `
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <div class="setting-key">${setting.key}</div>
+                                <div class="setting-value">${setting.value || '-'}</div>
+                                ${setting.description ? `<div class="setting-desc">${setting.description}</div>` : ''}
+                            </div>
+                            <button class="btn btn-sm btn-secondary" onclick="editSetting('${setting.key}')">
+                                <span data-icon="edit" data-icon-size="sm"></span>
+                            </button>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            if (window.initIcons) {
+                initIcons();
+            }
+        }
+
+        function addNewSetting() {
+            document.getElementById('modalTitle').textContent = 'Tambah Setting';
+            document.getElementById('settingKey').value = '';
+            document.getElementById('settingValue').value = '';
+            document.getElementById('settingDescription').value = '';
+            document.getElementById('settingKey').readOnly = false;
+            document.getElementById('settingModal').style.display = 'flex';
+        }
+
+        function editSetting(key) {
+            const setting = settings.find(s => s.key === key);
+            if (!setting) return;
+
+            document.getElementById('modalTitle').textContent = 'Edit Setting';
+            document.getElementById('settingKey').value = setting.key;
+            document.getElementById('settingValue').value = setting.value || '';
+            document.getElementById('settingDescription').value = setting.description || '';
+            document.getElementById('settingKey').readOnly = true;
+            document.getElementById('settingModal').style.display = 'flex';
+        }
+
+        function closeSettingModal() {
+            document.getElementById('settingModal').style.display = 'none';
+        }
+
+        async function saveSetting(event) {
+            event.preventDefault();
+
+            const key = document.getElementById('settingKey').value;
+            const value = document.getElementById('settingValue').value;
+            const description = document.getElementById('settingDescription').value;
+
+            try {
+                await AdminPanel.apiCall(`/admin/settings/${key}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        key,
+                        value,
+                        description
+                    })
+                });
+
+                AdminPanel.showToast('Setting berhasil disimpan', 'success');
+                closeSettingModal();
+                loadSettings();
+            } catch (error) {
+                console.error('Error saving setting:', error);
+                AdminPanel.showToast('Gagal menyimpan setting', 'error');
+            }
+        }
+
+        async function sendBroadcast() {
+            const message = document.getElementById('broadcastMessage').value;
+            const target = document.getElementById('broadcastTarget').value;
+
+            if (!message.trim()) {
+                AdminPanel.showToast('Pesan tidak boleh kosong', 'error');
+                return;
+            }
+
+            if (!confirm('Kirim broadcast ke ' + (target === 'all' ? 'semua user' : 'VIP users') + '?')) {
+                return;
+            }
+
+            try {
+                const response = await AdminPanel.apiCall('/admin/broadcast', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        message,
+                        target,
+                        vip_only: target === 'vip'
+                    })
+                });
+
+                AdminPanel.showToast(response.message, 'success');
+                document.getElementById('broadcastMessage').value = '';
+            } catch (error) {
+                console.error('Error sending broadcast:', error);
+                AdminPanel.showToast('Gagal mengirim broadcast', 'error');
+            }
+        }
+
+        async function exportData(type) {
+            try {
+                const token = localStorage.getItem('admin_token');
+                const url = `${AdminPanel.API_BASE_URL}/admin/export/${type}`;
+                
+                const link = document.createElement('a');
+                link.href = url + '?token=' + token;
+                link.download = `${type}.csv`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                AdminPanel.showToast(`Export ${type} berhasil`, 'success');
+            } catch (error) {
+                console.error('Error exporting data:', error);
+                AdminPanel.showToast('Gagal export data', 'error');
+            }
+        }
+
+        function toggleTheme() {
+            AdminPanel.toggleTheme();
+        }
+
+        async function loadAdminInfo() {
+            try {
+                const admin = await AdminPanel.apiCall('/admin/me');
+                document.getElementById('adminUsername').textContent = admin.username;
+            } catch (error) {
+                console.error('Error loading admin info:', error);
+            }
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('settingModal');
+            if (event.target === modal) {
+                closeSettingModal();
+            }
+        }
+    </script>
+
+    <nav class="bottom-nav">
+        <div class="bottom-nav-items">
+            <a href="dashboard.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="dashboard" data-icon-size="md"></span>
+            </a>
+            <a href="users.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="users" data-icon-size="md"></span>
+            </a>
+            <a href="movies.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="movie" data-icon-size="md"></span>
+            </a>
+            <a href="requests.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="fileText" data-icon-size="md"></span>
+            </a>
+            <a href="withdrawals.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="dollarSign" data-icon-size="md"></span>
+            </a>
+            <a href="payments.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="creditCard" data-icon-size="md"></span>
+            </a>
+        </div>
+    </nav>
+    <script>
+        // Start auto-refresh untuk update real-time
+        AdminPanel.startAutoRefresh(10000);
+
+        window.addEventListener('DOMContentLoaded', function() {
+            if (window.initIcons) {
+                initIcons();
+            }
+            AdminPanel.checkAuth();
+            AdminPanel.init();
+            AdminPanel.initMobileSidebarAdminUsers();
+            AdminPanel.initSidebarUserInfo();
+            loadAdminInfo();
+            loadSettings();
+        });
+    </script>
+
+    <style>
+        .broadcast-section, .export-section {
+            margin-bottom: 24px;
+        }
+
+        .broadcast-section h3, .export-section h3 {
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .export-buttons {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .settings-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .setting-info {
+            flex: 1;
+        }
+
+        .setting-key {
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 4px;
+        }
+
+        .setting-value {
+            font-size: 14px;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .setting-desc {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+    </style>
+</html>
+
+<!-- MOBILE SIDEBAR -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<aside class="sidebar-mobile" id="sidebarMobile">
+    <div class="sidebar-header">
+        <div class="logo">
+            <img src="assets/logo-dramamu.jpg" alt="Dramamu Logo">
+        </div>
+        <h2>Dramamu Admin</h2>
+        <p class="admin-subtitle">Panel Kontrol</p>
+        <button class="sidebar-close" id="sidebarMobileClose" aria-label="Close Menu">
+            <span data-icon="x" data-icon-size="md"></span>
+        </button>
+    </div>
+    <nav class="sidebar-nav">
+        <a href="dashboard.html" class="nav-item" data-page="dashboard"><span class="nav-icon" data-icon="dashboard" data-icon-size="md"></span><span>Dashboard</span></a>
+        <a href="analytics.html" class="nav-item" data-page="analytics"><span class="nav-icon" data-icon="barChart" data-icon-size="md"></span><span>Analytics</span></a>
+        <a href="users.html" class="nav-item" data-page="users"><span class="nav-icon" data-icon="users" data-icon-size="md"></span><span>Pengguna</span></a>
+        <a href="movies.html" class="nav-item" data-page="movies"><span class="nav-icon" data-icon="movie" data-icon-size="md"></span><span>Drama</span></a>
+        <a href="requests.html" class="nav-item" data-page="requests"><span class="nav-icon" data-icon="fileText" data-icon-size="md"></span><span>Permintaan</span></a>
+        <a href="withdrawals.html" class="nav-item" data-page="withdrawals"><span class="nav-icon" data-icon="dollarSign" data-icon-size="md"></span><span>Penarikan</span></a>
+        <a href="payments.html" class="nav-item" data-page="payments"><span class="nav-icon" data-icon="creditCard" data-icon-size="md"></span><span>Pembayaran</span></a>
+        <a href="settings.html" class="nav-item" data-page="settings"><span class="nav-icon" data-icon="settings" data-icon-size="md"></span><span>Pengaturan</span></a>
+        <a href="admin-users.html" class="nav-item" data-page="admin-users" style="display: none;"><span class="nav-icon" data-icon="shield" data-icon-size="md"></span><span>Admin Users</span></a>
+    </nav>
+    <div id="sidebarMobileAdminUsers" class="sidebar-mobile-content"><div class="loading-message">Memuat...</div></div>
+</aside>
+</body>

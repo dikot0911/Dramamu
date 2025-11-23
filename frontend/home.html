@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Dramamu - Beranda</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="config.js?v=222222222"></script>
+    <link rel="stylesheet" href="premium-styles.css?v=222222222">
+    <script src="premium-icons.js?v=222222222"></script>
+    <script src="premium-init.js?v=222222222"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Manrope', sans-serif;
+            background: linear-gradient(180deg, #0f0f1e 0%, #1a1a2e 100%);
+            min-height: 100vh;
+            color: #E5E7EB;
+            position: relative;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { 
+            -ms-overflow-style: none; 
+            scrollbar-width: none;
+        }
+
+        .main-container {
+            position: relative;
+            z-index: 1;
+            transform: translateZ(0);
+            will-change: auto;
+        }
+
+        header {
+            background: rgba(26, 26, 46, 0.9);
+            border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+            position: relative;
+        }
+
+        header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent 0%, #d4af37 30%, #8b5cf6 70%, transparent 100%);
+        }
+
+        h1 {
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .welcome-section {
+            opacity: 1;
+        }
+
+        .menu-card {
+            background: rgba(30, 41, 59, 0.85);
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            transition: transform 0.2s ease, border-color 0.2s ease;
+            position: relative;
+            overflow: hidden;
+            transform: translateZ(0);
+            backface-visibility: hidden;
+            perspective: 1000px;
+        }
+
+        .menu-card:active {
+            transform: scale(0.98) translateZ(0);
+            border-color: rgba(212, 175, 55, 0.4);
+        }
+
+        .menu-icon {
+            font-size: 2.5rem;
+            filter: drop-shadow(0 2px 4px rgba(212, 175, 55, 0.3));
+        }
+
+        .menu-title {
+            font-weight: 800;
+            font-size: 1.125rem;
+            color: #ffffff;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        .menu-desc {
+            color: rgba(212, 175, 55, 0.85);
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .premium-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #d4af37 0%, #8b5cf6 100%);
+            color: #0f0f1e;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-weight: 800;
+            font-size: 0.875rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+            transition: transform 0.2s ease;
+            border: 2px solid rgba(212, 175, 55, 0.5);
+            transform: translateZ(0);
+        }
+
+        .premium-badge:active {
+            transform: scale(0.98) translateZ(0);
+        }
+
+        .arrow-icon {
+            color: rgba(212, 175, 55, 0.7);
+        }
+
+        .emoji-glow {
+            text-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
+        }
+        
+        .main-container {
+            position: relative;
+            z-index: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="w-full h-screen overflow-hidden relative flex flex-col main-container">
+
+        <header class="w-full z-20 py-3 text-center">
+            <h1 class="text-xl font-bold tracking-wide">✨ Dramamu Bot ✨</h1>
+        </header>
+
+        <main class="flex-1 overflow-y-auto scrollbar-hide p-4 pb-24">
+            
+            <div class="text-center mb-6 mt-4 welcome-section">
+                <div class="text-6xl mb-3 emoji-glow">🎬</div>
+                <h2 class="text-2xl font-bold text-white mb-2" style="text-shadow: 0 3px 8px rgba(212, 175, 55, 0.4);">Selamat Datang!</h2>
+                <p class="text-gray-300 font-medium">Nonton semua drama favorit cuma segelas kopi ☕</p>
+                <p class="text-sm mt-2" style="color: rgba(212, 175, 55, 0.8);">Pilih menu di bawah, bre!</p>
+            </div>
+
+            <div class="max-w-md mx-auto space-y-3">
+                
+                <a href="drama.html" class="block menu-card">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-4">
+                            <div class="menu-icon">🎬</div>
+                            <div>
+                                <h3 class="menu-title">Cari Judul</h3>
+                                <p class="menu-desc">Temukan drama favorit kamu</p>
+                            </div>
+                        </div>
+                        <svg class="w-6 h-6 arrow-icon" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                </a>
+
+                <a href="kategori.html" class="block menu-card">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-4">
+                            <div class="menu-icon">🗂️</div>
+                            <div>
+                                <h3 class="menu-title">Kategori</h3>
+                                <p class="menu-desc">Jelajahi drama berdasarkan genre</p>
+                            </div>
+                        </div>
+                        <svg class="w-6 h-6 arrow-icon" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                </a>
+
+                <a href="referal.html" class="block menu-card">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-4">
+                            <div class="menu-icon">💰</div>
+                            <div>
+                                <h3 class="menu-title">Cari Cuan</h3>
+                                <p class="menu-desc">Dapatkan komisi dari referral</p>
+                            </div>
+                        </div>
+                        <svg class="w-6 h-6 arrow-icon" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                </a>
+
+                <a href="payment.html" class="block menu-card">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-4">
+                            <div class="menu-icon">💎</div>
+                            <div>
+                                <h3 class="menu-title">Beli VIP</h3>
+                                <p class="menu-desc">Akses unlimited semua drama</p>
+                            </div>
+                        </div>
+                        <svg class="w-6 h-6 arrow-icon" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                </a>
+
+                <a href="request.html" class="block menu-card">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-4">
+                            <div class="menu-icon">📽</div>
+                            <div>
+                                <h3 class="menu-title">Request Drama</h3>
+                                <p class="menu-desc">Minta drama yang kamu inginkan</p>
+                            </div>
+                        </div>
+                        <svg class="w-6 h-6 arrow-icon" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                </a>
+
+                <a href="contact.html" class="block menu-card">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-4">
+                            <div class="menu-icon">💬</div>
+                            <div>
+                                <h3 class="menu-title">Hubungi Kami</h3>
+                                <p class="menu-desc">Chat admin & join grup official</p>
+                            </div>
+                        </div>
+                        <svg class="w-6 h-6 arrow-icon" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                </a>
+
+                <a href="https://t.me/dramamuofficial" target="_blank" class="block text-center">
+                    <div class="premium-badge">
+                        <span class="text-2xl mr-2">⭐</span>
+                        <span>Join Grup Official</span>
+                        <span class="text-2xl ml-2">⭐</span>
+                    </div>
+                </a>
+
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const tg = window.Telegram?.WebApp;
+        
+        if (tg) {
+            console.log("✅ Telegram WebApp SDK aktif");
+            tg.ready();
+            tg.expand();
+            tg.enableClosingConfirmation();
+            
+            tg.disableVerticalSwipes();
+            console.log("🔒 Vertical swipes disabled - mini app tidak akan close saat scroll");
+            
+            window.tg = tg;
+        } else {
+            console.warn("⚠️ Bukan dibuka lewat Telegram Mini App");
+            window.tg = null;
+        }
+    });
+    
+    // Cleanup function to prevent memory leaks
+    function cleanup() {
+        console.log('🧹 Cleaning up resources...');
+        console.log('✅ Cleanup complete');
+    }
+    
+    // Add cleanup on page unload
+    window.addEventListener('beforeunload', cleanup);
+    window.addEventListener('pagehide', cleanup);
+    </script>
+    <script src="navbar.js?v=222222222"></script>
+</body>
+</html>
