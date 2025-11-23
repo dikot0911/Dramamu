@@ -13,6 +13,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="config.js"></script>
+    <link rel="stylesheet" href="premium-styles.css">
     <style>
         body { 
             background: linear-gradient(180deg, #0f0f1e 0%, #1a1a2e 100%);
@@ -28,58 +29,6 @@
             background: rgba(26, 26, 46, 0.95) !important;
             border-bottom: 2px solid rgba(212, 175, 55, 0.3) !important;
             box-shadow: 0 4px 12px rgba(212, 175, 55, 0.1) !important;
-        }
-        
-        .paket-vip { 
-            background: rgba(30, 41, 59, 0.95);
-            border: 2px solid rgba(212, 175, 55, 0.2);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            backdrop-filter: blur(10px);
-        }
-        
-        .paket-vip:hover {
-            border-color: rgba(212, 175, 55, 0.5);
-            transform: translateY(-3px);
-            box-shadow: 0 12px 30px rgba(212, 175, 55, 0.3);
-            background: rgba(30, 41, 59, 1);
-        }
-        
-        .paket-vip button {
-            background: linear-gradient(135deg, #d4af37 0%, #f0d266 100%);
-            color: #0f0f1e;
-            font-weight: 700;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            border: none;
-            cursor: pointer;
-            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
-        }
-        
-        .paket-vip button:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(212, 175, 55, 0.6);
-        }
-        
-        .payment-method {
-            background: rgba(30, 41, 59, 0.95);
-            border: 2px solid rgba(212, 175, 55, 0.2);
-            padding: 20px;
-            border-radius: 12px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            backdrop-filter: blur(10px);
-        }
-        
-        .payment-method:hover {
-            border-color: rgba(212, 175, 55, 0.6);
-            background: rgba(30, 41, 59, 1);
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(212, 175, 55, 0.3);
-        }
-        
-        .payment-method img {
-            height: 40px;
-            margin-bottom: 12px;
         }
         
         .title-section {
@@ -111,51 +60,40 @@
                     <p class="text-sm text-gray-400">Akses unlimited semua drama premium</p>
                 </div>
 
-                <div class="space-y-3 mb-8">
-                    <div class="paket-vip p-4 rounded-lg">
+                <div class="space-y-3">
+                    <div class="luxury-card">
                         <div class="flex justify-between items-center">
                             <div>
                                 <h2 class="font-bold text-white text-lg">1 Hari</h2>
                                 <p class="text-sm text-gray-400">VIP 1 Hari</p>
                             </div>
-                            <button onclick="beliPaket(1, 2000, 'VIP 1 Hari')" class="py-2 px-4 rounded-md">
+                            <button onclick="beliPaket(1, 2000, 'VIP 1 Hari')" class="premium-btn">
                                 Rp 2.000
                             </button>
                         </div>
                     </div>
 
-                    <div class="paket-vip p-4 rounded-lg">
+                    <div class="luxury-card">
                         <div class="flex justify-between items-center">
                             <div>
                                 <h2 class="font-bold text-white text-lg">3 Hari</h2>
                                 <p class="text-sm text-gray-400">VIP 3 Hari</p>
                             </div>
-                            <button onclick="beliPaket(2, 5000, 'VIP 3 Hari')" class="py-2 px-4 rounded-md">
+                            <button onclick="beliPaket(2, 5000, 'VIP 3 Hari')" class="premium-btn">
                                 Rp 5.000
                             </button>
                         </div>
                     </div>
                     
-                    <div class="paket-vip p-4 rounded-lg">
+                    <div class="luxury-card">
                         <div class="flex justify-between items-center">
                             <div>
                                 <h2 class="font-bold text-white text-lg">7 Hari</h2>
                                 <p class="text-sm text-gray-400">VIP 7 Hari</p>
                             </div>
-                            <button onclick="beliPaket(3, 10000, 'VIP 7 Hari')" class="py-2 px-4 rounded-md">
+                            <button onclick="beliPaket(3, 10000, 'VIP 7 Hari')" class="premium-btn">
                                 Rp 10.000
                             </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mt-8 pt-6 border-t border-gray-700">
-                    <h2 class="text-lg font-bold title-section mb-4">💳 Metode Pembayaran</h2>
-                    <div class="grid grid-cols-1 gap-3">
-                        <div class="payment-method" onclick="beliPaket(null, null, null, 'QRIS')">
-                            <div class="text-3xl mb-2">📱</div>
-                            <p class="font-bold text-white">QRIS</p>
-                            <p class="text-sm text-gray-400">Scan & Bayar</p>
                         </div>
                     </div>
                 </div>
@@ -210,19 +148,13 @@
         
         loadDokuScript();
 
-        async function beliPaket(paketId, harga, namaPaket, method) {
+        async function beliPaket(paketId, harga, namaPaket) {
             if (!dokuScriptLoaded) {
                 alert('Sistem pembayaran sedang dimuat. Silakan tunggu sebentar dan coba lagi.');
                 return;
             }
             
-            // Jika diklik QRIS button tanpa package, tampilkan alert
-            if (method === 'QRIS' && !paketId) {
-                alert('Silakan pilih paket VIP terlebih dahulu!');
-                return;
-            }
-            
-            console.log(`Mencoba beli: ${namaPaket} (Rp ${harga}) via ${method || 'default'}`);
+            console.log(`Mencoba beli: ${namaPaket} (Rp ${harga})`);
             
             const paymentData = {
                 telegram_id: telegram_id,
