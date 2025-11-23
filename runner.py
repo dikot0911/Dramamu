@@ -165,3 +165,4 @@ if __name__ == "__main__":
                 logger.warning("⚠️  Bot thread did not stop gracefully")
         
         logger.info("✅ All services stopped")
+        
