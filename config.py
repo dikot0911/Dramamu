@@ -195,7 +195,7 @@ else:
 # Backend URL (API)
 # Auto-detect production environment atau manual configuration
 # Priority: API_BASE_URL > RENDER_EXTERNAL_URL > DEV_DOMAIN > localhost
-dev_domain = get_env('REPLIT_DEV_DOMAIN') or get_env('DEV_DOMAIN')
+dev_domain = get_env('DEV_DOMAIN')
 BASE_URL = (
     get_env('API_BASE_URL') or 
     get_env('RENDER_EXTERNAL_URL') or 
@@ -253,7 +253,7 @@ elif is_production():
         # Fallback ke BASE_URL biar minimal API bisa diakses dari domain sendiri
         ALLOWED_ORIGINS = [BASE_URL]
         print("=" * 80)
-        print("⚠️  CRITICAL: Production tanpa CORS config yang benar!")
+        print("⚠️  PENTING: Production tanpa CORS config yang benar!")
         print(f"   Fallback ke BASE_URL: {BASE_URL}")
         print("")
         print("SEGERA set ALLOWED_ORIGINS atau FRONTEND_URL di environment variables!")

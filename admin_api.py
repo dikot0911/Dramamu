@@ -196,8 +196,8 @@ def get_current_admin(
     if not admin_id:
         raise HTTPException(status_code=401, detail="Invalid token payload")
     
-    # CRITICAL: Enforce session validation to prevent revocation bypass
-    # JWT must be tied to a valid session - no session = no access
+    # Enforce session validation biar ga bisa bypass revocation
+    # JWT harus tied ke session yang valid - no session = no access
     if not session_token_in_jwt:
         raise HTTPException(status_code=401, detail="Token tidak memiliki session binding")
     
@@ -214,9 +214,9 @@ def get_current_admin(
         logger.warning(f"Session token mismatch: cookie={admin_session[:8]}... jwt={session_token_in_jwt[:8]}...")
         raise HTTPException(status_code=401, detail="Session cookie tidak match")
     
-    # CRITICAL FIX: Touch session to update last_activity
-    # This ensures online status indicator works correctly
-    # If touch fails, session is expired or deleted - force re-auth
+    # Touch session buat update last_activity
+    # Ini biar indicator online status jalan dengan benar
+    # Kalau touch gagal, session expired atau dihapus - force re-auth
     if not touch_admin_session(session_token_in_jwt):
         raise HTTPException(status_code=401, detail="Session tidak valid atau sudah expired")
     

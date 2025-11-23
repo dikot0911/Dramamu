@@ -125,7 +125,7 @@ else:
     logger.warning("   Set DOKU_CLIENT_ID dan DOKU_SECRET_KEY di environment variables")
 
 # Import bot instance dari bot.py (sudah ada message handlers)
-# CRITICAL: Jangan buat TeleBot baru, pakai bot yang sudah register handlers
+# Penting: jangan buat TeleBot baru, pakai bot yang sudah register handlers
 bot = bot_module.bot
 if bot:
     logger.info("✅ Telegram bot imported from bot.py (with handlers)")
@@ -273,7 +273,7 @@ async def root():
 async def health_check():
     """
     Endpoint buat ngecek kesehatan server (buat Render dan monitoring).
-    PRODUCTION CRITICAL: Reports actual health including bot status.
+    Reports actual health termasuk status bot.
     """
     db = SessionLocal()
     db_status = "healthy"
@@ -292,8 +292,8 @@ async def health_check():
     doku_status = "configured" if (DOKU_CLIENT_ID and DOKU_SECRET_KEY) else "not_configured"
     bot_configured = "configured" if bot else "not_configured"
     
-    # PRODUCTION: Check bot health dari shared bot_state module
-    # CRITICAL: Prioritize is_healthy() over started flag for accurate liveness
+    # Check bot health dari shared bot_state module
+    # Prioritas: cek is_healthy() dulu daripada started flag biar lebih akurat
     bot_health = "not_started"
     try:
         # Priority 1: Check if bot is actually healthy (thread alive + started + not failed)

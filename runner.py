@@ -16,10 +16,10 @@ from bot_state import bot_state
 def run_telegram_bot():
     """
     Run Telegram bot di background thread.
-    PRODUCTION CRITICAL: Reports health status dan handles graceful shutdown.
+    Reports health status dan handles graceful shutdown.
     
-    IMPORTANT: bot_state.started will be set by bot.py when polling actually starts,
-    not here. This ensures accurate startup detection.
+    Catatan: bot_state.started di-set oleh bot.py waktu polling mulai jalan,
+    bukan di sini. Ini biar deteksi startup lebih akurat.
     """
     try:
         logger.info("🤖 Starting Telegram bot thread...")
@@ -37,8 +37,8 @@ def run_telegram_bot():
         logger.exception("Bot error details:")
         bot_state.signal_failed(str(e))
         
-        # CRITICAL: If bot fails during startup (within first 30 seconds)
-        # Exit main process so Render restarts the service
+        # Kalau bot gagal start (dalam 30 detik pertama), exit process
+        # biar Render restart service otomatis
         if not bot_state.started.is_set():
             logger.critical("❌ Bot failed to start - terminating main process")
             logger.critical("   Render will restart the service automatically")
@@ -66,7 +66,7 @@ if __name__ == "__main__":
     port = int(os.getenv('PORT', 5000))
     is_render = bool(os.getenv('RENDER'))
     
-    # CRITICAL: Validate production config
+    # Validate config production
     if is_render:
         logger.info("🌐 PRODUCTION MODE (Render)")
         
@@ -133,8 +133,8 @@ if __name__ == "__main__":
                 port=port, 
                 log_level="info",
                 access_log=True,
-                # CRITICAL: Don't use workers in multiprocessing mode
-                # Render health check monitors THIS process
+                # Jangan pake workers di multiprocessing mode
+                # Health check Render monitor process ini
             )
         else:
             logger.info(f"🚀 Starting FastAPI locally (port {port}, MAIN PROCESS)...")
