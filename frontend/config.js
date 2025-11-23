@@ -4,7 +4,7 @@
 
 const API_CONFIG = {
     // URL backend production (dari environment variable API_BASE_URL)
-    // CRITICAL: File ini HARUS di-generate oleh build-config.sh
+    // Penting: file ini harus di-generate oleh build-config.sh
     // Netlify akan run build-config.sh yang akan overwrite file ini
     PRODUCTION_API_URL: 'https://dramamu-backend-680p.onrender.com',
     
@@ -25,9 +25,10 @@ function getApiBaseUrl() {
         return API_CONFIG.DEVELOPMENT_API_URL;
     }
     
-    // Cek apakah kita di Replit environment
-    if (hostname.includes('replit.dev')) {
-        console.log('✅ Auto-detected Replit environment');
+    // Cek apakah kita di environment development (subdomain .dev)
+    const DEV_DOMAIN_SUFFIX = '.dev';
+    if (hostname.endsWith(DEV_DOMAIN_SUFFIX)) {
+        console.log('✅ Auto-detected Development environment');
         return `https://${hostname}`;
     }
     
