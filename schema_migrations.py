@@ -434,6 +434,43 @@ def run_migration_007_ensure_users_have_ref_codes():
     finally:
         db.close()
 
+def run_migration_008_add_screenshot_url_to_payments():
+    """
+    Migration 008: Add kolom screenshot_url ke table payments
+    
+    Fix untuk production bug dimana kolom screenshot_url tidak exist.
+    Kolom ini digunakan untuk menyimpan screenshot bukti transfer QRIS
+    yang diupload user saat melakukan pembayaran manual.
+    
+    Migration ini idempotent - bisa dijalankan berulang kali dengan aman.
+    """
+    logger.info("🔧 Running migration 008: Add payments.screenshot_url")
+    
+    db = SessionLocal()
+    try:
+        # Cek apakah kolom udah ada
+        if column_exists(db, 'payments', 'screenshot_url'):
+            logger.info("  ✓ Column screenshot_url already exists, skip")
+            return True
+        
+        # Add kolom baru
+        logger.info("  → Adding column screenshot_url...")
+        db.execute(text("""
+            ALTER TABLE payments 
+            ADD COLUMN screenshot_url VARCHAR
+        """))
+        
+        db.commit()
+        logger.info("  ✅ Migration 008 complete!")
+        return True
+        
+    except Exception as e:
+        logger.error(f"  ❌ Migration 008 failed: {e}")
+        db.rollback()
+        return False
+    finally:
+        db.close()
+
 def run_migration_006_add_admin_display_name_and_sessions():
     """
     Migration 006: Add display_name to admins table and create admin_sessions table
@@ -524,6 +561,7 @@ MIGRATIONS = [
     ('005_add_poster_fields_to_pending_uploads', run_migration_005_add_poster_fields_to_pending_uploads),
     ('006_add_admin_display_name_and_sessions', run_migration_006_add_admin_display_name_and_sessions),
     ('007_ensure_users_have_ref_codes', run_migration_007_ensure_users_have_ref_codes),
+    ('008_add_screenshot_url_to_payments', run_migration_008_add_screenshot_url_to_payments),
 ]
 
 def run_migrations():
