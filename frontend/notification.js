@@ -19,12 +19,18 @@ class NotificationSystem {
             this.notificationElement = document.createElement('div');
             this.notificationElement.id = 'notificationContainer';
             this.notificationElement.innerHTML = `
-                <div class="notification-toast">
+                <div class="notification-toast" id="notificationToast">
                     <div class="notification-icon" id="notificationIcon"></div>
                     <div class="notification-message" id="notificationMessage"></div>
                 </div>
             `;
             document.body.appendChild(this.notificationElement);
+            
+            // Add click-to-close handler
+            const toastElement = document.getElementById('notificationToast');
+            toastElement.addEventListener('click', () => {
+                this.close();
+            });
             
             // Add CSS if not already present
             if (!document.getElementById('notificationStyles')) {
@@ -91,9 +97,26 @@ class NotificationSystem {
                     .notification-toast.info {
                         border-color: rgba(59, 130, 246, 0.3);
                     }
+
+                    .notification-toast {
+                        cursor: pointer;
+                    }
                 `;
                 document.head.appendChild(styleElement);
             }
+        }
+    }
+
+    /**
+     * Close notification
+     */
+    close() {
+        const toast = this.notificationElement.querySelector('.notification-toast');
+        if (toast) {
+            toast.classList.remove('show');
+        }
+        if (this.notificationTimeout) {
+            clearTimeout(this.notificationTimeout);
         }
     }
 
