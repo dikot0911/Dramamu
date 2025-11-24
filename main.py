@@ -125,7 +125,7 @@ else:
     logger.warning("   Set DOKU_CLIENT_ID dan DOKU_SECRET_KEY di environment variables")
 
 # Import bot instance dari bot.py (sudah ada message handlers)
-# Penting: jangan buat TeleBot baru, pakai bot yang sudah register handlers
+# CRITICAL: Jangan buat TeleBot baru, pakai bot yang sudah register handlers
 bot = bot_module.bot
 if bot:
     logger.info("✅ Telegram bot imported from bot.py (with handlers)")
@@ -273,7 +273,7 @@ async def root():
 async def health_check():
     """
     Endpoint buat ngecek kesehatan server (buat Render dan monitoring).
-    Reports actual health termasuk status bot.
+    PRODUCTION CRITICAL: Reports actual health including bot status.
     """
     db = SessionLocal()
     db_status = "healthy"
@@ -292,8 +292,8 @@ async def health_check():
     doku_status = "configured" if (DOKU_CLIENT_ID and DOKU_SECRET_KEY) else "not_configured"
     bot_configured = "configured" if bot else "not_configured"
     
-    # Check bot health dari shared bot_state module
-    # Prioritas: cek is_healthy() dulu daripada started flag biar lebih akurat
+    # PRODUCTION: Check bot health dari shared bot_state module
+    # CRITICAL: Prioritize is_healthy() over started flag for accurate liveness
     bot_health = "not_started"
     try:
         # Priority 1: Check if bot is actually healthy (thread alive + started + not failed)
@@ -795,6 +795,64 @@ async def create_payment_link(request: PaymentRequest):
         raise
     except Exception as e:
         logger.error(f"Error waktu bikin pembayaran: {e}")
+        logger.exception("Full error traceback:")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/v1/create_qris_payment")
+async def create_qris_payment(request: PaymentRequest):
+    """
+    Temporary QRIS payment endpoint - creates payment record and returns QRIS path
+    User akan scan QRIS dan kirim bukti pembayaran ke admin untuk manual verification
+    """
+    order_id = f"QRIS-{request.telegram_id}-{int(time.time())}"
+    
+    # QRIS mapping by amount
+    qris_mapping = {
+        2000: "assets/qris/2000.png",
+        5000: "assets/qris/5000.png",
+        10000: "assets/qris/10000.png",
+        30000: "assets/qris/30000.png",
+        150000: "assets/qris/150000.png"
+    }
+    
+    qris_path = qris_mapping.get(request.gross_amount)
+    if not qris_path:
+        raise HTTPException(status_code=400, detail=f"Paket dengan harga Rp {request.gross_amount} tidak tersedia")
+    
+    try:
+        db = SessionLocal()
+        try:
+            # Create payment record with status 'qris_pending'
+            payment = Payment(
+                telegram_id=str(request.telegram_id),
+                order_id=order_id,
+                package_name=request.nama_paket,
+                amount=request.gross_amount,
+                status='qris_pending'
+            )
+            db.add(payment)
+            db.commit()
+            logger.info(f"✅ QRIS payment record created: {order_id} for user {request.telegram_id}")
+        except Exception as db_error:
+            logger.error(f"Error waktu simpan QRIS payment record: {db_error}")
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"Gagal menyimpan data pembayaran: {str(db_error)}")
+        finally:
+            db.close()
+        
+        return {
+            "order_id": order_id,
+            "qris_path": qris_path,
+            "amount": request.gross_amount,
+            "package_name": request.nama_paket,
+            "status": "qris_pending",
+            "message": "Scan QRIS dan kirim bukti pembayaran ke admin untuk aktivasi VIP"
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error waktu bikin QRIS payment: {e}")
         logger.exception("Full error traceback:")
         raise HTTPException(status_code=500, detail=str(e))
 
