@@ -375,6 +375,65 @@ def run_migration_005_add_poster_fields_to_pending_uploads():
     finally:
         db.close()
 
+def run_migration_007_ensure_users_have_ref_codes():
+    """
+    Migration 007: Ensure semua users punya ref_code
+    
+    Backfill ref_code untuk existing users yang belum punya.
+    Ini penting untuk sistem referral berfungsi dengan baik.
+    
+    Migration ini idempotent - bisa dijalankan berulang kali dengan aman.
+    """
+    logger.info("🔧 Running migration 007: Ensure all users have ref_codes")
+    
+    db = SessionLocal()
+    try:
+        # Cek users yang belum punya ref_code
+        result = db.execute(text("SELECT telegram_id FROM users WHERE ref_code IS NULL OR ref_code = ''"))
+        users_without_ref = result.fetchall()
+        
+        if not users_without_ref:
+            logger.info("  ✓ All users already have ref_codes, skip")
+            return True
+        
+        logger.info(f"  → Found {len(users_without_ref)} users without ref_code, backfilling...")
+        
+        # Get existing ref_codes untuk avoid collision
+        result = db.execute(text("SELECT ref_code FROM users WHERE ref_code IS NOT NULL AND ref_code != ''"))
+        used_ref_codes = {row[0] for row in result.fetchall()}
+        
+        # Generate ref_code untuk setiap user yang belum punya
+        for user in users_without_ref:
+            telegram_id = user[0]
+            
+            # Generate unique ref_code
+            while True:
+                first_five = str(telegram_id)[:5]
+                rand_part = ''.join(random.choices(string.ascii_letters + string.digits, k=4))
+                ref_code = f"{first_five}{rand_part}"
+                
+                if ref_code not in used_ref_codes:
+                    used_ref_codes.add(ref_code)
+                    break
+            
+            # Update user dengan ref_code baru
+            db.execute(
+                text("UPDATE users SET ref_code = :ref_code WHERE telegram_id = :telegram_id"),
+                {"ref_code": ref_code, "telegram_id": telegram_id}
+            )
+            logger.info(f"      • User {telegram_id} → ref_code: {ref_code}")
+        
+        db.commit()
+        logger.info("  ✅ Migration 007 complete!")
+        return True
+        
+    except Exception as e:
+        logger.error(f"  ❌ Migration 007 failed: {e}")
+        db.rollback()
+        return False
+    finally:
+        db.close()
+
 def run_migration_006_add_admin_display_name_and_sessions():
     """
     Migration 006: Add display_name to admins table and create admin_sessions table
@@ -464,6 +523,7 @@ MIGRATIONS = [
     ('004_add_poster_file_id', run_migration_004_add_poster_file_id),
     ('005_add_poster_fields_to_pending_uploads', run_migration_005_add_poster_fields_to_pending_uploads),
     ('006_add_admin_display_name_and_sessions', run_migration_006_add_admin_display_name_and_sessions),
+    ('007_ensure_users_have_ref_codes', run_migration_007_ensure_users_have_ref_codes),
 ]
 
 def run_migrations():

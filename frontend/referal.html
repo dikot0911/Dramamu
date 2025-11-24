@@ -17,61 +17,40 @@
     <script src="premium-icons.js"></script>
     <script src="premium-init.js"></script>
     <style>
-        body {
-            background: linear-gradient(180deg, #0f0f1e 0%, #1a1a2e 100%);
-            color: #E5E7EB;
-        }
-        
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-        
         .card {
-            background: rgba(30, 41, 59, 0.95);
-            border: 2px solid rgba(212, 175, 55, 0.2);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            backdrop-filter: blur(10px);
-        }
-        
-        .card:hover {
-            border-color: rgba(212, 175, 55, 0.4);
-            box-shadow: 0 8px 25px rgba(212, 175, 55, 0.3);
-            transform: translateY(-2px);
-        }
-        
-        .card input, .card select {
-            background: rgba(15, 23, 42, 0.7) !important;
-            border: 1px solid rgba(212, 175, 55, 0.2) !important;
-            color: #E5E7EB !important;
+            background: rgba(30, 41, 59, 0.85);
+            border: 1.5px solid rgba(212, 175, 55, 0.3);
+            border-radius: 12px;
             transition: all 0.3s ease;
         }
         
-        .card input:focus, .card select:focus {
-            border-color: rgba(212, 175, 55, 0.6) !important;
-            box-shadow: 0 0 10px rgba(212, 175, 55, 0.3) !important;
-            background: rgba(15, 23, 42, 0.9) !important;
-        }
-        
-        .card input::placeholder {
-            color: rgba(255, 255, 255, 0.5) !important;
-        }
-        
-        .card label {
-            color: #E5E7EB;
-            font-weight: 500;
-        }
-        
-        .stat-item {
-            background: rgba(15, 23, 42, 0.5);
-            padding: 12px;
-            border-radius: 8px;
-            border: 1px solid rgba(212, 175, 55, 0.1);
+        .card:hover {
+            border-color: rgba(212, 175, 55, 0.5);
+            box-shadow: 0 6px 20px rgba(212, 175, 55, 0.25);
         }
         
         #referral-link {
-            background: rgba(15, 23, 42, 0.7) !important;
-            border: 1px solid rgba(212, 175, 55, 0.2) !important;
-            color: #d4af37 !important;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1.5px solid rgba(212, 175, 55, 0.3);
+            color: #f1f5f9;
+            font-size: 14px;
             font-weight: 500;
+        }
+        
+        #referral-link::placeholder {
+            color: rgba(148, 163, 184, 0.5);
+        }
+        
+        input, select {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1.5px solid rgba(148, 163, 184, 0.3);
+            color: #f1f5f9;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: rgba(212, 175, 55, 0.5);
+            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
         }
     </style>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -87,69 +66,69 @@
         
         <main class="flex-1 overflow-y-auto scrollbar-hide p-4 pb-24">
             <div class="max-w-md mx-auto space-y-6">
-                <div class="text-center mb-4">
-                    <h2 class="text-2xl font-bold mb-1" style="color: #d4af37; text-shadow: 0 2px 8px rgba(212, 175, 55, 0.3);">🤝 Referral & Penarikan</h2>
-                    <p class="text-sm text-gray-400">Ajak teman & dapatkan komisi 25%!</p>
-                </div>
         
-        <div class="card p-4 rounded-lg border">
-            <h2 class="text-lg font-bold mb-4" style="color: #d4af37;">📊 Statistik Anda</h2>
-            <div class="grid grid-cols-2 gap-3">
-                <div class="stat-item">
-                    <p class="text-xs text-gray-400 mb-2">Total Referral</p>
+        <div class="card p-5 rounded-lg">
+            <h2 class="text-lg font-bold text-white mb-4">📊 Statistik</h2>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-slate-900/40 p-3 rounded-lg border border-slate-700/50">
+                    <p class="text-sm text-gray-400 mb-1">Total Referral</p>
                     <p id="total-referrals" class="text-2xl font-bold text-white">0</p>
                 </div>
-                <div class="stat-item">
-                    <p class="text-xs text-gray-400 mb-2">Total Komisi</p>
+                <div class="bg-slate-900/40 p-3 rounded-lg border border-slate-700/50">
+                    <p class="text-sm text-gray-400 mb-1">Total Komisi</p>
                     <p id="total-komisi" class="text-xl font-bold" style="color: #d4af37;">Rp 0</p>
                 </div>
             </div>
         </div>
 
-        <div class="card p-5 rounded-lg border">
-            <h2 class="text-lg font-bold mb-3" style="color: #d4af37;">🔗 Link Referral Anda</h2>
-            <p class="text-xs text-gray-400 mb-4">Bagikan link ini & dapatkan komisi setiap kali teman membeli VIP:</p>
-            <div class="relative">
-                <input type="text" id="referral-link" readonly class="w-full p-3 rounded-md pr-12 text-sm font-mono">
-                <button onclick="copyLink()" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition" title="Copy link">
+        <div class="card p-5 rounded-lg">
+            <h2 class="text-lg font-bold text-white mb-2">🔗 Link Referral Anda</h2>
+            <p class="text-sm text-gray-400 mb-4">Bagikan link ini & dapatkan komisi setiap kali teman membeli VIP:</p>
+            <div class="relative mb-2">
+                <input type="text" id="referral-link" readonly class="w-full p-3 rounded-lg pr-12" placeholder="Loading link referral...">
+                <button onclick="copyLink()" class="absolute right-3 top-1/2 -translate-y-1/2 text-2xl hover:scale-110 transition-transform" style="filter: grayscale(0.3);">
                     📋
                 </button>
             </div>
-            <p class="text-xs text-gray-500 mt-2">Komisi: 25% dari setiap pembelian VIP</p>
+            <p class="text-xs text-gray-500">Komisi: 25% dari setiap pembelian VIP</p>
         </div>
         
-        <div class="card p-5 rounded-lg border">
-            <h2 class="text-lg font-bold mb-2" style="color: #d4af37;">💰 Penarikan Komisi</h2>
-            <div class="bg-slate-900 p-3 rounded-lg mb-4 border border-slate-700">
-                <p class="text-xs text-gray-400 mb-2">Min. Penarikan: <b class="text-gray-300">Rp 50.000</b></p>
-                <p class="text-sm text-gray-300">Saldo Anda: <b id="sisa-saldo" style="color: #d4af37;">Rp 0</b></p>
+        <div class="card p-5 rounded-lg">
+            <h2 class="text-lg font-bold text-white mb-2">💰 Penarikan Komisi</h2>
+            <div class="bg-slate-900/40 p-3 rounded-lg border border-slate-700/50 mb-4">
+                <p class="text-sm text-gray-400 mb-1">Min. Penarikan: <b class="text-white">Rp 50.000</b></p>
+                <p class="text-sm text-gray-400">Saldo Anda: <b id="sisa-saldo" style="color: #d4af37;">Rp 0</b></p>
             </div>
 
             <form id="withdraw-form" class="space-y-4">
                 <div>
-                    <label class="text-sm font-medium text-gray-300 block mb-2">Jumlah Penarikan (Rp)</label>
-                    <input type="number" id="jumlah" required class="w-full p-3 rounded-md border" placeholder="Min. Rp 50.000">
+                    <label class="text-sm font-medium text-white block mb-2">Jumlah Penarikan (Rp)</label>
+                    <input type="number" id="jumlah" required class="w-full p-3 rounded-lg" placeholder="Min. Rp 50.000">
                 </div>
                 <div>
-                    <label class="text-sm font-medium text-gray-300 block mb-2">Metode Pembayaran</label>
-                    <select id="metode" required class="w-full p-3 rounded-md border">
+                    <label class="text-sm font-medium text-white block mb-2">Metode Pembayaran</label>
+                    <select id="metode" required class="w-full p-3 rounded-lg">
                         <option value="">Pilih metode...</option>
-                        <option value="BCA">🏦 BCA</option>
-                        <option value="DANA">💳 DANA</option>
-                        <option value="OVO">📱 OVO</option>
-                        <option value="GoPay">🛵 GoPay</option>
+                        <option value="BCA">BCA</option>
+                        <option value="BRI">BRI</option>
+                        <option value="BNI">BNI</option>
+                        <option value="Mandiri">Mandiri</option>
+                        <option value="DANA">DANA</option>
+                        <option value="OVO">OVO</option>
+                        <option value="GoPay">GoPay</option>
+                        <option value="ShopeePay">ShopeePay</option>
                     </select>
                 </div>
                 <div>
-                    <label class="text-sm font-medium text-gray-300 block mb-2">Nomor Rekening / E-Wallet</label>
-                    <input type="text" id="nomor_rekening" required class="w-full p-3 rounded-md border" placeholder="Contoh: 1234567890">
+                    <label class="text-sm font-medium text-white block mb-2">Nomor Rekening / E-Wallet</label>
+                    <input type="text" id="nomor_rekening" required class="w-full p-3 rounded-lg" placeholder="Contoh: 1234567890">
                 </div>
                 <div>
-                    <label class="text-sm font-medium text-gray-300 block mb-2">Nama Pemilik Rekening</label>
-                    <input type="text" id="nama_pemilik" required class="w-full p-3 rounded-md border" placeholder="Nama sesuai rekening">
+                    <label class="text-sm font-medium text-white block mb-2">Nama Pemilik</label>
+                    <input type="text" id="nama_pemilik" required class="w-full p-3 rounded-lg" placeholder="Nama sesuai rekening">
                 </div>
-                <button type="submit" class="w-full font-bold py-3 rounded-md mt-2" style="background: linear-gradient(135deg, #d4af37 0%, #f0d266 100%); color: #0f0f1e; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4);" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 10px 30px rgba(212, 175, 55, 0.6)';" onmouseout="this.style.transform=''; this.style.boxShadow='0 6px 20px rgba(212, 175, 55, 0.4)';">
-                    ✨ Tarik Saldo
+                <button type="submit" class="w-full font-bold py-3 rounded-lg" style="background: linear-gradient(135deg, #d4af37 0%, #f0d266 100%); color: #0f0f1e; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4);" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 10px 30px rgba(212, 175, 55, 0.6)';" onmouseout="this.style.transform=''; this.style.boxShadow='0 6px 20px rgba(212, 175, 55, 0.4)';">
+                    Ajukan Penarikan
                 </button>
             </form>
         </div>
@@ -157,7 +136,8 @@
         </main>
     </div>
     
-    <script src="navbar.js?v=1763892229"></script>
+    <script src="navbar.js?v=222222222"></script>
+    <script src="notification.js"></script>
 
     <script>
         // Cached DOM elements (performance optimization)
@@ -204,10 +184,14 @@
             try {
                 if (!tg || !tg.initData) {
                     console.error('❌ Cannot get Telegram initData!');
-                    alert('Telegram data tidak tersedia');
+                    notification.error('❌ Telegram data tidak tersedia', 'error', {
+                        duration: 3000,
+                        sound: false
+                    });
                     return;
                 }
 
+                console.log('📊 Fetching referral stats...');
                 const response = await fetch(window.API_BASE_URL + '/api/v1/referral_stats', {
                     method: 'POST',
                     headers: {
@@ -221,21 +205,38 @@
                 if (!response.ok) {
                     if (response.status === 401) {
                         console.error('❌ Unauthorized - Invalid Telegram data');
-                        alert('Session tidak valid. Silakan tutup dan buka kembali aplikasi.');
+                        notification.error('❌ Session tidak valid. Silakan tutup dan buka kembali aplikasi.', 'error', {
+                            duration: 5000,
+                            sound: false
+                        });
+                    } else {
+                        throw new Error(`HTTP ${response.status}`);
                     }
-                    throw new Error('Failed to fetch referral stats');
+                    return;
                 }
                 
                 const stats = await response.json();
                 
+                console.log('✅ Referral stats loaded:', stats);
+                
+                // Update UI dengan data dari server
                 getCachedElement('total-referrals').textContent = stats.total_referrals || 0;
-                getCachedElement('total-komisi').textContent = `Rp ${stats.commission_balance || 0}`;
-                getCachedElement('sisa-saldo').textContent = `Rp ${stats.commission_balance || 0}`;
-                getCachedElement('referral-link').value = `https://t.me/${bot_username}?start=${stats.ref_code}`;
+                getCachedElement('total-komisi').textContent = `Rp ${(stats.commission_balance || 0).toLocaleString('id-ID')}`;
+                getCachedElement('sisa-saldo').textContent = `Rp ${(stats.commission_balance || 0).toLocaleString('id-ID')}`;
+                
+                // CRITICAL: Set referral link dengan ref_code dari server
+                const refLink = `https://t.me/${bot_username}?start=${stats.ref_code}`;
+                console.log('🔗 Referral link generated:', refLink);
+                getCachedElement('referral-link').value = refLink;
+                
+                console.log('✅ Referral stats rendered successfully');
                 
             } catch (error) {
-                console.error("Error:", error);
-                alert('Gagal memuat data referral');
+                console.error("❌ Error fetching referral stats:", error);
+                notification.error(`❌ Gagal memuat data referral: ${error.message}`, 'error', {
+                    duration: 4000,
+                    sound: false
+                });
             }
         }
 
@@ -243,26 +244,73 @@
             e.preventDefault();
             
             if (!tg || !tg.initData) {
-                alert('Telegram data tidak tersedia. Silakan tutup dan buka kembali aplikasi.');
+                notification.error('❌ Telegram data tidak tersedia. Silakan tutup dan buka kembali aplikasi.', 'error', {
+                    duration: 3000,
+                    sound: false
+                });
                 return;
             }
             
-            const jumlah = parseInt(getCachedElement('jumlah').value);
+            const jumlahInput = getCachedElement('jumlah').value.trim();
             const metode = getCachedElement('metode').value;
-            const nomor_rekening = getCachedElement('nomor_rekening').value;
-            const nama_pemilik = getCachedElement('nama_pemilik').value;
+            const nomor_rekening = getCachedElement('nomor_rekening').value.trim();
+            const nama_pemilik = getCachedElement('nama_pemilik').value.trim();
+            
+            // Validasi input
+            if (!jumlahInput) {
+                notification.error('❌ Masukkan jumlah yang ingin ditarik', 'error', {
+                    duration: 2000,
+                    sound: false
+                });
+                return;
+            }
+            
+            const jumlah = parseInt(jumlahInput);
+            
+            if (isNaN(jumlah) || jumlah <= 0) {
+                notification.error('❌ Jumlah harus berupa angka positif', 'error', {
+                    duration: 2000,
+                    sound: false
+                });
+                return;
+            }
             
             if (jumlah < 50000) {
-                alert('Minimum penarikan adalah Rp 50.000');
+                notification.error('❌ Minimum penarikan adalah Rp 50.000', 'error', {
+                    duration: 2000,
+                    sound: false
+                });
+                return;
+            }
+            
+            if (!nomor_rekening) {
+                notification.error('❌ Masukkan nomor rekening / e-wallet', 'error', {
+                    duration: 2000,
+                    sound: false
+                });
+                return;
+            }
+            
+            if (!nama_pemilik) {
+                notification.error('❌ Masukkan nama pemilik rekening', 'error', {
+                    duration: 2000,
+                    sound: false
+                });
                 return;
             }
             
             const submitButton = e.target.querySelector('button[type="submit"]');
             const originalText = submitButton.textContent;
             submitButton.disabled = true;
-            submitButton.textContent = 'Memproses...';
+            submitButton.textContent = '⏳ Memproses...';
             
             try {
+                console.log('💳 Processing withdrawal request:', {
+                    amount: jumlah,
+                    method: metode,
+                    account_number: nomor_rekening.slice(-4) + '****'
+                });
+                
                 const response = await fetch(window.API_BASE_URL + '/api/v1/withdrawal', {
                     method: 'POST',
                     headers: {
@@ -280,43 +328,96 @@
                 const result = await response.json();
                 
                 if (response.ok) {
-                    if (tg.showPopup) {
-                        tg.showPopup({
-                            title: 'Berhasil!',
-                            message: 'Request penarikan berhasil diajukan. Kami akan proses maksimal 1x24 jam.',
-                            buttons: [{type: 'ok'}]
-                        }, () => {
-                            tg.close();
-                        });
-                    } else {
-                        alert('Request penarikan berhasil diajukan. Kami akan proses maksimal 1x24 jam.');
+                    console.log('✅ Withdrawal request accepted');
+                    
+                    notification.success('✅ Request penarikan berhasil diajukan!\n\nKami akan memproses dalam maksimal 1x24 jam.', 'success', {
+                        duration: 5000,
+                        sound: false
+                    });
+                    
+                    // Reset form
+                    e.target.reset();
+                    
+                    // Close mini app setelah 2 detik
+                    setTimeout(() => {
                         tg.close();
-                    }
+                    }, 2000);
                 } else {
-                    alert(`Gagal: ${result.detail || 'Terjadi kesalahan'}`);
+                    const errMsg = result.detail || 'Terjadi kesalahan';
+                    console.error('❌ Withdrawal failed:', errMsg);
+                    notification.error(`❌ Gagal: ${errMsg}`, 'error', {
+                        duration: 3000,
+                        sound: false
+                    });
                     submitButton.disabled = false;
                     submitButton.textContent = originalText;
                 }
             } catch (error) {
-                console.error('Error:', error);
-                alert('Gagal menghubungi server. Silakan coba lagi.');
+                console.error('❌ Error submitting withdrawal:', error);
+                notification.error(`❌ Gagal menghubungi server: ${error.message}`, 'error', {
+                    duration: 3000,
+                    sound: false
+                });
                 submitButton.disabled = false;
                 submitButton.textContent = originalText;
             }
         });
 
         function copyLink() {
-            const link = getCachedElement('referral-link');
-            link.select();
-            document.execCommand('copy');
-            
-            if (tg.showPopup) {
-                tg.showPopup({
-                    message: "Link referral disalin!",
-                    buttons: [{type: "ok"}]
+            try {
+                const link = getCachedElement('referral-link');
+                
+                if (!link.value) {
+                    notification.error('❌ Link referral belum siap. Silakan tunggu...', 'error', {
+                        duration: 2000,
+                        sound: false
+                    });
+                    return;
+                }
+                
+                // Use modern Clipboard API jika available, fallback ke exec command
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(link.value).then(() => {
+                        console.log('✅ Link copied via Clipboard API');
+                        notification.success('✅ Link referral disalin ke clipboard!', 'success', {
+                            duration: 2000,
+                            sound: false
+                        });
+                    }).catch(() => {
+                        // Fallback ke old method
+                        fallbackCopyLink(link);
+                    });
+                } else {
+                    // Fallback ke old method
+                    fallbackCopyLink(link);
+                }
+            } catch (error) {
+                console.error('❌ Error copying link:', error);
+                notification.error(`❌ Gagal menyalin link: ${error.message}`, 'error', {
+                    duration: 2000,
+                    sound: false
                 });
-            } else {
-                alert("Link referral disalin!");
+            }
+        }
+        
+        function fallbackCopyLink(link) {
+            try {
+                link.select();
+                if (document.execCommand('copy')) {
+                    console.log('✅ Link copied via execCommand');
+                    notification.success('✅ Link referral disalin ke clipboard!', 'success', {
+                        duration: 2000,
+                        sound: false
+                    });
+                } else {
+                    throw new Error('execCommand gagal');
+                }
+            } catch (error) {
+                console.error('❌ Fallback copy failed:', error);
+                notification.error('❌ Gagal menyalin link. Silakan copy manual dari input.', 'error', {
+                    duration: 2000,
+                    sound: false
+                });
             }
         }
         
@@ -334,6 +435,6 @@
         window.addEventListener('beforeunload', cleanup);
         window.addEventListener('pagehide', cleanup);
     </script>
-    <script src="cache-manager.js?v=1763892229"></script>
+    <script src="cache-manager.js?v=222222222"></script>
 </body>
 </html>
