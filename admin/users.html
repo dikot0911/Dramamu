@@ -392,37 +392,46 @@
             const vipUsers = data.stats.vip_users;
             const regularUsers = data.stats.total_users - data.stats.vip_users;
 
-            if (userTypeChart) userTypeChart.destroy();
-            userTypeChart = new Chart(document.getElementById('userTypeChart'), {
-                type: 'doughnut',
-                data: {
-                    labels: ['Pengguna VIP', 'Pengguna Reguler'],
-                    datasets: [{
-                        data: [vipUsers, regularUsers],
-                        backgroundColor: [
-                            isDark ? '#f093fb' : 'rgba(240, 147, 251, 0.8)',
-                            isDark ? '#94a3b8' : 'rgba(148, 163, 184, 0.8)'
-                        ],
-                        borderWidth: isDark ? 2 : 0,
-                        borderColor: isDark ? '#1e293b' : 'transparent'
-                    }]
-                },
-                options: {
-                    ...chartConfig,
-                    plugins: {
-                        ...chartConfig.plugins,
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                ...chartConfig.plugins.legend.labels,
-                                padding: 15,
-                                usePointStyle: true,
-                                pointStyle: 'circle'
+            try {
+                const canvas = document.getElementById('userTypeChart');
+                if (!canvas) {
+                    console.error('Canvas element not found: userTypeChart');
+                    return;
+                }
+                if (userTypeChart) userTypeChart.destroy();
+                userTypeChart = new Chart(canvas, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Pengguna VIP', 'Pengguna Reguler'],
+                        datasets: [{
+                            data: [vipUsers, regularUsers],
+                            backgroundColor: [
+                                isDark ? '#f093fb' : 'rgba(240, 147, 251, 0.8)',
+                                isDark ? '#94a3b8' : 'rgba(148, 163, 184, 0.8)'
+                            ],
+                            borderWidth: isDark ? 2 : 0,
+                            borderColor: isDark ? '#1e293b' : 'transparent'
+                        }]
+                    },
+                    options: {
+                        ...chartConfig,
+                        plugins: {
+                            ...chartConfig.plugins,
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    ...chartConfig.plugins.legend.labels,
+                                    padding: 15,
+                                    usePointStyle: true,
+                                    pointStyle: 'circle'
+                                }
                             }
                         }
                     }
-                }
-            });
+                });
+            } catch (error) {
+                console.error('Error initializing user type chart:', error);
+            }
 
             const days = generateUsersDays();
             const numDays = getUsersDays();
@@ -452,40 +461,49 @@
                 } catch (e) {}
             });
 
-            if (userGrowthChartUsers) userGrowthChartUsers.destroy();
-            userGrowthChartUsers = new Chart(document.getElementById('userGrowthChartUsers'), {
-                type: 'line',
-                data: {
-                    labels: days,
-                    datasets: [{
-                        label: 'New Users',
-                        data: userGrowthByDay,
-                        borderColor: isDark ? '#60a5fa' : '#667eea',
-                        backgroundColor: isDark ? 'rgba(96, 165, 250, 0.1)' : 'rgba(102, 126, 234, 0.1)',
-                        tension: 0.4,
-                        fill: true,
-                        borderWidth: 2
-                    }]
-                },
-                options: {
-                    ...chartConfig,
-                    plugins: {
-                        ...chartConfig.plugins,
-                        legend: { display: false }
+            try {
+                const canvas = document.getElementById('userGrowthChartUsers');
+                if (!canvas) {
+                    console.error('Canvas element not found: userGrowthChartUsers');
+                    return;
+                }
+                if (userGrowthChartUsers) userGrowthChartUsers.destroy();
+                userGrowthChartUsers = new Chart(canvas, {
+                    type: 'line',
+                    data: {
+                        labels: days,
+                        datasets: [{
+                            label: 'New Users',
+                            data: userGrowthByDay,
+                            borderColor: isDark ? '#60a5fa' : '#667eea',
+                            backgroundColor: isDark ? 'rgba(96, 165, 250, 0.1)' : 'rgba(102, 126, 234, 0.1)',
+                            tension: 0.4,
+                            fill: true,
+                            borderWidth: 2
+                        }]
                     },
-                    scales: {
-                        ...chartConfig.scales,
-                        y: {
-                            ...chartConfig.scales.y,
-                            beginAtZero: true,
-                            ticks: {
-                                ...chartConfig.scales.y.ticks,
-                                stepSize: 1
+                    options: {
+                        ...chartConfig,
+                        plugins: {
+                            ...chartConfig.plugins,
+                            legend: { display: false }
+                        },
+                        scales: {
+                            ...chartConfig.scales,
+                            y: {
+                                ...chartConfig.scales.y,
+                                beginAtZero: true,
+                                ticks: {
+                                    ...chartConfig.scales.y.ticks,
+                                    stepSize: 1
+                                }
                             }
                         }
                     }
-                }
-            });
+                });
+            } catch (error) {
+                console.error('Error initializing user growth chart:', error);
+            }
         }
 
         function generateLast7Days() {

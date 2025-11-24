@@ -699,8 +699,15 @@
             const counts = Object.values(categoryCount);
             const colors = ['#667eea', '#f093fb', '#4facfe', '#43e97b', '#feca57'];
             
-            const categoryChartCanvas = document.getElementById('categoryChart');
-            if (categoryChartCanvas) {
+            try {
+                const categoryChartCanvas = document.getElementById('categoryChart');
+                if (!categoryChartCanvas) {
+                    console.error('Canvas element not found: categoryChart');
+                    return;
+                }
+                
+                if (categoryChart) categoryChart.destroy();
+                
                 const categoryContainer = categoryChartCanvas.parentElement;
                 
                 if (categories.length === 0) {
@@ -736,6 +743,8 @@
                         options: donutConfig
                     });
                 }
+            } catch (error) {
+                console.error('Error initializing category chart:', error);
             }
             
             const days = generateMoviesDays();
@@ -768,10 +777,15 @@
                 }
             });
             
-            if (moviesTimelineChart) moviesTimelineChart.destroy();
-            
-            const timelineCtx = document.getElementById('moviesTimelineChart');
-            if (timelineCtx) {
+            try {
+                const timelineCtx = document.getElementById('moviesTimelineChart');
+                if (!timelineCtx) {
+                    console.error('Canvas element not found: moviesTimelineChart');
+                    return;
+                }
+                
+                if (moviesTimelineChart) moviesTimelineChart.destroy();
+                
                 const timelineContainer = timelineCtx.parentElement;
                 const hasData = movies.length > 0;
                 
@@ -827,6 +841,8 @@
                         }
                     });
                 }
+            } catch (error) {
+                console.error('Error initializing movies timeline chart:', error);
             }
         }
 

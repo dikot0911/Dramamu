@@ -452,46 +452,55 @@
 
             const chartConfig = AdminPanel.getChartConfig(isDark);
 
-            if (revenueChart) revenueChart.destroy();
-            revenueChart = new Chart(document.getElementById('revenueChart'), {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Revenue (IDR)',
-                        data: revenueByDay,
-                        borderColor: isDark ? '#60a5fa' : '#2481cc',
-                        backgroundColor: isDark ? 'rgba(96, 165, 250, 0.1)' : 'rgba(36, 129, 204, 0.1)',
-                        tension: 0.4,
-                        fill: true,
-                        borderWidth: 2
-                    }]
-                },
-                options: {
-                    ...chartConfig,
-                    plugins: {
-                        ...chartConfig.plugins,
-                        legend: { display: false },
-                        tooltip: {
-                            ...chartConfig.plugins.tooltip,
-                            callbacks: {
-                                label: (context) => 'IDR ' + context.parsed.y.toLocaleString('id-ID')
+            try {
+                const revenueCanvas = document.getElementById('revenueChart');
+                if (!revenueCanvas) {
+                    console.error('Revenue chart canvas not found');
+                } else {
+                    if (revenueChart) revenueChart.destroy();
+                    revenueChart = new Chart('revenueChart', {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Revenue (IDR)',
+                                data: revenueByDay,
+                                borderColor: isDark ? '#60a5fa' : '#2481cc',
+                                backgroundColor: isDark ? 'rgba(96, 165, 250, 0.1)' : 'rgba(36, 129, 204, 0.1)',
+                                tension: 0.4,
+                                fill: true,
+                                borderWidth: 2
+                            }]
+                        },
+                        options: {
+                            ...chartConfig,
+                            plugins: {
+                                ...chartConfig.plugins,
+                                legend: { display: false },
+                                tooltip: {
+                                    ...chartConfig.plugins.tooltip,
+                                    callbacks: {
+                                        label: (context) => 'IDR ' + context.parsed.y.toLocaleString('id-ID')
+                                    }
+                                }
+                            },
+                            scales: {
+                                ...chartConfig.scales,
+                                y: {
+                                    ...chartConfig.scales.y,
+                                    beginAtZero: true,
+                                    ticks: {
+                                        ...chartConfig.scales.y.ticks,
+                                        callback: (value) => 'IDR ' + value.toLocaleString('id-ID')
+                                    }
+                                }
                             }
                         }
-                    },
-                    scales: {
-                        ...chartConfig.scales,
-                        y: {
-                            ...chartConfig.scales.y,
-                            beginAtZero: true,
-                            ticks: {
-                                ...chartConfig.scales.y.ticks,
-                                callback: (value) => 'IDR ' + value.toLocaleString('id-ID')
-                            }
-                        }
-                    }
+                    });
                 }
-            });
+            } catch (error) {
+                console.error('Error initializing revenue chart:', error);
+            }
 
             const userGrowthByDay = new Array(dates.length).fill(0);
             recentUsers.forEach(user => {
@@ -511,39 +520,48 @@
                 }
             });
 
-            if (userGrowthChart) userGrowthChart.destroy();
-            userGrowthChart = new Chart(document.getElementById('userGrowthChart'), {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'New Users',
-                        data: userGrowthByDay,
-                        backgroundColor: isDark ? 'rgba(147, 197, 253, 0.7)' : 'rgba(102, 126, 234, 0.8)',
-                        borderColor: isDark ? '#93c5fd' : '#667eea',
-                        borderWidth: 2,
-                        borderRadius: 6
-                    }]
-                },
-                options: {
-                    ...chartConfig,
-                    plugins: {
-                        ...chartConfig.plugins,
-                        legend: { display: false }
-                    },
-                    scales: {
-                        ...chartConfig.scales,
-                        y: {
-                            ...chartConfig.scales.y,
-                            beginAtZero: true,
-                            ticks: {
-                                ...chartConfig.scales.y.ticks,
-                                stepSize: 1
+            try {
+                const userGrowthCanvas = document.getElementById('userGrowthChart');
+                if (!userGrowthCanvas) {
+                    console.error('User growth chart canvas not found');
+                } else {
+                    if (userGrowthChart) userGrowthChart.destroy();
+                    userGrowthChart = new Chart('userGrowthChart', {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'New Users',
+                                data: userGrowthByDay,
+                                backgroundColor: isDark ? 'rgba(147, 197, 253, 0.7)' : 'rgba(102, 126, 234, 0.8)',
+                                borderColor: isDark ? '#93c5fd' : '#667eea',
+                                borderWidth: 2,
+                                borderRadius: 6
+                            }]
+                        },
+                        options: {
+                            ...chartConfig,
+                            plugins: {
+                                ...chartConfig.plugins,
+                                legend: { display: false }
+                            },
+                            scales: {
+                                ...chartConfig.scales,
+                                y: {
+                                    ...chartConfig.scales.y,
+                                    beginAtZero: true,
+                                    ticks: {
+                                        ...chartConfig.scales.y.ticks,
+                                        stepSize: 1
+                                    }
+                                }
                             }
                         }
-                    }
+                    });
                 }
-            });
+            } catch (error) {
+                console.error('Error initializing user growth chart:', error);
+            }
 
             const paymentStatuses = {
                 settlement: 0,
@@ -559,24 +577,33 @@
 
             const donutConfig = AdminPanel.getDonutChartConfig(isDark);
             
-            if (paymentStatusChart) paymentStatusChart.destroy();
-            paymentStatusChart = new Chart(document.getElementById('paymentStatusChart'), {
-                type: 'doughnut',
-                data: {
-                    labels: ['Settlement', 'Pending', 'Failed'],
-                    datasets: [{
-                        data: [paymentStatuses.settlement, paymentStatuses.pending, paymentStatuses.failed],
-                        backgroundColor: [
-                            isDark ? '#6ee7b7' : 'rgba(0, 200, 81, 0.8)',
-                            isDark ? '#fcd34d' : 'rgba(255, 193, 7, 0.8)',
-                            isDark ? '#fca5a5' : 'rgba(255, 68, 68, 0.8)'
-                        ],
-                        borderWidth: isDark ? 2 : 0,
-                        borderColor: isDark ? '#1e293b' : 'transparent'
-                    }]
-                },
-                options: donutConfig
-            });
+            try {
+                const paymentStatusCanvas = document.getElementById('paymentStatusChart');
+                if (!paymentStatusCanvas) {
+                    console.error('Payment status chart canvas not found');
+                } else {
+                    if (paymentStatusChart) paymentStatusChart.destroy();
+                    paymentStatusChart = new Chart('paymentStatusChart', {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['Settlement', 'Pending', 'Failed'],
+                            datasets: [{
+                                data: [paymentStatuses.settlement, paymentStatuses.pending, paymentStatuses.failed],
+                                backgroundColor: [
+                                    isDark ? '#6ee7b7' : 'rgba(0, 200, 81, 0.8)',
+                                    isDark ? '#fcd34d' : 'rgba(255, 193, 7, 0.8)',
+                                    isDark ? '#fca5a5' : 'rgba(255, 68, 68, 0.8)'
+                                ],
+                                borderWidth: isDark ? 2 : 0,
+                                borderColor: isDark ? '#1e293b' : 'transparent'
+                            }]
+                        },
+                        options: donutConfig
+                    });
+                }
+            } catch (error) {
+                console.error('Error initializing payment status chart:', error);
+            }
         }
 
         // Card Expand/Collapse Functionality - Horizontal Expansion

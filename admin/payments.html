@@ -445,44 +445,53 @@
             const isDark = AdminPanel.getCurrentTheme() === 'dark';
             const chartConfig = AdminPanel.getChartConfig(isDark);
             
-            if (paymentStatusChart) paymentStatusChart.destroy();
-            paymentStatusChart = new Chart(document.getElementById('paymentStatusChart'), {
-                type: 'doughnut',
-                data: {
-                    labels: ['Settlement', 'Pending', 'Expired', 'Cancelled'],
-                    datasets: [{
-                        data: [
-                            statusCount.settlement,
-                            statusCount.pending,
-                            statusCount.expire,
-                            statusCount.cancel
-                        ],
-                        backgroundColor: [
-                            isDark ? '#4ade80' : 'rgba(74, 222, 128, 0.8)',
-                            isDark ? '#feca57' : 'rgba(254, 202, 87, 0.8)',
-                            isDark ? '#94a3b8' : 'rgba(148, 163, 184, 0.8)',
-                            isDark ? '#f87171' : 'rgba(248, 113, 113, 0.8)'
-                        ],
-                        borderWidth: isDark ? 2 : 0,
-                        borderColor: isDark ? '#1e293b' : 'transparent'
-                    }]
-                },
-                options: {
-                    ...chartConfig,
-                    plugins: {
-                        ...chartConfig.plugins,
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                ...chartConfig.plugins.legend.labels,
-                                padding: 15,
-                                usePointStyle: true,
-                                pointStyle: 'circle'
+            try {
+                const canvas = document.getElementById('paymentStatusChart');
+                if (!canvas) {
+                    console.error('Canvas element not found: paymentStatusChart');
+                    return;
+                }
+                if (paymentStatusChart) paymentStatusChart.destroy();
+                paymentStatusChart = new Chart(canvas, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Settlement', 'Pending', 'Expired', 'Cancelled'],
+                        datasets: [{
+                            data: [
+                                statusCount.settlement,
+                                statusCount.pending,
+                                statusCount.expire,
+                                statusCount.cancel
+                            ],
+                            backgroundColor: [
+                                isDark ? '#4ade80' : 'rgba(74, 222, 128, 0.8)',
+                                isDark ? '#feca57' : 'rgba(254, 202, 87, 0.8)',
+                                isDark ? '#94a3b8' : 'rgba(148, 163, 184, 0.8)',
+                                isDark ? '#f87171' : 'rgba(248, 113, 113, 0.8)'
+                            ],
+                            borderWidth: isDark ? 2 : 0,
+                            borderColor: isDark ? '#1e293b' : 'transparent'
+                        }]
+                    },
+                    options: {
+                        ...chartConfig,
+                        plugins: {
+                            ...chartConfig.plugins,
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    ...chartConfig.plugins.legend.labels,
+                                    padding: 15,
+                                    usePointStyle: true,
+                                    pointStyle: 'circle'
+                                }
                             }
                         }
                     }
-                }
-            });
+                });
+            } catch (error) {
+                console.error('Error initializing payment status chart:', error);
+            }
             
             const days = generatePaymentsDays();
             const numDays = getPaymentsDays();
@@ -512,40 +521,49 @@
                 } catch (e) {}
             });
             
-            if (paymentTrendChart) paymentTrendChart.destroy();
-            paymentTrendChart = new Chart(document.getElementById('paymentTrendChart'), {
-                type: 'line',
-                data: {
-                    labels: days,
-                    datasets: [{
-                        label: 'Pembayaran',
-                        data: paymentsByDay,
-                        borderColor: isDark ? '#60a5fa' : '#667eea',
-                        backgroundColor: isDark ? 'rgba(96, 165, 250, 0.1)' : 'rgba(102, 126, 234, 0.1)',
-                        tension: 0.4,
-                        fill: true,
-                        borderWidth: 2
-                    }]
-                },
-                options: {
-                    ...chartConfig,
-                    plugins: {
-                        ...chartConfig.plugins,
-                        legend: { display: false }
+            try {
+                const canvas = document.getElementById('paymentTrendChart');
+                if (!canvas) {
+                    console.error('Canvas element not found: paymentTrendChart');
+                    return;
+                }
+                if (paymentTrendChart) paymentTrendChart.destroy();
+                paymentTrendChart = new Chart(canvas, {
+                    type: 'line',
+                    data: {
+                        labels: days,
+                        datasets: [{
+                            label: 'Pembayaran',
+                            data: paymentsByDay,
+                            borderColor: isDark ? '#60a5fa' : '#667eea',
+                            backgroundColor: isDark ? 'rgba(96, 165, 250, 0.1)' : 'rgba(102, 126, 234, 0.1)',
+                            tension: 0.4,
+                            fill: true,
+                            borderWidth: 2
+                        }]
                     },
-                    scales: {
-                        ...chartConfig.scales,
-                        y: {
-                            ...chartConfig.scales.y,
-                            beginAtZero: true,
-                            ticks: {
-                                ...chartConfig.scales.y.ticks,
-                                stepSize: 1
+                    options: {
+                        ...chartConfig,
+                        plugins: {
+                            ...chartConfig.plugins,
+                            legend: { display: false }
+                        },
+                        scales: {
+                            ...chartConfig.scales,
+                            y: {
+                                ...chartConfig.scales.y,
+                                beginAtZero: true,
+                                ticks: {
+                                    ...chartConfig.scales.y.ticks,
+                                    stepSize: 1
+                                }
                             }
                         }
                     }
-                }
-            });
+                });
+            } catch (error) {
+                console.error('Error initializing payment trend chart:', error);
+            }
         }
 
         function generateLast7Days() {

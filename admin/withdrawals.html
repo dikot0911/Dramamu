@@ -386,42 +386,51 @@
             const isDark = AdminPanel.getCurrentTheme() === 'dark';
             const chartConfig = AdminPanel.getChartConfig(isDark);
             
-            if (withdrawalStatusChart) withdrawalStatusChart.destroy();
-            withdrawalStatusChart = new Chart(document.getElementById('withdrawalStatusChart'), {
-                type: 'doughnut',
-                data: {
-                    labels: ['Pending', 'Disetujui', 'Ditolak'],
-                    datasets: [{
-                        data: [
-                            statusCount.pending,
-                            statusCount.approved,
-                            statusCount.rejected
-                        ],
-                        backgroundColor: [
-                            isDark ? '#feca57' : 'rgba(254, 202, 87, 0.8)',
-                            isDark ? '#4ade80' : 'rgba(74, 222, 128, 0.8)',
-                            isDark ? '#f87171' : 'rgba(248, 113, 113, 0.8)'
-                        ],
-                        borderWidth: isDark ? 2 : 0,
-                        borderColor: isDark ? '#1e293b' : 'transparent'
-                    }]
-                },
-                options: {
-                    ...chartConfig,
-                    plugins: {
-                        ...chartConfig.plugins,
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                ...chartConfig.plugins.legend.labels,
-                                padding: 15,
-                                usePointStyle: true,
-                                pointStyle: 'circle'
+            try {
+                const canvas = document.getElementById('withdrawalStatusChart');
+                if (!canvas) {
+                    console.error('Canvas element not found: withdrawalStatusChart');
+                    return;
+                }
+                if (withdrawalStatusChart) withdrawalStatusChart.destroy();
+                withdrawalStatusChart = new Chart(canvas, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Pending', 'Disetujui', 'Ditolak'],
+                        datasets: [{
+                            data: [
+                                statusCount.pending,
+                                statusCount.approved,
+                                statusCount.rejected
+                            ],
+                            backgroundColor: [
+                                isDark ? '#feca57' : 'rgba(254, 202, 87, 0.8)',
+                                isDark ? '#4ade80' : 'rgba(74, 222, 128, 0.8)',
+                                isDark ? '#f87171' : 'rgba(248, 113, 113, 0.8)'
+                            ],
+                            borderWidth: isDark ? 2 : 0,
+                            borderColor: isDark ? '#1e293b' : 'transparent'
+                        }]
+                    },
+                    options: {
+                        ...chartConfig,
+                        plugins: {
+                            ...chartConfig.plugins,
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    ...chartConfig.plugins.legend.labels,
+                                    padding: 15,
+                                    usePointStyle: true,
+                                    pointStyle: 'circle'
+                                }
                             }
                         }
                     }
-                }
-            });
+                });
+            } catch (error) {
+                console.error('Error initializing withdrawal status chart:', error);
+            }
             
             const days = generateWithdrawalsDays();
             const numDays = getWithdrawalsDays();
@@ -451,50 +460,59 @@
                 } catch (e) {}
             });
             
-            if (withdrawalVolumeChart) withdrawalVolumeChart.destroy();
-            withdrawalVolumeChart = new Chart(document.getElementById('withdrawalVolumeChart'), {
-                type: 'line',
-                data: {
-                    labels: days,
-                    datasets: [{
-                        label: 'Volume',
-                        data: volumeByDay,
-                        borderColor: isDark ? '#60a5fa' : '#667eea',
-                        backgroundColor: isDark ? 'rgba(96, 165, 250, 0.1)' : 'rgba(102, 126, 234, 0.1)',
-                        tension: 0.4,
-                        fill: true,
-                        borderWidth: 2
-                    }]
-                },
-                options: {
-                    ...chartConfig,
-                    plugins: {
-                        ...chartConfig.plugins,
-                        legend: { display: false },
-                        tooltip: {
-                            ...chartConfig.plugins.tooltip,
-                            callbacks: {
-                                label: function(context) {
-                                    return AdminPanel.formatCurrency(context.parsed.y);
+            try {
+                const canvas = document.getElementById('withdrawalVolumeChart');
+                if (!canvas) {
+                    console.error('Canvas element not found: withdrawalVolumeChart');
+                    return;
+                }
+                if (withdrawalVolumeChart) withdrawalVolumeChart.destroy();
+                withdrawalVolumeChart = new Chart(canvas, {
+                    type: 'line',
+                    data: {
+                        labels: days,
+                        datasets: [{
+                            label: 'Volume',
+                            data: volumeByDay,
+                            borderColor: isDark ? '#60a5fa' : '#667eea',
+                            backgroundColor: isDark ? 'rgba(96, 165, 250, 0.1)' : 'rgba(102, 126, 234, 0.1)',
+                            tension: 0.4,
+                            fill: true,
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        ...chartConfig,
+                        plugins: {
+                            ...chartConfig.plugins,
+                            legend: { display: false },
+                            tooltip: {
+                                ...chartConfig.plugins.tooltip,
+                                callbacks: {
+                                    label: function(context) {
+                                        return AdminPanel.formatCurrency(context.parsed.y);
+                                    }
                                 }
                             }
-                        }
-                    },
-                    scales: {
-                        ...chartConfig.scales,
-                        y: {
-                            ...chartConfig.scales.y,
-                            beginAtZero: true,
-                            ticks: {
-                                ...chartConfig.scales.y.ticks,
-                                callback: function(value) {
-                                    return 'Rp ' + (value / 1000).toFixed(0) + 'K';
+                        },
+                        scales: {
+                            ...chartConfig.scales,
+                            y: {
+                                ...chartConfig.scales.y,
+                                beginAtZero: true,
+                                ticks: {
+                                    ...chartConfig.scales.y.ticks,
+                                    callback: function(value) {
+                                        return 'Rp ' + (value / 1000).toFixed(0) + 'K';
+                                    }
                                 }
                             }
                         }
                     }
-                }
-            });
+                });
+            } catch (error) {
+                console.error('Error initializing withdrawal volume chart:', error);
+            }
         }
 
         function generateLast7Days() {

@@ -331,109 +331,127 @@
         }
 
         function initUserGrowthChart(data) {
-            const ctx = document.getElementById('userGrowthChart');
-            
-            if (userGrowthChart) {
-                userGrowthChart.destroy();
-            }
+            try {
+                const ctx = document.getElementById('userGrowthChart');
+                
+                if (!ctx) {
+                    console.error('User growth chart canvas not found');
+                    return;
+                }
+                
+                if (userGrowthChart) {
+                    userGrowthChart.destroy();
+                }
 
-            const isDark = AdminPanel.getCurrentTheme() === 'dark';
-            const textColor = isDark ? '#e5e7eb' : '#374151';
-            const gridColor = isDark ? '#374151' : '#e5e7eb';
+                const isDark = AdminPanel.getCurrentTheme() === 'dark';
+                const textColor = isDark ? '#e5e7eb' : '#374151';
+                const gridColor = isDark ? '#374151' : '#e5e7eb';
 
-            userGrowthChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: data.map(d => new Date(d.date).toLocaleDateString('id-ID')),
-                    datasets: [
-                        {
-                            label: 'Total Users',
-                            data: data.map(d => d.total_users),
-                            borderColor: '#667eea',
-                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                            tension: 0.4
-                        },
-                        {
-                            label: 'VIP Users',
-                            data: data.map(d => d.vip_users),
-                            borderColor: '#f093fb',
-                            backgroundColor: 'rgba(240, 147, 251, 0.1)',
-                            tension: 0.4
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            labels: { color: textColor }
-                        }
+                userGrowthChart = new Chart('userGrowthChart', {
+                    type: 'line',
+                    data: {
+                        labels: data.map(d => new Date(d.date).toLocaleDateString('id-ID')),
+                        datasets: [
+                            {
+                                label: 'Total Users',
+                                data: data.map(d => d.total_users),
+                                borderColor: '#667eea',
+                                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                                tension: 0.4
+                            },
+                            {
+                                label: 'VIP Users',
+                                data: data.map(d => d.vip_users),
+                                borderColor: '#f093fb',
+                                backgroundColor: 'rgba(240, 147, 251, 0.1)',
+                                tension: 0.4
+                            }
+                        ]
                     },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: { color: textColor },
-                            grid: { color: gridColor }
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                labels: { color: textColor }
+                            }
                         },
-                        x: {
-                            ticks: { color: textColor },
-                            grid: { color: gridColor }
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { color: textColor },
+                                grid: { color: gridColor }
+                            },
+                            x: {
+                                ticks: { color: textColor },
+                                grid: { color: gridColor }
+                            }
                         }
                     }
-                }
-            });
+                });
+            } catch (error) {
+                console.error('Error initializing user growth chart:', error);
+            }
         }
 
         function initRevenueChart(data) {
-            const ctx = document.getElementById('revenueChart');
-            
-            if (revenueChart) {
-                revenueChart.destroy();
-            }
+            try {
+                const ctx = document.getElementById('revenueChart');
+                
+                if (!ctx) {
+                    console.error('Revenue chart canvas not found');
+                    return;
+                }
+                
+                if (revenueChart) {
+                    revenueChart.destroy();
+                }
 
-            const isDark = AdminPanel.getCurrentTheme() === 'dark';
-            const textColor = isDark ? '#e5e7eb' : '#374151';
-            const gridColor = isDark ? '#374151' : '#e5e7eb';
+                const isDark = AdminPanel.getCurrentTheme() === 'dark';
+                const textColor = isDark ? '#e5e7eb' : '#374151';
+                const gridColor = isDark ? '#374151' : '#e5e7eb';
 
-            revenueChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: data.map(d => new Date(d.date).toLocaleDateString('id-ID')),
-                    datasets: [{
-                        label: 'Revenue (Rp)',
-                        data: data.map(d => d.revenue),
-                        backgroundColor: 'rgba(67, 227, 123, 0.8)',
-                        borderColor: '#43e97b',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            labels: { color: textColor }
-                        }
+                revenueChart = new Chart('revenueChart', {
+                    type: 'bar',
+                    data: {
+                        labels: data.map(d => new Date(d.date).toLocaleDateString('id-ID')),
+                        datasets: [{
+                            label: 'Revenue (Rp)',
+                            data: data.map(d => d.revenue),
+                            backgroundColor: 'rgba(67, 227, 123, 0.8)',
+                            borderColor: '#43e97b',
+                            borderWidth: 1
+                        }]
                     },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: { 
-                                color: textColor,
-                                callback: function(value) {
-                                    return 'Rp ' + value.toLocaleString();
-                                }
-                            },
-                            grid: { color: gridColor }
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                labels: { color: textColor }
+                            }
                         },
-                        x: {
-                            ticks: { color: textColor },
-                            grid: { color: gridColor }
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { 
+                                    color: textColor,
+                                    callback: function(value) {
+                                        return 'Rp ' + value.toLocaleString();
+                                    }
+                                },
+                                grid: { color: gridColor }
+                            },
+                            x: {
+                                ticks: { color: textColor },
+                                grid: { color: gridColor }
+                            }
                         }
                     }
-                }
-            });
+                });
+            } catch (error) {
+                console.error('Error initializing revenue chart:', error);
+            }
         }
 
         function displayTopMovies(movies) {

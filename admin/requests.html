@@ -384,44 +384,53 @@
             const isDark = AdminPanel.getCurrentTheme() === 'dark';
             const chartConfig = AdminPanel.getChartConfig(isDark);
             
-            if (requestStatusChart) requestStatusChart.destroy();
-            requestStatusChart = new Chart(document.getElementById('requestStatusChart'), {
-                type: 'doughnut',
-                data: {
-                    labels: ['Pending', 'Disetujui', 'Ditolak', 'Selesai'],
-                    datasets: [{
-                        data: [
-                            statusCount.pending,
-                            statusCount.approved,
-                            statusCount.rejected,
-                            statusCount.completed
-                        ],
-                        backgroundColor: [
-                            isDark ? '#feca57' : 'rgba(254, 202, 87, 0.8)',
-                            isDark ? '#60a5fa' : 'rgba(96, 165, 250, 0.8)',
-                            isDark ? '#f87171' : 'rgba(248, 113, 113, 0.8)',
-                            isDark ? '#4ade80' : 'rgba(74, 222, 128, 0.8)'
-                        ],
-                        borderWidth: isDark ? 2 : 0,
-                        borderColor: isDark ? '#1e293b' : 'transparent'
-                    }]
-                },
-                options: {
-                    ...chartConfig,
-                    plugins: {
-                        ...chartConfig.plugins,
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                ...chartConfig.plugins.legend.labels,
-                                padding: 15,
-                                usePointStyle: true,
-                                pointStyle: 'circle'
+            try {
+                const canvas = document.getElementById('requestStatusChart');
+                if (!canvas) {
+                    console.error('Canvas element not found: requestStatusChart');
+                    return;
+                }
+                if (requestStatusChart) requestStatusChart.destroy();
+                requestStatusChart = new Chart(canvas, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Pending', 'Disetujui', 'Ditolak', 'Selesai'],
+                        datasets: [{
+                            data: [
+                                statusCount.pending,
+                                statusCount.approved,
+                                statusCount.rejected,
+                                statusCount.completed
+                            ],
+                            backgroundColor: [
+                                isDark ? '#feca57' : 'rgba(254, 202, 87, 0.8)',
+                                isDark ? '#60a5fa' : 'rgba(96, 165, 250, 0.8)',
+                                isDark ? '#f87171' : 'rgba(248, 113, 113, 0.8)',
+                                isDark ? '#4ade80' : 'rgba(74, 222, 128, 0.8)'
+                            ],
+                            borderWidth: isDark ? 2 : 0,
+                            borderColor: isDark ? '#1e293b' : 'transparent'
+                        }]
+                    },
+                    options: {
+                        ...chartConfig,
+                        plugins: {
+                            ...chartConfig.plugins,
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    ...chartConfig.plugins.legend.labels,
+                                    padding: 15,
+                                    usePointStyle: true,
+                                    pointStyle: 'circle'
+                                }
                             }
                         }
                     }
-                }
-            });
+                });
+            } catch (error) {
+                console.error('Error initializing request status chart:', error);
+            }
             
             const days = generateRequestsDays();
             const numDays = getRequestsDays();
@@ -451,38 +460,47 @@
                 } catch (e) {}
             });
             
-            if (requestsTimelineChart) requestsTimelineChart.destroy();
-            requestsTimelineChart = new Chart(document.getElementById('requestsTimelineChart'), {
-                type: 'bar',
-                data: {
-                    labels: days,
-                    datasets: [{
-                        label: 'Permintaan',
-                        data: requestsByDay,
-                        backgroundColor: isDark ? 'rgba(96, 165, 250, 0.7)' : 'rgba(102, 126, 234, 0.7)',
-                        borderColor: isDark ? '#60a5fa' : '#667eea',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    ...chartConfig,
-                    plugins: {
-                        ...chartConfig.plugins,
-                        legend: { display: false }
+            try {
+                const canvas = document.getElementById('requestsTimelineChart');
+                if (!canvas) {
+                    console.error('Canvas element not found: requestsTimelineChart');
+                    return;
+                }
+                if (requestsTimelineChart) requestsTimelineChart.destroy();
+                requestsTimelineChart = new Chart(canvas, {
+                    type: 'bar',
+                    data: {
+                        labels: days,
+                        datasets: [{
+                            label: 'Permintaan',
+                            data: requestsByDay,
+                            backgroundColor: isDark ? 'rgba(96, 165, 250, 0.7)' : 'rgba(102, 126, 234, 0.7)',
+                            borderColor: isDark ? '#60a5fa' : '#667eea',
+                            borderWidth: 1
+                        }]
                     },
-                    scales: {
-                        ...chartConfig.scales,
-                        y: {
-                            ...chartConfig.scales.y,
-                            beginAtZero: true,
-                            ticks: {
-                                ...chartConfig.scales.y.ticks,
-                                stepSize: 1
+                    options: {
+                        ...chartConfig,
+                        plugins: {
+                            ...chartConfig.plugins,
+                            legend: { display: false }
+                        },
+                        scales: {
+                            ...chartConfig.scales,
+                            y: {
+                                ...chartConfig.scales.y,
+                                beginAtZero: true,
+                                ticks: {
+                                    ...chartConfig.scales.y.ticks,
+                                    stepSize: 1
+                                }
                             }
                         }
                     }
-                }
-            });
+                });
+            } catch (error) {
+                console.error('Error initializing requests timeline chart:', error);
+            }
         }
 
         function generateLast7Days() {
