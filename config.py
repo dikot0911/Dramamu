@@ -275,3 +275,4 @@ URL_CARI_CUAN = f"{FRONTEND_URL}/referal.html"
 URL_BELI_VIP = f"{FRONTEND_URL}/payment.html"
 URL_REQUEST = f"{FRONTEND_URL}/request.html"
 URL_HUBUNGI_KAMI = f"{FRONTEND_URL}/contact.html"
+    
