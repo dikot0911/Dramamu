@@ -160,6 +160,7 @@ class Payment(Base):
     package_name = Column(String, nullable=False)
     amount = Column(Integer, nullable=False)
     status = Column(String, default='pending')
+    screenshot_url = Column(String, nullable=True)
     created_at = Column(DateTime, default=now_utc)
     paid_at = Column(DateTime, nullable=True)
 

@@ -221,6 +221,7 @@ class PaymentRequest(BaseModel):
     paket_id: int
     gross_amount: int
     nama_paket: str
+    screenshot_file: str | None = None
 
 class MovieSelectionRequest(BaseModel):
     init_data: str
@@ -822,17 +823,20 @@ async def create_qris_payment(request: PaymentRequest):
     try:
         db = SessionLocal()
         try:
-            # Create payment record with status 'qris_pending'
+            # Create payment record with status 'qris_pending' and optional screenshot
             payment = Payment(
                 telegram_id=str(request.telegram_id),
                 order_id=order_id,
                 package_name=request.nama_paket,
                 amount=request.gross_amount,
-                status='qris_pending'
+                status='qris_pending',
+                screenshot_url=request.screenshot_file if request.screenshot_file else None
             )
             db.add(payment)
             db.commit()
             logger.info(f"✅ QRIS payment record created: {order_id} for user {request.telegram_id}")
+            if request.screenshot_file:
+                logger.info(f"📸 Screenshot uploaded with order {order_id}")
         except Exception as db_error:
             logger.error(f"Error waktu simpan QRIS payment record: {db_error}")
             db.rollback()
@@ -846,6 +850,7 @@ async def create_qris_payment(request: PaymentRequest):
             "amount": request.gross_amount,
             "package_name": request.nama_paket,
             "status": "qris_pending",
+            "screenshot_url": request.screenshot_file if request.screenshot_file else None,
             "message": "Scan QRIS dan kirim bukti pembayaran ke admin untuk aktivasi VIP"
         }
     
