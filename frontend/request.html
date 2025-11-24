@@ -115,25 +115,23 @@
 
     <script>
         const tg = window.Telegram?.WebApp;
-        if (!tg) {
-            console.warn('⚠️ Telegram WebApp not available');
-            return;
-        }
-        
-        tg.ready();
-        tg.enableClosingConfirmation();
-        
-        tg.disableVerticalSwipes();
-        console.log("🔒 Vertical swipes disabled - mini app tidak akan close saat scroll");
+        if (tg) {
+            tg.ready();
+            tg.enableClosingConfirmation();
+            tg.disableVerticalSwipes();
+            console.log("🔒 Vertical swipes disabled - mini app tidak akan close saat scroll");
 
-        const user = tg.initDataUnsafe?.user;
-        if (user) {
-            const usernameInput = document.getElementById('username');
-            if (user.username) {
-                usernameInput.value = "@" + user.username;
-            } else {
-                usernameInput.value = user.first_name + (user.last_name ? " " + user.last_name : "");
+            const user = tg.initDataUnsafe?.user;
+            if (user) {
+                const usernameInput = document.getElementById('username');
+                if (user.username) {
+                    usernameInput.value = "@" + user.username;
+                } else {
+                    usernameInput.value = user.first_name + (user.last_name ? " " + user.last_name : "");
+                }
             }
+        } else {
+            console.warn('⚠️ Telegram WebApp not available');
         }
 
         // Load request history
