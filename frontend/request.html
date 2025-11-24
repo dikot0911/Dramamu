@@ -194,36 +194,117 @@
         function displayRequestHistory(requests) {
             const historyContainer = document.getElementById('request-history');
             
+            const getStatusConfig = (status) => {
+                const configs = {
+                    'pending': {
+                        badge: 'px-3 py-1.5 rounded-full font-bold text-xs',
+                        style: 'background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);',
+                        icon: '⏳',
+                        label: 'Menunggu'
+                    },
+                    'approved': {
+                        badge: 'px-3 py-1.5 rounded-full font-bold text-xs',
+                        style: 'background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);',
+                        icon: '✅',
+                        label: 'Disetujui'
+                    },
+                    'rejected': {
+                        badge: 'px-3 py-1.5 rounded-full font-bold text-xs',
+                        style: 'background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);',
+                        icon: '❌',
+                        label: 'Ditolak'
+                    },
+                    'processing': {
+                        badge: 'px-3 py-1.5 rounded-full font-bold text-xs',
+                        style: 'background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);',
+                        icon: '⚙️',
+                        label: 'Diproses'
+                    }
+                };
+                return configs[status] || configs['pending'];
+            };
+            
             const html = `
-                <div class="premium-card rounded-lg mb-4 h-72 flex flex-col">
-                    <div class="p-3 pb-2">
-                        <h2 class="text-sm font-semibold text-white">History Request</h2>
+                <style>
+                    @keyframes slideIn {
+                        from { opacity: 0; transform: translateY(10px); }
+                        to { opacity: 1; transform: translateY(0); }
+                    }
+                    .history-card {
+                        animation: slideIn 0.4s ease-out forwards;
+                        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    }
+                    .history-card:hover {
+                        transform: translateY(-2px);
+                        box-shadow: 0 8px 24px rgba(212, 175, 55, 0.15);
+                        border-color: rgba(212, 175, 55, 0.4) !important;
+                    }
+                </style>
+                <div class="premium-card rounded-xl mb-4 flex flex-col overflow-hidden" style="max-height: 500px; background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(30, 41, 59, 0.95) 100%); border: 2px solid rgba(212, 175, 55, 0.25); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);">
+                    <div class="p-5 pb-4 flex items-center justify-between" style="background: linear-gradient(135deg, rgba(212, 175, 55, 0.1) 0%, rgba(147, 51, 234, 0.05) 100%); border-bottom: 2px solid rgba(212, 175, 55, 0.2);">
+                        <div>
+                            <h2 class="text-lg font-bold text-white">📋 History Request</h2>
+                            <p class="text-xs text-gray-400 mt-0.5">Lacak status request drama kamu</p>
+                        </div>
+                        <span class="text-sm font-bold px-3 py-1.5 rounded-full" style="background: linear-gradient(135deg, #d4af37 0%, #f0d266 100%); color: #0f0f1e; box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);">
+                            ${requests.length}
+                        </span>
                     </div>
-                    <div class="flex-1 overflow-y-auto scrollbar-hide px-3 pb-3" style="border-top: 1px solid rgba(212, 175, 55, 0.2);">
-                        ${requests.map((req, index) => {
-                            const statusText = {
-                                'pending': 'Menunggu',
-                                'approved': 'Disetujui',
-                                'rejected': 'Ditolak',
-                                'processing': 'Diproses'
-                            }[req.status] || req.status;
-                            
+                    <div class="flex-1 overflow-y-auto scrollbar-hide px-4 py-4 space-y-3">
+                        ${requests.length === 0 ? `
+                            <div class="flex items-center justify-center h-full py-12">
+                                <div class="text-center">
+                                    <div class="text-4xl mb-3">📭</div>
+                                    <div class="text-gray-400 text-sm">Belum ada request drama</div>
+                                    <div class="text-gray-500 text-xs mt-1">Buat request pertama kamu di bawah!</div>
+                                </div>
+                            </div>
+                        ` : requests.map((req, index) => {
+                            const status = req.status || 'pending';
+                            const config = getStatusConfig(status);
                             const updatedDate = req.updated_at ? new Date(req.updated_at).toLocaleDateString('id-ID') : '';
                             const hasUpdate = req.updated_at && req.updated_at !== req.created_at;
                             
                             return `
-                                <div class="py-2 text-xs ${index > 0 ? 'border-t border-gray-700' : 'pt-3'}">
-                                    <div class="text-white font-medium mb-0.5">${req.judul}</div>
-                                    <div class="text-gray-400">
-                                        ${req.apk_source ? `APK: ${req.apk_source} | ` : ''}Status: ${statusText}
+                                <div class="history-card p-4 rounded-lg" style="border: 1.5px solid rgba(212, 175, 55, 0.15); background: linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(30, 41, 59, 0.4) 100%); backdrop-filter: blur(10px);">
+                                    <div class="flex items-start justify-between mb-3">
+                                        <div class="flex-1">
+                                            <div class="flex items-center gap-2 mb-1">
+                                                <span class="text-lg">${config.icon}</span>
+                                                <h3 class="text-white font-bold text-sm">${req.judul}</h3>
+                                            </div>
+                                            ${req.apk_source ? `
+                                                <div class="flex items-center gap-2 text-xs text-gray-300 ml-6">
+                                                    <span>📱</span>
+                                                    <span>${req.apk_source}</span>
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                        <span class="${config.badge}" style="${config.style}">
+                                            ${config.label}
+                                        </span>
                                     </div>
-                                    <div class="text-gray-500 text-[10px]">
-                                        Dikirim: ${new Date(req.created_at).toLocaleDateString('id-ID')}
-                                        ${hasUpdate ? ` | Update: ${updatedDate}` : ''}
+                                    <div class="space-y-2 text-xs text-gray-400">
+                                        <div class="flex items-center gap-2">
+                                            <span>📅</span>
+                                            <span>Dikirim: <span class="text-gray-300 font-medium">${new Date(req.created_at).toLocaleDateString('id-ID')}</span></span>
+                                        </div>
+                                        ${hasUpdate ? `
+                                            <div class="flex items-center gap-2" style="color: #fbbf24;">
+                                                <span>🔄</span>
+                                                <span>Update: <span class="font-medium">${updatedDate}</span></span>
+                                            </div>
+                                        ` : ''}
                                     </div>
                                     ${req.admin_notes ? `
-                                        <div class="mt-1 text-gray-300 text-[10px]">
-                                            Pesan Admin: ${req.admin_notes}
+                                        <div class="mt-3 p-3 rounded-lg text-xs" style="background: linear-gradient(135deg, rgba(212, 175, 55, 0.15) 0%, rgba(147, 51, 234, 0.1) 100%); border-left: 3px solid #d4af37; color: #fbbf24;">
+                                            <div class="flex gap-2">
+                                                <span>💬</span>
+                                                <div>
+                                                    <div class="font-bold text-[#d4af37]">Pesan Admin</div>
+                                                    <div class="text-gray-300 mt-1">${req.admin_notes}</div>
+                                                </div>
+                                            </div>
                                         </div>
                                     ` : ''}
                                 </div>
