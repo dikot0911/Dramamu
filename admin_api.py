@@ -152,6 +152,13 @@ class UsersListResponse(BaseModel):
     page: int
     pages: int
 
+class QRISApproveRequest(BaseModel):
+    order_id: str
+
+class QRISRejectRequest(BaseModel):
+    order_id: str
+    reason: Optional[str] = None
+
 def get_current_admin(
     authorization: Optional[str] = Header(None),
     admin_token: Optional[str] = Cookie(None),
@@ -196,8 +203,8 @@ def get_current_admin(
     if not admin_id:
         raise HTTPException(status_code=401, detail="Invalid token payload")
     
-    # Enforce session validation biar ga bisa bypass revocation
-    # JWT harus tied ke session yang valid - no session = no access
+    # CRITICAL: Enforce session validation to prevent revocation bypass
+    # JWT must be tied to a valid session - no session = no access
     if not session_token_in_jwt:
         raise HTTPException(status_code=401, detail="Token tidak memiliki session binding")
     
@@ -214,9 +221,9 @@ def get_current_admin(
         logger.warning(f"Session token mismatch: cookie={admin_session[:8]}... jwt={session_token_in_jwt[:8]}...")
         raise HTTPException(status_code=401, detail="Session cookie tidak match")
     
-    # Touch session buat update last_activity
-    # Ini biar indicator online status jalan dengan benar
-    # Kalau touch gagal, session expired atau dihapus - force re-auth
+    # CRITICAL FIX: Touch session to update last_activity
+    # This ensures online status indicator works correctly
+    # If touch fails, session is expired or deleted - force re-auth
     if not touch_admin_session(session_token_in_jwt):
         raise HTTPException(status_code=401, detail="Session tidak valid atau sudah expired")
     
@@ -1136,6 +1143,7 @@ async def create_movie(data: MovieCreate, admin = Depends(get_current_admin)):
                             "category": existing.category
                         }
                     }
+                
                 # Simpan original ID untuk pending upload lookup
                 original_id = data.id
                 final_id = data.id
@@ -1823,6 +1831,226 @@ async def get_payments(page: int = 1, limit: int = 20, status: Optional[str] = N
             "limit": limit,
             "total_pages": (total + limit - 1) // limit
         }
+    finally:
+        db.close()
+
+@router.post("/payments/qris/approve")
+async def approve_qris_payment(data: QRISApproveRequest, admin = Depends(get_current_admin)):
+    """
+    Approve QRIS payment manual dan aktifkan VIP user.
+    
+    Flow:
+    1. Cari payment dengan order_id dan status 'qris_pending'
+    2. Update status ke 'paid' dan paid_at timestamp
+    3. Aktifkan VIP berdasarkan package_name (1/3/7/15/30 hari)
+    4. Process referral commission (25%) jika pembayaran pertama
+    5. Kirim notifikasi Telegram ke user
+    """
+    db = SessionLocal()
+    try:
+        logger.info(f"Admin {admin.username} approve QRIS payment: {data.order_id}")
+        
+        payment = db.query(Payment).filter(Payment.order_id == data.order_id).first()
+        
+        if not payment:
+            logger.error(f"Payment tidak ditemukan: {data.order_id}")
+            raise HTTPException(status_code=404, detail=f"Payment dengan order_id {data.order_id} tidak ditemukan")
+        
+        if payment.status != 'qris_pending':
+            logger.error(f"Payment {data.order_id} status bukan qris_pending: {payment.status}")
+            raise HTTPException(status_code=400, detail=f"Payment status bukan qris_pending (status sekarang: {payment.status})")
+        
+        payment.status = 'paid'
+        payment.paid_at = now_utc()
+        
+        user = db.query(User).filter(User.telegram_id == payment.telegram_id).first()
+        if not user:
+            logger.error(f"User tidak ditemukan: {payment.telegram_id}")
+            raise HTTPException(status_code=404, detail=f"User dengan telegram_id {payment.telegram_id} tidak ditemukan")
+        
+        days_map = {
+            "VIP 1 Hari": 1,
+            "VIP 3 Hari": 3,
+            "VIP 7 Hari": 7,
+            "VIP 15 Hari": 15,
+            "VIP 30 Hari": 30
+        }
+        package_name_str = str(payment.package_name)
+        days = days_map.get(package_name_str, 1)
+        
+        user.is_vip = True
+        from typing import cast
+        current_expiry_col = user.vip_expires_at
+        current_expiry: datetime | None = cast(datetime | None, current_expiry_col)
+        
+        if current_expiry is not None and current_expiry > now_utc():
+            user.vip_expires_at = current_expiry + timedelta(days=days)
+        else:
+            user.vip_expires_at = now_utc() + timedelta(days=days)
+        
+        logger.info(f"VIP diaktifkan untuk user {payment.telegram_id} selama {days} hari (paket: {package_name_str})")
+        
+        referred_by_code_value = cast(str | None, user.referred_by_code)
+        commission_paid = False
+        commission_amount = 0
+        
+        if referred_by_code_value:
+            is_first_payment = db.query(Payment).filter(
+                Payment.telegram_id == payment.telegram_id,
+                Payment.status == 'paid',
+                Payment.id != payment.id
+            ).first() is None
+            
+            if is_first_payment:
+                referrer = db.query(User).filter(User.ref_code == referred_by_code_value).first()
+                if referrer:
+                    payment_amount = cast(int, payment.amount)
+                    commission_amount = int(payment_amount * 0.25)
+                    
+                    from sqlalchemy import update
+                    db.execute(
+                        update(User)
+                        .where(User.id == referrer.id)
+                        .values(commission_balance=User.commission_balance + commission_amount)
+                    )
+                    commission_paid = True
+                    logger.info(f"💰 Komisi dibayar: Rp {commission_amount} ke user {referrer.telegram_id} (referrer dari {payment.telegram_id})")
+                else:
+                    logger.warning(f"Referrer dengan kode {referred_by_code_value} tidak ditemukan untuk user {payment.telegram_id}")
+            else:
+                logger.info(f"⏭️ Skip komisi - bukan pembayaran pertama untuk user {payment.telegram_id}")
+        
+        db.commit()
+        
+        if TELEGRAM_BOT_TOKEN:
+            try:
+                telegram_id_int = int(payment.telegram_id)
+                message = (
+                    f"✅ <b>Pembayaran QRIS Disetujui!</b>\n\n"
+                    f"Paket: {payment.package_name}\n"
+                    f"Status VIP kamu sudah aktif!\n\n"
+                    f"Selamat menonton! 🎬"
+                )
+                
+                async with httpx.AsyncClient() as client:
+                    await client.post(
+                        f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+                        json={
+                            "chat_id": telegram_id_int,
+                            "text": message,
+                            "parse_mode": "HTML"
+                        }
+                    )
+                logger.info(f"✅ Notifikasi approval dikirim ke user {payment.telegram_id}")
+            except Exception as notif_error:
+                logger.error(f"❌ Gagal kirim notifikasi approval ke user {payment.telegram_id}: {notif_error}")
+        else:
+            logger.warning("⚠️ TELEGRAM_BOT_TOKEN tidak tersedia - skip notifikasi")
+        
+        return {
+            "success": True,
+            "message": f"Payment {data.order_id} berhasil diapprove",
+            "payment": {
+                "order_id": payment.order_id,
+                "telegram_id": payment.telegram_id,
+                "package_name": payment.package_name,
+                "amount": payment.amount,
+                "status": payment.status,
+                "paid_at": to_iso_utc(payment.paid_at)
+            },
+            "vip_activated": True,
+            "vip_days": days,
+            "vip_expires_at": to_iso_utc(user.vip_expires_at),
+            "commission_paid": commission_paid,
+            "commission_amount": commission_amount
+        }
+        
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"❌ Error approve QRIS payment: {e}")
+        logger.exception("Full error traceback:")
+        raise HTTPException(status_code=500, detail=f"Error approve payment: {str(e)}")
+    finally:
+        db.close()
+
+@router.post("/payments/qris/reject")
+async def reject_qris_payment(data: QRISRejectRequest, admin = Depends(get_current_admin)):
+    """
+    Reject QRIS payment manual dan kirim notifikasi ke user.
+    
+    Flow:
+    1. Cari payment dengan order_id
+    2. Update status ke 'rejected'
+    3. Kirim notifikasi Telegram ke user dengan alasan penolakan
+    """
+    db = SessionLocal()
+    try:
+        logger.info(f"Admin {admin.username} reject QRIS payment: {data.order_id}, reason: {data.reason or 'tidak ada alasan'}")
+        
+        payment = db.query(Payment).filter(Payment.order_id == data.order_id).first()
+        
+        if not payment:
+            logger.error(f"Payment tidak ditemukan: {data.order_id}")
+            raise HTTPException(status_code=404, detail=f"Payment dengan order_id {data.order_id} tidak ditemukan")
+        
+        previous_status = payment.status
+        payment.status = 'rejected'
+        
+        db.commit()
+        
+        if TELEGRAM_BOT_TOKEN:
+            try:
+                telegram_id_int = int(payment.telegram_id)
+                reason_text = data.reason if data.reason else "Pembayaran tidak valid atau tidak sesuai"
+                message = (
+                    f"❌ <b>Pembayaran QRIS Ditolak</b>\n\n"
+                    f"Order ID: {payment.order_id}\n"
+                    f"Paket: {payment.package_name}\n"
+                    f"Amount: Rp {payment.amount:,}\n\n"
+                    f"Alasan: {reason_text}\n\n"
+                    f"Silakan hubungi admin jika ada pertanyaan."
+                )
+                
+                async with httpx.AsyncClient() as client:
+                    await client.post(
+                        f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+                        json={
+                            "chat_id": telegram_id_int,
+                            "text": message,
+                            "parse_mode": "HTML"
+                        }
+                    )
+                logger.info(f"✅ Notifikasi rejection dikirim ke user {payment.telegram_id}")
+            except Exception as notif_error:
+                logger.error(f"❌ Gagal kirim notifikasi rejection ke user {payment.telegram_id}: {notif_error}")
+        else:
+            logger.warning("⚠️ TELEGRAM_BOT_TOKEN tidak tersedia - skip notifikasi")
+        
+        return {
+            "success": True,
+            "message": f"Payment {data.order_id} berhasil direject",
+            "payment": {
+                "order_id": payment.order_id,
+                "telegram_id": payment.telegram_id,
+                "package_name": payment.package_name,
+                "amount": payment.amount,
+                "previous_status": previous_status,
+                "current_status": payment.status
+            },
+            "reason": data.reason
+        }
+        
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"❌ Error reject QRIS payment: {e}")
+        logger.exception("Full error traceback:")
+        raise HTTPException(status_code=500, detail=f"Error reject payment: {str(e)}")
     finally:
         db.close()
 
