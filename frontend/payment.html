@@ -227,7 +227,6 @@
             z-index: 1;
             transition: filter 0.3s ease;
             will-change: filter;
-            /* Prevent save via menu */
             user-select: none;
             -webkit-user-select: none;
             -moz-user-select: none;
@@ -513,7 +512,7 @@
 
             <div class="qris-image-container">
                 <div class="qris-image-wrapper">
-                    <img id="qrisImage" src="" alt="QRIS Code" class="qris-image" oncontextmenu="return false;" ondragstart="return false;">
+                    <img id="qrisImage" src="" alt="QRIS Code - Click to download" class="qris-image">
                 </div>
             </div>
 
@@ -747,29 +746,32 @@
             console.log('✅ Cleanup complete');
         }
 
-        // Download QR image on click & prevent right-click/long-press
-        document.addEventListener('DOMContentLoaded', function() {
+        // Initialize QR image protection & download on DOMContentLoaded
+        function initQRISProtection() {
             const qrisImage = document.getElementById('qrisImage');
+            if (!qrisImage) {
+                console.log('⏳ Waiting for QRIS image...');
+                setTimeout(initQRISProtection, 100);
+                return;
+            }
             
-            // Download QR image on click
-            qrisImage.addEventListener('click', function(e) {
-                e.preventDefault();
-                downloadQRImage();
-            });
+            console.log('✅ QRIS protection initialized');
             
-            // Disable right-click context menu
+            // Block right-click on QR image
             qrisImage.addEventListener('contextmenu', function(e) {
+                console.log('🚫 Right-click blocked');
                 e.preventDefault();
                 return false;
             });
             
-            // Disable long-press on mobile (Telegram)
+            // Block long-press on mobile
             let pressTimer;
             qrisImage.addEventListener('touchstart', function(e) {
                 pressTimer = setTimeout(function() {
+                    console.log('🚫 Long-press blocked');
                     e.preventDefault();
                 }, 500);
-            });
+            }, { passive: false });
             
             qrisImage.addEventListener('touchend', function() {
                 clearTimeout(pressTimer);
@@ -779,60 +781,49 @@
                 clearTimeout(pressTimer);
             });
             
-            // Disable drag
+            // Block drag
             qrisImage.addEventListener('dragstart', function(e) {
+                console.log('🚫 Drag blocked');
                 e.preventDefault();
                 return false;
             });
             
-            // Disable select
-            qrisImage.addEventListener('selectstart', function(e) {
+            // Download on click
+            qrisImage.addEventListener('click', function(e) {
+                console.log('✅ QR image clicked - downloading');
                 e.preventDefault();
-                return false;
+                downloadQRImage();
             });
-        });
-
-        // Function to download QR image
+        }
+        
+        // Download QR function with improved error handling
         function downloadQRImage() {
             const qrisImage = document.getElementById('qrisImage');
-            const orderId = document.getElementById('qrisOrderId').textContent;
+            const orderId = document.getElementById('qrisOrderId').textContent || 'QRIS';
             
-            if (!qrisImage.src) {
-                console.warn('QR image not loaded yet');
+            if (!qrisImage || !qrisImage.src) {
+                console.warn('❌ QR image not found or not loaded');
                 return;
             }
             
-            // Create canvas and draw image
-            const canvas = document.createElement('canvas');
-            const img = new Image();
+            console.log('📥 Starting download for:', orderId);
             
-            img.crossOrigin = 'anonymous';
-            img.onload = function() {
-                canvas.width = img.width;
-                canvas.height = img.height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0);
-                
-                // Convert to blob and download
-                canvas.toBlob(function(blob) {
-                    const url = window.URL.createObjectURL(blob);
-                    const link = document.createElement('a');
-                    link.href = url;
-                    link.download = `QRIS-${orderId || Date.now()}.png`;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    window.URL.revokeObjectURL(url);
-                    
-                    console.log('✅ QR code downloaded successfully');
-                }, 'image/png');
-            };
+            // Use simple download approach
+            const link = document.createElement('a');
+            link.href = qrisImage.src;
+            link.download = `${orderId}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
             
-            img.onerror = function() {
-                console.error('Failed to load QR image for download');
-            };
-            
-            img.src = qrisImage.src;
+            console.log('✅ QR downloaded:', orderId);
+        }
+        
+        // Start protection when page loads
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initQRISProtection);
+        } else {
+            initQRISProtection();
         }
         
         // Add cleanup on page unload
