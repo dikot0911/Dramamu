@@ -194,36 +194,59 @@
         function displayRequestHistory(requests) {
             const historyContainer = document.getElementById('request-history');
             
+            const getStatusBadgeColor = (status) => {
+                const colors = {
+                    'pending': 'bg-yellow-900 text-yellow-200',
+                    'approved': 'bg-green-900 text-green-200',
+                    'rejected': 'bg-red-900 text-red-200',
+                    'processing': 'bg-blue-900 text-blue-200'
+                };
+                return colors[status] || 'bg-gray-900 text-gray-200';
+            };
+            
+            const statusText = {
+                'pending': 'Menunggu',
+                'approved': 'Disetujui',
+                'rejected': 'Ditolak',
+                'processing': 'Diproses'
+            };
+            
             const html = `
-                <div class="premium-card rounded-lg mb-4 h-72 flex flex-col">
-                    <div class="p-3 pb-2">
-                        <h2 class="text-sm font-semibold text-white">History Request</h2>
+                <div class="premium-card rounded-lg mb-4 flex flex-col" style="max-height: 450px;">
+                    <div class="p-4 pb-3 flex items-center justify-between border-b" style="border-color: rgba(212, 175, 55, 0.2);">
+                        <h2 class="text-sm font-semibold text-white">📋 History Request</h2>
+                        <span class="text-xs font-medium px-2 py-1 rounded" style="background: rgba(212, 175, 55, 0.2); color: #d4af37;">
+                            ${requests.length} Request
+                        </span>
                     </div>
-                    <div class="flex-1 overflow-y-auto scrollbar-hide px-3 pb-3" style="border-top: 1px solid rgba(212, 175, 55, 0.2);">
+                    <div class="flex-1 overflow-y-auto scrollbar-hide px-4 py-3 space-y-3">
                         ${requests.map((req, index) => {
-                            const statusText = {
-                                'pending': 'Menunggu',
-                                'approved': 'Disetujui',
-                                'rejected': 'Ditolak',
-                                'processing': 'Diproses'
-                            }[req.status] || req.status;
-                            
+                            const status = req.status || 'pending';
+                            const statusLabel = statusText[status] || status;
                             const updatedDate = req.updated_at ? new Date(req.updated_at).toLocaleDateString('id-ID') : '';
                             const hasUpdate = req.updated_at && req.updated_at !== req.created_at;
+                            const badgeColor = getStatusBadgeColor(status);
                             
                             return `
-                                <div class="py-2 text-xs ${index > 0 ? 'border-t border-gray-700' : 'pt-3'}">
-                                    <div class="text-white font-medium mb-0.5">${req.judul}</div>
-                                    <div class="text-gray-400">
-                                        ${req.apk_source ? `APK: ${req.apk_source} | ` : ''}Status: ${statusText}
+                                <div class="p-3 rounded border" style="border: 1px solid rgba(212, 175, 55, 0.1); background: rgba(30, 41, 59, 0.5);">
+                                    <div class="flex items-start justify-between mb-2">
+                                        <div class="flex-1 pr-2">
+                                            <div class="text-white font-semibold text-sm mb-1">${req.judul}</div>
+                                            <div class="text-gray-400 text-xs">
+                                                ${req.apk_source ? `📱 <span class="font-medium">${req.apk_source}</span>` : ''}
+                                            </div>
+                                        </div>
+                                        <span class="text-xs font-bold px-2.5 py-1 rounded-full whitespace-nowrap ${badgeColor}">
+                                            ${statusLabel}
+                                        </span>
                                     </div>
-                                    <div class="text-gray-500 text-[10px]">
-                                        Dikirim: ${new Date(req.created_at).toLocaleDateString('id-ID')}
-                                        ${hasUpdate ? ` | Update: ${updatedDate}` : ''}
+                                    <div class="text-gray-500 text-xs space-y-1">
+                                        <div>📅 Dikirim: ${new Date(req.created_at).toLocaleDateString('id-ID')}</div>
+                                        ${hasUpdate ? `<div style="color: #fbbf24;">🔄 Update: ${updatedDate}</div>` : ''}
                                     </div>
                                     ${req.admin_notes ? `
-                                        <div class="mt-1 text-gray-300 text-[10px]">
-                                            Pesan Admin: ${req.admin_notes}
+                                        <div class="mt-2 p-2 rounded text-xs" style="background: rgba(212, 175, 55, 0.1); color: #fbbf24; border-left: 2px solid #d4af37;">
+                                            💬 <span class="font-medium">Admin:</span> ${req.admin_notes}
                                         </div>
                                     ` : ''}
                                 </div>
