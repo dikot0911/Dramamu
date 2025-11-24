@@ -586,9 +586,26 @@
                 // Prevent body scroll
                 document.body.style.overflow = 'hidden';
 
+                // Show success notification dengan sound + vibration
+                notification.success('✅ Pembayaran Berhasil Dicatat!\n\nSpot bukti transfer Anda ke admin untuk aktivasi VIP.', 'success', {
+                    duration: 5000,
+                    sound: true,
+                    vibrate: true,
+                    soundType: 'payment'
+                });
+
+                // Close modal after 2 seconds
+                setTimeout(() => {
+                    tutupQRIS();
+                }, 2000);
+
             } catch (error) {
                 console.error('Error creating QRIS payment:', error);
-                alert(`Gagal membuat payment: ${error.message}`);
+                notification.error(`❌ Gagal membuat payment: ${error.message}`, 'error', {
+                    duration: 3000,
+                    sound: true,
+                    soundType: 'error'
+                });
             }
         }
 
@@ -641,5 +658,6 @@
         window.addEventListener('pagehide', cleanup);
     </script>
     <script src="cache-manager.js?v=555555555"></script>
+    <script src="notification.js"></script>
 </body>
 </html>
