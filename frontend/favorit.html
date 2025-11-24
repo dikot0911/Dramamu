@@ -109,6 +109,7 @@
             margin: 0 auto;
         }
         
+        /* Delete Button - positioned in top right corner */
         .delete-btn {
             position: absolute;
             top: 6px;
@@ -151,21 +152,71 @@
             filter: drop-shadow(0 2px 4px rgba(239, 68, 68, 0.6));
         }
         
-        /* Confirmation Modal */
+        /* Simple Toast Notification */
+        .toast-notification {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%) translateY(8px);
+            background: rgba(30, 41, 59, 0.98);
+            border: 2px solid rgba(212, 175, 55, 0.4);
+            border-radius: 12px;
+            padding: 16px 20px;
+            max-width: 280px;
+            width: auto;
+            text-align: center;
+            z-index: 9999;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+        }
+        
+        .toast-notification.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0);
+        }
+        
+        .toast-icon {
+            width: 32px;
+            height: 32px;
+            margin: 0 auto 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .toast-icon svg {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .toast-message {
+            font-size: 14px;
+            color: #E5E7EB;
+            line-height: 1.4;
+        }
+        
+        .toast-success { border-color: rgba(34, 197, 94, 0.3); }
+        .toast-error { border-color: rgba(239, 68, 68, 0.3); }
+        
+        /* Modal Overlay - Generic */
         .modal-overlay {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.8);
             z-index: 9998;
             display: flex;
             align-items: center;
             justify-content: center;
             opacity: 0;
             visibility: hidden;
-            transition: opacity 0.2s ease, visibility 0.2s ease;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            backdrop-filter: blur(3px);
         }
         
         .modal-overlay.active {
@@ -173,7 +224,137 @@
             visibility: visible;
         }
         
-        .modal-card {
+        /* Film Selection Modal */
+        .modal-overlay.film-modal .modal-card {
+            background: rgba(26, 35, 52, 0.98);
+            border: 2px solid rgba(212, 175, 55, 0.4);
+            border-radius: 16px;
+            padding: 32px 24px;
+            max-width: 320px;
+            width: 88%;
+            text-align: center;
+            transform: scale(0.95) translateY(10px);
+            opacity: 0;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7);
+            position: relative;
+        }
+        
+        .modal-overlay.film-modal.active .modal-card {
+            transform: scale(1) translateY(0);
+            opacity: 1;
+        }
+        
+        .modal-close-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 32px;
+            height: 32px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            z-index: 10;
+        }
+        
+        .modal-close-btn:hover {
+            background: rgba(212, 175, 55, 0.2);
+            border-color: rgba(212, 175, 55, 0.5);
+            transform: scale(1.1);
+        }
+        
+        .modal-close-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .modal-close-btn svg {
+            width: 18px;
+            height: 18px;
+            stroke: #d4af37;
+        }
+        
+        .modal-overlay.film-modal .modal-icon {
+            width: 140px;
+            height: 140px;
+            margin: 0 auto 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 3px solid rgba(212, 175, 55, 0.5);
+            box-shadow: 0 0 30px rgba(212, 175, 55, 0.4), 0 4px 12px rgba(0, 0, 0, 0.5);
+            background: rgba(30, 41, 59, 0.8);
+        }
+        
+        .modal-overlay.film-modal .modal-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+            background: rgba(30, 41, 59, 0.9);
+        }
+        
+        .modal-overlay.film-modal .modal-icon svg {
+            width: 60px;
+            height: 60px;
+            fill: #d4af37;
+        }
+        
+        .modal-overlay.film-modal .modal-title {
+            font-size: 20px;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 12px;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+            letter-spacing: 0.3px;
+        }
+        
+        .modal-overlay.film-modal .modal-message {
+            font-size: 14px;
+            color: #CBD5E1;
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+        
+        .modal-overlay.film-modal .modal-message strong {
+            color: #E5E7EB;
+            font-weight: 600;
+        }
+        
+        .modal-overlay.film-modal .modal-button {
+            background: linear-gradient(135deg, #d4af37 0%, #f0d266 100%);
+            color: #0f0f1e;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            width: 100%;
+            box-shadow: 0 6px 20px rgba(212, 175, 55, 0.5);
+            letter-spacing: 0.5px;
+            text-transform: none;
+        }
+        
+        .modal-overlay.film-modal .modal-button:hover {
+            background: linear-gradient(135deg, #f0d266 0%, #d4af37 100%);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 28px rgba(212, 175, 55, 0.7);
+        }
+        
+        .modal-overlay.film-modal .modal-button:active {
+            transform: scale(0.97) translateY(0);
+        }
+        
+        /* Delete Confirmation Modal */
+        .modal-overlay.delete-modal .modal-card {
             background: rgba(30, 41, 59, 0.98);
             border: 2px solid rgba(212, 175, 55, 0.3);
             border-radius: 12px;
@@ -188,12 +369,12 @@
             backdrop-filter: blur(3px);
         }
         
-        .modal-overlay.active .modal-card {
+        .modal-overlay.delete-modal.active .modal-card {
             transform: translateY(0);
             opacity: 1;
         }
         
-        .modal-icon {
+        .modal-overlay.delete-modal .modal-icon {
             width: 56px;
             height: 56px;
             margin: 0 auto 16px;
@@ -204,19 +385,19 @@
             border-radius: 50%;
         }
         
-        .modal-icon svg {
+        .modal-overlay.delete-modal .modal-icon svg {
             width: 32px;
             height: 32px;
         }
         
-        .modal-title {
+        .modal-overlay.delete-modal .modal-title {
             font-size: 20px;
             font-weight: 700;
             color: #fff;
             margin-bottom: 8px;
         }
         
-        .modal-message {
+        .modal-overlay.delete-modal .modal-message {
             font-size: 14px;
             color: #9CA3AF;
             line-height: 1.5;
@@ -264,6 +445,97 @@
         
         .modal-button:active {
             transform: scale(0.98);
+        }
+        
+        
+        /* Card Entry Animation */
+        @keyframes cardFadeIn {
+            0% {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .movie-card-animate {
+            animation: cardFadeIn 0.4s ease-out forwards;
+            opacity: 0;
+        }
+        
+        
+        /* Like and Favorite Badge Styles - Positioned at Bottom */
+        .status-badges {
+            position: absolute;
+            bottom: -4px;
+            left: -2px;
+            right: -2px;
+            display: flex;
+            justify-content: space-between;
+            padding: 0;
+            z-index: 10;
+            pointer-events: none;
+        }
+        
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            padding: 4px 7px;
+            font-size: 10px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            pointer-events: auto;
+        }
+        
+        .status-badge svg {
+            width: 11px;
+            height: 11px;
+            filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.5));
+        }
+        
+        .badge-like {
+            color: rgba(255, 255, 255, 0.9);
+            margin-right: auto;
+            text-shadow: 
+                -0.5px -0.5px 0 rgba(0, 0, 0, 0.5),
+                0.5px -0.5px 0 rgba(0, 0, 0, 0.5),
+                -0.5px 0.5px 0 rgba(0, 0, 0, 0.5),
+                0.5px 0.5px 0 rgba(0, 0, 0, 0.5);
+        }
+        
+        .badge-like.active {
+            color: rgba(255, 255, 255, 1);
+            text-shadow: 
+                -0.5px -0.5px 0 rgba(0, 0, 0, 0.7),
+                0.5px -0.5px 0 rgba(0, 0, 0, 0.7),
+                -0.5px 0.5px 0 rgba(0, 0, 0, 0.7),
+                0.5px 0.5px 0 rgba(0, 0, 0, 0.7);
+        }
+        
+        .badge-favorite {
+            color: rgba(255, 255, 255, 0.9);
+            margin-left: auto;
+            text-shadow: 
+                -0.5px -0.5px 0 rgba(0, 0, 0, 0.5),
+                0.5px -0.5px 0 rgba(0, 0, 0, 0.5),
+                -0.5px 0.5px 0 rgba(0, 0, 0, 0.5),
+                0.5px 0.5px 0 rgba(0, 0, 0, 0.5);
+        }
+        
+        .badge-favorite.active {
+            color: rgba(255, 255, 255, 1);
+            text-shadow: 
+                -0.5px -0.5px 0 rgba(0, 0, 0, 0.7),
+                0.5px -0.5px 0 rgba(0, 0, 0, 0.7),
+                -0.5px 0.5px 0 rgba(0, 0, 0, 0.7),
+                0.5px 0.5px 0 rgba(0, 0, 0, 0.7);
+        }
+        
+        .status-badge:active {
+            transform: scale(0.92);
         }
 
         /* Smooth Luxury Card Border - Flowing Effect */
@@ -360,8 +632,29 @@
         </main>
     </div>
 
-    <!-- Confirmation Modal -->
-    <div id="confirmModal" class="modal-overlay">
+    <!-- Toast Notification -->
+    <div id="toastNotification" class="toast-notification">
+        <div class="toast-icon" id="toastIcon"></div>
+        <div class="toast-message" id="toastMessage"></div>
+    </div>
+
+    <!-- Film Selection Modal -->
+    <div id="filmModal" class="modal-overlay film-modal">
+        <div class="modal-card">
+            <div class="modal-close-btn" id="modalCloseBtn" title="Tutup">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+            <div class="modal-icon" id="modalIcon"></div>
+            <div class="modal-title" id="modalTitle">Film Dipilih!</div>
+            <div class="modal-message" id="modalMessage">Film berhasil dipilih!</div>
+            <button class="modal-button" id="modalButton">Tutup</button>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="confirmModal" class="modal-overlay delete-modal">
         <div class="modal-card">
             <div class="modal-icon">
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -377,6 +670,14 @@
         </div>
     </div>
 
+    <!-- Premium Loading Overlay -->
+    <div id="premiumLoading" class="premium-loading-overlay">
+        <div class="premium-loading-glow"></div>
+        <div class="premium-spinner"></div>
+        <div class="premium-loading-text">Memproses...</div>
+        <div class="premium-loading-subtext">Film Anda sedang disiapkan ✨</div>
+    </div>
+
     <script>
     let favoritMovies = [];
     
@@ -388,6 +689,132 @@
             cachedElements[id] = document.getElementById(id);
         }
         return cachedElements[id];
+    }
+    let toastTimeout = null;
+    
+    function showToast(message, type = 'success') {
+        const toast = getCachedElement('toastNotification');
+        const toastIcon = getCachedElement('toastIcon');
+        const toastMessage = getCachedElement('toastMessage');
+        
+        if (toastTimeout) {
+            clearTimeout(toastTimeout);
+        }
+        
+        toast.classList.remove('active', 'toast-success', 'toast-error');
+        
+        const icons = {
+            'success': `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor">
+                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke="#22C55E"/>
+            </svg>`,
+            'error': `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#EF4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>`
+        };
+        
+        toastIcon.innerHTML = icons[type] || icons['success'];
+        toastMessage.textContent = message;
+        
+        if (type === 'success') {
+            toast.classList.add('toast-success');
+        } else if (type === 'error') {
+            toast.classList.add('toast-error');
+        }
+        
+        toast.classList.add('active');
+        
+        toastTimeout = setTimeout(() => {
+            toast.classList.remove('active');
+        }, 2500);
+    }
+    
+    function showFilmModal(title, message, buttonText = 'Tutup', onClose = null, posterUrl = null) {
+        const modal = getCachedElement('filmModal');
+        const modalOverlay = modal;
+        const modalIcon = getCachedElement('modalIcon');
+        const modalTitle = getCachedElement('modalTitle');
+        const modalMessage = getCachedElement('modalMessage');
+        const modalButton = getCachedElement('modalButton');
+        const modalCloseBtn = getCachedElement('modalCloseBtn');
+        
+        if (posterUrl) {
+            modalIcon.innerHTML = '';
+            
+            const img = document.createElement('img');
+            img.alt = 'Poster Film';
+            img.loading = 'lazy';
+            img.className = 'poster-img img-loading';
+            
+            img.onload = function() {
+                this.classList.remove('img-loading');
+                this.classList.add('img-loaded');
+            };
+            
+            img.onerror = function() {
+                this.classList.remove('img-loading');
+                this.classList.add('img-error');
+                modalIcon.innerHTML = getDefaultFilmIcon();
+            };
+            
+            img.src = posterUrl;
+            
+            modalIcon.appendChild(img);
+        } else {
+            modalIcon.innerHTML = getDefaultFilmIcon();
+        }
+        
+        modalTitle.textContent = title;
+        modalMessage.innerHTML = message;
+        modalButton.textContent = buttonText;
+        
+        modal.classList.add('active');
+        
+        if (onClose) {
+            modalButton.onclick = () => {
+                closeFilmModal();
+                onClose();
+            };
+        } else {
+            modalButton.onclick = closeFilmModal;
+        }
+        
+        modalCloseBtn.onclick = (e) => {
+            e.stopPropagation();
+            closeFilmModal();
+        };
+        
+        modalOverlay.onclick = (e) => {
+            if (e.target === modalOverlay) {
+                closeFilmModal();
+            }
+        };
+    }
+    
+    function getDefaultFilmIcon() {
+        return `<svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 3h16a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm0 2v3h3V5H4zm5 0v3h6V5H9zm8 0v3h3V5h-3zM4 10v4h3v-4H4zm5 0v4h6v-4H9zm8 0v4h3v-4h-3zM4 16v3h3v-3H4zm5 0v3h6v-3H9zm8 0v3h3v-3h-3z"/>
+        </svg>`;
+    }
+    
+    function closeFilmModal() {
+        const modal = getCachedElement('filmModal');
+        modal.classList.remove('active');
+    }
+    
+    function showPremiumLoading() {
+        const loading = getCachedElement('premiumLoading');
+        if (loading) {
+            loading.classList.add('active');
+            console.log('✨ Premium loading displayed');
+        }
+    }
+    
+    function hidePremiumLoading() {
+        const loading = getCachedElement('premiumLoading');
+        if (loading) {
+            loading.classList.remove('active');
+            console.log('✅ Premium loading hidden');
+        }
     }
     
     document.addEventListener("DOMContentLoaded", () => {
@@ -410,6 +837,82 @@
             fetchFavorites();
         }
     });
+
+    async function sendMovieToBackend(movieId, movieTitle, moviePosterUrl = null) {
+        console.log(`📤 Sending movie to backend API: ${movieId}`);
+        
+        if (!window.tg || !window.tg.initData) {
+            console.error('❌ Cannot get Telegram initData!');
+            alert("Error: Data user Telegram tidak tersedia");
+            return;
+        }
+        
+        showPremiumLoading();
+        
+        const initData = window.tg.initData;
+        console.log(`🔐 initData length: ${initData.length} chars`);
+        console.log(`📱 User ID from initDataUnsafe: ${window.tg.initDataUnsafe?.user?.id}`);
+        
+        const apiUrl = window.API_BASE_URL + '/api/v1/select_movie';
+        const payload = { init_data: initData, movie_id: movieId };
+        
+        console.log(`🌐 API URL: ${apiUrl}`);
+        console.log(`📦 Payload keys: ${Object.keys(payload).join(', ')}`);
+        
+        try {
+            console.log('🔄 Sending POST request...');
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            
+            console.log(`📊 Response status: ${response.status}`);
+            
+            hidePremiumLoading();
+            
+            if (response.ok) {
+                const result = await response.json();
+                console.log(`✅ SUCCESS! ${JSON.stringify(result)}`);
+                console.log(`🎉 Bot akan kirim pesan "${movieTitle}" ke Anda!`);
+                
+                showFilmModal(
+                    'Film Dipilih!',
+                    `Film <strong>"${movieTitle}"</strong> berhasil dipilih!<br><br>✨ Cek chat box untuk detail lengkapnya.`,
+                    'Lihat Chat',
+                    () => {
+                        if (window.tg && window.tg.close) {
+                            window.tg.close();
+                        }
+                    },
+                    moviePosterUrl
+                );
+            } else {
+                const errorData = await response.json();
+                console.error(`❌ API Error: ${JSON.stringify(errorData)}`);
+                
+                showFilmModal(
+                    'Oops! Terjadi Kesalahan',
+                    `Maaf, terjadi kesalahan:<br><br><strong>${errorData.detail || 'Unknown error'}</strong>`,
+                    'Coba Lagi',
+                    null,
+                    null
+                );
+            }
+        } catch (error) {
+            console.error(`❌ Network error: ${error.message}`);
+            
+            hidePremiumLoading();
+            
+            showFilmModal(
+                'Koneksi Bermasalah',
+                `Tidak dapat menghubungi server.<br><br><strong>${error.message}</strong>`,
+                'Tutup',
+                null,
+                null
+            );
+        }
+    }
 
     function escapeHtml(text) {
         const div = document.createElement('div');
@@ -518,14 +1021,12 @@
         if (!container) return;
         
         container.innerHTML = '';
-        
-        // Use DocumentFragment for batch DOM writes
         const fragment = document.createDocumentFragment();
 
         favorites.forEach(movie => {
             const movieCard = document.createElement('div');
-            movieCard.className = 'rounded-xl p-2.5 cursor-pointer group relative movie-card-premium';
-            movieCard.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+            movieCard.className = 'movie-card-premium rounded-xl p-2.5 cursor-pointer group';
+            
             movieCard.onclick = () => handleMovieClick(movie.id);
             
             const deleteBtn = document.createElement('button');
@@ -534,19 +1035,13 @@
                 e.stopPropagation();
                 removeFavorite(movie.id, movie.title);
             };
-            deleteBtn.innerHTML = `
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M3 6h18M8 6V4c0-1.1.9-2 2-2h4c1.1 0 2 .9 2 2v2m3 0v14c0 1.1-.9 2-2 2H7c-1.1 0-2-.9-2-2V6h14zM10 11v6m4-6v6" 
-                          stroke="white" 
-                          stroke-width="2" 
-                          stroke-linecap="round" 
-                          stroke-linejoin="round" 
-                          fill="none"/>
-                </svg>
-            `;
+            deleteBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none">
+                <path d="M3 6h18M8 6V4c0-1.1.9-2 2-2h4c1.1 0 2 .9 2 2v2m3 0v14c0 1.1-.9 2-2 2H7c-1.1 0-2-.9-2-2V6h14zM10 11v6m4-6v6" 
+                      stroke="white" stroke-width="2"/>
+            </svg>`;
             
             const posterDiv = document.createElement('div');
-            posterDiv.className = 'w-full aspect-[2/3] bg-gray-900 rounded-lg overflow-hidden mb-2';
+            posterDiv.className = 'w-full aspect-[2/3] bg-gray-900 rounded-lg overflow-hidden mb-2 relative';
             
             const img = document.createElement('img');
             img.alt = escapeHtml(movie.title);
@@ -564,21 +1059,50 @@
                 this.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="300"%3E%3Crect fill="%23374151" width="200" height="300"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" fill="%239CA3AF" font-size="20"%3ENo Image%3C/text%3E%3C/svg%3E';
             };
             
-            // Prioritas: pakai Telegram File ID jika ada, fallback ke poster_url
             if (movie.poster_file_id) {
                 img.src = `${window.API_BASE_URL}/api/poster/${movie.poster_file_id}`;
             } else if (movie.poster_url) {
-                // Jika poster_url adalah path relatif (dimulai dengan /), prepend dengan API_BASE_URL
-                if (movie.poster_url.startsWith('/')) {
-                    img.src = `${window.API_BASE_URL}${movie.poster_url}`;
-                } else {
-                    img.src = movie.poster_url;
-                }
+                img.src = movie.poster_url.startsWith('/') 
+                    ? `${window.API_BASE_URL}${movie.poster_url}` 
+                    : movie.poster_url;
             } else {
                 img.src = '';
             }
             
             posterDiv.appendChild(img);
+            
+            const badgesContainer = document.createElement('div');
+            badgesContainer.className = 'status-badges';
+            badgesContainer.style.pointerEvents = 'none';
+            
+            const likeCount = movie.like_count || 0;
+            const favoriteCount = movie.favorite_count || 0;
+            
+            if (likeCount > 0) {
+                const likeBadge = document.createElement('div');
+                likeBadge.className = 'status-badge badge-like';
+                likeBadge.innerHTML = `
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/>
+                    </svg>
+                    <span class="badge-count">${likeCount}</span>
+                `;
+                badgesContainer.appendChild(likeBadge);
+            }
+            
+            if (favoriteCount > 0) {
+                const favBadge = document.createElement('div');
+                favBadge.className = 'status-badge badge-favorite active';
+                favBadge.innerHTML = `
+                    <span class="badge-count">${favoriteCount}</span>
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                    </svg>
+                `;
+                badgesContainer.appendChild(favBadge);
+            }
+            
+            posterDiv.appendChild(badgesContainer);
             
             const title = document.createElement('p');
             title.className = 'text-sm text-white font-semibold leading-snug';
@@ -594,7 +1118,6 @@
             fragment.appendChild(movieCard);
         });
         
-        // Batch append all movie cards at once
         container.appendChild(fragment);
     }
 
@@ -650,9 +1173,7 @@
             });
             
             if (response.ok) {
-                if (window.tg && window.tg.showAlert) {
-                    window.tg.showAlert('Dihapus dari favorit');
-                }
+                showToast('Dihapus dari favorit', 'success');
                 fetchFavorites();
             } else if (response.status === 401) {
                 console.error('❌ Unauthorized - Invalid Telegram data');
@@ -660,36 +1181,60 @@
             }
         } catch (error) {
             console.error('Error removing favorite:', error);
-            alert('Gagal menghapus favorit');
+            showToast('Gagal menghapus favorit', 'error');
         }
     }
 
     function handleMovieClick(movieId) {
         console.log("🎬 Film favorit diklik! ID:", movieId);
-        window.location.href = `drama.html?movie=${movieId}`;
+        
+        const movie = favoritMovies.find(m => m.id === movieId);
+        if (!movie) {
+            console.error('Movie not found:', movieId);
+            return;
+        }
+        
+        let posterUrl = null;
+        if (movie.poster_file_id) {
+            posterUrl = `${window.API_BASE_URL}/api/poster/${movie.poster_file_id}`;
+        } else if (movie.poster_url) {
+            if (movie.poster_url.startsWith('/')) {
+                posterUrl = `${window.API_BASE_URL}${movie.poster_url}`;
+            } else {
+                posterUrl = movie.poster_url;
+            }
+        }
+        
+        sendMovieToBackend(movieId, movie.title, posterUrl);
     }
     
-    // Cleanup function to prevent memory leaks
     function cleanup() {
         console.log('🧹 Cleaning up resources...');
         
-        // Clear modal and detach DOM references
-        const modal = getCachedElement('confirmModal');
-        if (modal) {
-            modal.classList.remove('active');
+        const filmModal = getCachedElement('filmModal');
+        if (filmModal) {
+            filmModal.classList.remove('active');
+        }
+        
+        const confirmModal = getCachedElement('confirmModal');
+        if (confirmModal) {
+            confirmModal.classList.remove('active');
             const confirmMessage = getCachedElement('confirmMessage');
             const confirmDeleteBtn = getCachedElement('confirmDeleteBtn');
             if (confirmMessage) confirmMessage.innerHTML = '';
             if (confirmDeleteBtn) confirmDeleteBtn.onclick = null;
         }
         
-        // Clear cached elements
+        timeouts.forEach(timeout => clearTimeout(timeout));
+        timeouts.length = 0;
+        
+        longPressManager.cancelAll();
+        
         cachedElements = {};
         
         console.log('✅ Cleanup complete');
     }
     
-    // Add cleanup on page unload
     window.addEventListener('beforeunload', cleanup);
     window.addEventListener('pagehide', cleanup);
     </script>
