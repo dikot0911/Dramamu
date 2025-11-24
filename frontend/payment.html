@@ -81,6 +81,16 @@
             will-change: transform, opacity;
         }
 
+        /* Hide scrollbar */
+        .qris-modal-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        .qris-modal-container {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
         .qris-modal-backdrop.active .qris-modal-container {
             transform: scale(1) translateY(0);
             opacity: 1;
@@ -108,43 +118,31 @@
 
         .qris-close-btn {
             position: absolute;
-            top: 1rem;
-            right: 1rem;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: rgba(212, 175, 55, 0.2);
-            border: 2px solid rgba(212, 175, 55, 0.4);
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            top: 0.75rem;
+            right: 0.75rem;
+            padding: 0.5rem 1rem;
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.3), rgba(139, 92, 246, 0.2));
+            border: 1px solid rgba(212, 175, 55, 0.4);
+            border-radius: 8px;
+            color: #d4af37;
+            font-size: 0.8125rem;
+            font-weight: 700;
             cursor: pointer;
             transition: all 0.3s ease;
             z-index: 10;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .qris-close-btn:hover {
-            background: rgba(212, 175, 55, 0.4);
-            transform: rotate(90deg) scale(1.1);
-            box-shadow: 0 0 20px rgba(212, 175, 55, 0.6);
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.4), rgba(139, 92, 246, 0.3));
+            border-color: rgba(212, 175, 55, 0.6);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(212, 175, 55, 0.4);
         }
 
-        .qris-close-btn::before,
-        .qris-close-btn::after {
-            content: '';
-            position: absolute;
-            width: 18px;
-            height: 2px;
-            background: #d4af37;
-            border-radius: 2px;
-        }
-
-        .qris-close-btn::before {
-            transform: rotate(45deg);
-        }
-
-        .qris-close-btn::after {
-            transform: rotate(-45deg);
+        .qris-close-btn:active {
+            transform: translateY(0);
         }
 
         .qris-header {
@@ -377,15 +375,10 @@
             }
 
             .qris-close-btn {
-                width: 32px;
-                height: 32px;
+                padding: 0.375rem 0.75rem;
+                font-size: 0.75rem;
                 top: 0.5rem;
                 right: 0.5rem;
-            }
-
-            .qris-close-btn::before,
-            .qris-close-btn::after {
-                width: 14px;
             }
         }
 
@@ -501,7 +494,7 @@
     <!-- QRIS Modal -->
     <div id="qrisModal" class="qris-modal-backdrop">
         <div class="qris-modal-container">
-            <div class="qris-close-btn" onclick="tutupQRIS()"></div>
+            <div class="qris-close-btn" onclick="tutupQRIS()">Close</div>
             
             <div class="qris-header">
                 <h2 id="qrisTitle">Scan QRIS untuk Bayar</h2>
