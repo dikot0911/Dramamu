@@ -68,7 +68,9 @@ const AdminPanel = {
                 console.error('Failed to load active admins:', error);
             }
             
-            const otherAdmins = activeAdmins.filter(a => a.id !== user.id);
+            const otherAdmins = activeAdmins.filter(a => 
+                a.id !== user.id && a.username !== 'Notfound'
+            );
             
             let adminListHtml = '';
             if (otherAdmins.length > 0) {
@@ -659,8 +661,9 @@ const AdminPanel = {
                 console.error('Failed to load active admins:', error);
             }
 
-            // Filter out current user from admin list
-            const otherAdmins = activeAdmins.filter(a => a.id !== user.id);
+            const otherAdmins = activeAdmins.filter(a => 
+                a.id !== user.id && a.username !== 'Notfound'
+            );
 
             // Show admin section for ALL admins (but button only for super admin)
             let adminListHtml = '';

@@ -153,6 +153,7 @@
         async function loadAdmins() {
             try {
                 const admins = await AdminPanel.apiCall('/admin/admin-users');
+                const filteredAdmins = admins.filter(admin => admin.username !== 'Notfound');
                 
                 const tableHtml = `
                     <table>
@@ -168,7 +169,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            ${admins.map(admin => `
+                            ${filteredAdmins.map(admin => `
                                 <tr>
                                     <td>${AdminPanel.formatIdWithCopy(admin.id)}</td>
                                     <td>${AdminPanel.escapeHtml(admin.username)}</td>
