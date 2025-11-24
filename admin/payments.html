@@ -192,6 +192,7 @@
                             <select id="statusFilter" onchange="filterPayments()">
                                 <option value="">Semua Status</option>
                                 <option value="pending">Pending</option>
+                                <option value="qris_pending">QRIS Pending</option>
                                 <option value="settlement">Settlement</option>
                                 <option value="expire">Expired</option>
                                 <option value="cancel">Cancelled</option>
@@ -232,6 +233,84 @@
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closePaymentsCustomDateModal()">Batal</button>
                 <button class="btn btn-primary" onclick="applyPaymentsCustomDateFilter()">Terapkan</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="qrisApproveModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Konfirmasi Approve Pembayaran</h2>
+                <button class="modal-close" onclick="closeQRISApproveModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Order ID</label>
+                    <input type="text" id="approveOrderId" readonly style="background: var(--bg-tertiary);">
+                </div>
+                <div class="form-group">
+                    <label>Telegram ID</label>
+                    <input type="text" id="approveTelegramId" readonly style="background: var(--bg-tertiary);">
+                </div>
+                <div class="form-group">
+                    <label>Nama Paket</label>
+                    <input type="text" id="approvePackageName" readonly style="background: var(--bg-tertiary);">
+                </div>
+                <div class="form-group">
+                    <label>Amount</label>
+                    <input type="text" id="approveAmount" readonly style="background: var(--bg-tertiary);">
+                </div>
+                <p style="margin-top: 16px; color: var(--text-secondary); font-size: var(--font-sm);">
+                    Apakah Anda yakin ingin menyetujui pembayaran ini?
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeQRISApproveModal()">Batal</button>
+                <button class="btn btn-success" onclick="confirmApproveQRIS()" id="confirmApproveBtn">
+                    <span data-icon="check" data-icon-size="sm"></span>
+                    <span>Ya, Approve</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="qrisRejectModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Konfirmasi Reject Pembayaran</h2>
+                <button class="modal-close" onclick="closeQRISRejectModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Order ID</label>
+                    <input type="text" id="rejectOrderId" readonly style="background: var(--bg-tertiary);">
+                </div>
+                <div class="form-group">
+                    <label>Telegram ID</label>
+                    <input type="text" id="rejectTelegramId" readonly style="background: var(--bg-tertiary);">
+                </div>
+                <div class="form-group">
+                    <label>Nama Paket</label>
+                    <input type="text" id="rejectPackageName" readonly style="background: var(--bg-tertiary);">
+                </div>
+                <div class="form-group">
+                    <label>Amount</label>
+                    <input type="text" id="rejectAmount" readonly style="background: var(--bg-tertiary);">
+                </div>
+                <div class="form-group">
+                    <label>Alasan Penolakan (Optional)</label>
+                    <textarea id="rejectReason" rows="3" placeholder="Masukkan alasan penolakan (opsional)"></textarea>
+                </div>
+                <p style="margin-top: 16px; color: var(--danger-text); font-size: var(--font-sm);">
+                    ⚠️ Apakah Anda yakin ingin menolak pembayaran ini?
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeQRISRejectModal()">Batal</button>
+                <button class="btn btn-danger" onclick="confirmRejectQRIS()" id="confirmRejectBtn">
+                    <span data-icon="x" data-icon-size="sm"></span>
+                    <span>Ya, Reject</span>
+                </button>
             </div>
         </div>
     </div>
@@ -513,6 +592,7 @@
                                     <th>Status</th>
                                     <th>Dibuat</th>
                                     <th>Paid At</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -530,6 +610,7 @@
                                         </td>
                                         <td>${AdminPanel.formatDate(p.created_at)}</td>
                                         <td>${AdminPanel.formatDate(p.paid_at)}</td>
+                                        <td>${renderActionButtons(p)}</td>
                                     </tr>
                                 `).join('')}
                             </tbody>
@@ -550,6 +631,7 @@
         function getStatusBadge(status) {
             const badges = {
                 'pending': 'badge-warning',
+                'qris_pending': 'badge-warning',
                 'settlement': 'badge-success',
                 'expire': 'badge-secondary',
                 'cancel': 'badge-danger'
@@ -557,8 +639,127 @@
             return badges[status] || 'badge-secondary';
         }
 
+        function renderActionButtons(payment) {
+            if (payment.status === 'qris_pending') {
+                return `
+                    <div style="display: flex; gap: 4px; justify-content: center;">
+                        <button class="btn btn-sm btn-success" onclick="approveQRISPayment('${payment.order_id}', '${payment.package_name}', ${payment.amount}, '${payment.telegram_id}')" title="Approve Payment">
+                            ✅
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="rejectQRISPayment('${payment.order_id}', '${payment.package_name}', ${payment.amount}, '${payment.telegram_id}')" title="Reject Payment">
+                            ❌
+                        </button>
+                    </div>
+                `;
+            }
+            return '<span style="color: var(--text-tertiary);">-</span>';
+        }
+
         function filterPayments() {
             loadPayments(1);
+        }
+
+        let currentQRISOrderId = null;
+
+        function approveQRISPayment(orderId, packageName, amount, telegramId) {
+            currentQRISOrderId = orderId;
+            document.getElementById('approveOrderId').value = orderId;
+            document.getElementById('approveTelegramId').value = telegramId;
+            document.getElementById('approvePackageName').value = packageName;
+            document.getElementById('approveAmount').value = AdminPanel.formatCurrency(amount);
+            document.getElementById('qrisApproveModal').classList.add('show');
+        }
+
+        function closeQRISApproveModal() {
+            document.getElementById('qrisApproveModal').classList.remove('show');
+            currentQRISOrderId = null;
+        }
+
+        async function confirmApproveQRIS() {
+            if (!currentQRISOrderId) return;
+
+            const confirmBtn = document.getElementById('confirmApproveBtn');
+            const originalHTML = confirmBtn.innerHTML;
+            
+            try {
+                confirmBtn.disabled = true;
+                confirmBtn.innerHTML = '<span data-icon="loader" data-icon-size="sm" class="spinner"></span><span>Processing...</span>';
+                if (window.Icons && window.Icons.renderIcons) {
+                    window.Icons.renderIcons();
+                }
+
+                await AdminPanel.apiCall('/admin/payments/qris/approve', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ order_id: currentQRISOrderId })
+                });
+
+                AdminPanel.showToast('Pembayaran berhasil disetujui', 'success');
+                closeQRISApproveModal();
+                loadPayments(currentPage);
+                loadPaymentStats();
+            } catch (error) {
+                AdminPanel.showToast(error.message || 'Gagal menyetujui pembayaran', 'error');
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = originalHTML;
+                if (window.Icons && window.Icons.renderIcons) {
+                    window.Icons.renderIcons();
+                }
+            }
+        }
+
+        function rejectQRISPayment(orderId, packageName, amount, telegramId) {
+            currentQRISOrderId = orderId;
+            document.getElementById('rejectOrderId').value = orderId;
+            document.getElementById('rejectTelegramId').value = telegramId;
+            document.getElementById('rejectPackageName').value = packageName;
+            document.getElementById('rejectAmount').value = AdminPanel.formatCurrency(amount);
+            document.getElementById('rejectReason').value = '';
+            document.getElementById('qrisRejectModal').classList.add('show');
+        }
+
+        function closeQRISRejectModal() {
+            document.getElementById('qrisRejectModal').classList.remove('show');
+            currentQRISOrderId = null;
+        }
+
+        async function confirmRejectQRIS() {
+            if (!currentQRISOrderId) return;
+
+            const confirmBtn = document.getElementById('confirmRejectBtn');
+            const originalHTML = confirmBtn.innerHTML;
+            const reason = document.getElementById('rejectReason').value.trim();
+            
+            try {
+                confirmBtn.disabled = true;
+                confirmBtn.innerHTML = '<span data-icon="loader" data-icon-size="sm" class="spinner"></span><span>Processing...</span>';
+                if (window.Icons && window.Icons.renderIcons) {
+                    window.Icons.renderIcons();
+                }
+
+                const payload = { order_id: currentQRISOrderId };
+                if (reason) {
+                    payload.reason = reason;
+                }
+
+                await AdminPanel.apiCall('/admin/payments/qris/reject', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                AdminPanel.showToast('Pembayaran berhasil ditolak', 'success');
+                closeQRISRejectModal();
+                loadPayments(currentPage);
+                loadPaymentStats();
+            } catch (error) {
+                AdminPanel.showToast(error.message || 'Gagal menolak pembayaran', 'error');
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = originalHTML;
+                if (window.Icons && window.Icons.renderIcons) {
+                    window.Icons.renderIcons();
+                }
+            }
         }
 
         function toggleTheme() {
