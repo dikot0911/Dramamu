@@ -115,32 +115,34 @@
 
     <script>
         const tg = window.Telegram?.WebApp;
-        if (!tg) {
-            console.warn('⚠️ Telegram WebApp not available');
-            return;
-        }
-        
-        tg.ready();
-        tg.enableClosingConfirmation();
-        
-        tg.disableVerticalSwipes();
-        console.log("🔒 Vertical swipes disabled - mini app tidak akan close saat scroll");
+        if (tg) {
+            tg.ready();
+            tg.enableClosingConfirmation();
+            tg.disableVerticalSwipes();
+            console.log("🔒 Vertical swipes disabled - mini app tidak akan close saat scroll");
 
-        const user = tg.initDataUnsafe?.user;
-        if (user) {
-            const usernameInput = document.getElementById('username');
-            if (user.username) {
-                usernameInput.value = "@" + user.username;
-            } else {
-                usernameInput.value = user.first_name + (user.last_name ? " " + user.last_name : "");
+            const user = tg.initDataUnsafe?.user;
+            if (user) {
+                const usernameInput = document.getElementById('username');
+                if (user.username) {
+                    usernameInput.value = "@" + user.username;
+                } else {
+                    usernameInput.value = user.first_name + (user.last_name ? " " + user.last_name : "");
+                }
             }
+        } else {
+            console.warn('⚠️ Telegram WebApp not available');
         }
 
         // Load request history
         async function loadRequestHistory() {
-            if (!tg || !tg.initData) return;
-            
             const historyContainer = document.getElementById('request-history');
+            
+            if (!tg || !tg.initData) {
+                // Jika tidak ada Telegram data, tampilkan empty state
+                displayRequestHistory([]);
+                return;
+            }
             
             try {
                 const response = await fetch(window.API_BASE_URL + '/api/v1/drama_requests/list', {
@@ -159,35 +161,14 @@
                     if (result.requests && result.requests.length > 0) {
                         displayRequestHistory(result.requests);
                     } else {
-                        historyContainer.innerHTML = `
-                            <div class="premium-card rounded-lg p-3 mb-4">
-                                <div class="text-center text-gray-400 py-3">
-                                    <div class="text-xs">Belum ada request drama</div>
-                                    <div class="text-[10px] text-gray-500 mt-0.5">Request pertama kamu akan muncul di sini</div>
-                                </div>
-                            </div>
-                        `;
+                        displayRequestHistory([]);
                     }
                 } else {
-                    historyContainer.innerHTML = `
-                        <div class="premium-card rounded-lg p-3 mb-4">
-                            <div class="text-center text-gray-400 py-2">
-                                <div class="text-xs mb-0.5">Gagal memuat history</div>
-                                <div class="text-[10px] text-gray-500">${result.detail || 'Terjadi kesalahan'}</div>
-                            </div>
-                        </div>
-                    `;
+                    displayRequestHistory([]);
                 }
             } catch (error) {
                 console.error('Error loading history:', error);
-                historyContainer.innerHTML = `
-                    <div class="premium-card rounded-lg p-3 mb-4">
-                        <div class="text-center text-gray-400 py-2">
-                            <div class="text-xs mb-0.5">Gagal memuat history</div>
-                            <div class="text-[10px] text-gray-500">Tidak dapat terhubung ke server</div>
-                        </div>
-                    </div>
-                `;
+                displayRequestHistory([]);
             }
         }
 
