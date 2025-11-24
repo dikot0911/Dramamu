@@ -1626,6 +1626,11 @@ async def get_drama_requests(page: int = 1, limit: int = 20, status: Optional[st
             "limit": limit,
             "total_pages": (total + limit - 1) // limit
         }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error loading drama requests: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Gagal memuat data permintaan: {str(e)}")
     finally:
         db.close()
 
