@@ -553,6 +553,62 @@ def run_migration_006_add_admin_display_name_and_sessions():
     finally:
         db.close()
 
+def run_migration_009_add_drama_request_columns():
+    """
+    Migration 009: Add kolom admin_notes dan updated_at ke table drama_requests
+    
+    Fix untuk production bug dimana kolom admin_notes dan updated_at tidak exist.
+    Kolom ini digunakan untuk:
+    - admin_notes: Catatan admin tentang status permintaan drama
+    - updated_at: Timestamp terakhir kali request di-update
+    
+    Migration ini idempotent - bisa dijalankan berulang kali dengan aman.
+    """
+    logger.info("🔧 Running migration 009: Add drama_requests.admin_notes and updated_at")
+    
+    db = SessionLocal()
+    try:
+        # Add admin_notes column
+        if not column_exists(db, 'drama_requests', 'admin_notes'):
+            logger.info("  → Adding column admin_notes...")
+            db.execute(text("""
+                ALTER TABLE drama_requests 
+                ADD COLUMN admin_notes TEXT
+            """))
+            logger.info("  ✓ Column admin_notes added")
+        else:
+            logger.info("  ✓ Column admin_notes already exists")
+        
+        # Add updated_at column
+        if not column_exists(db, 'drama_requests', 'updated_at'):
+            logger.info("  → Adding column updated_at...")
+            db.execute(text("""
+                ALTER TABLE drama_requests 
+                ADD COLUMN updated_at TIMESTAMP
+            """))
+            
+            # Set updated_at sama dengan created_at untuk data yang sudah ada
+            logger.info("  → Setting updated_at = created_at for existing records...")
+            db.execute(text("""
+                UPDATE drama_requests 
+                SET updated_at = created_at 
+                WHERE updated_at IS NULL
+            """))
+            logger.info("  ✓ Column updated_at added and backfilled")
+        else:
+            logger.info("  ✓ Column updated_at already exists")
+        
+        db.commit()
+        logger.info("  ✅ Migration 009 complete!")
+        return True
+        
+    except Exception as e:
+        logger.error(f"  ❌ Migration 009 failed: {e}")
+        db.rollback()
+        return False
+    finally:
+        db.close()
+
 MIGRATIONS = [
     ('001_add_referred_by_code', run_migration_001_add_referred_by_code),
     ('002_ensure_movie_columns', run_migration_002_ensure_movie_columns),
@@ -562,6 +618,7 @@ MIGRATIONS = [
     ('006_add_admin_display_name_and_sessions', run_migration_006_add_admin_display_name_and_sessions),
     ('007_ensure_users_have_ref_codes', run_migration_007_ensure_users_have_ref_codes),
     ('008_add_screenshot_url_to_payments', run_migration_008_add_screenshot_url_to_payments),
+    ('009_add_drama_request_columns', run_migration_009_add_drama_request_columns),
 ]
 
 def run_migrations():
