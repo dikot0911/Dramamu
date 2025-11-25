@@ -369,7 +369,10 @@
                 userGrowthChart = new Chart('userGrowthChart', {
                     type: 'line',
                     data: {
-                        labels: data.map(d => new Date(d.date).toLocaleDateString('id-ID')),
+                        labels: data.map(d => {
+                            const date = AdminPanel.toWIBDate(d.date);
+                            return date ? date.toLocaleDateString('id-ID', { month: 'short', day: 'numeric' }) : d.date;
+                        }),
                         datasets: [
                             {
                                 label: 'Total Users',
@@ -433,7 +436,10 @@
                 revenueChart = new Chart('revenueChart', {
                     type: 'bar',
                     data: {
-                        labels: data.map(d => new Date(d.date).toLocaleDateString('id-ID')),
+                        labels: data.map(d => {
+                            const date = AdminPanel.toWIBDate(d.date);
+                            return date ? date.toLocaleDateString('id-ID', { month: 'short', day: 'numeric' }) : d.date;
+                        }),
                         datasets: [{
                             label: 'Revenue (Rp)',
                             data: data.map(d => d.revenue),

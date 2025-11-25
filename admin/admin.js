@@ -287,9 +287,30 @@ const AdminPanel = {
         try {
             const response = await fetch(`${API_BASE_URL}${endpoint}`, fetchOptions);
 
-            const data = await response.json();
-
+            // CRITICAL FIX: Check response.ok BEFORE parsing JSON
+            // This prevents "Unexpected token" errors when server returns HTML error pages
             if (!response.ok) {
+                // Try to parse JSON error response
+                let errorData;
+                try {
+                    errorData = await response.json();
+                } catch (parseError) {
+                    // Fallback: response is not JSON (e.g., HTML error page)
+                    const text = await response.text();
+                    
+                    // Handle 401 unauthorized
+                    if (response.status === 401 && !skipAuthRedirect) {
+                        this.clearToken();
+                        window.location.href = '/panel/login.html';
+                        throw new Error('Session telah berakhir. Silakan login kembali.');
+                    }
+                    
+                    // Generic error for non-JSON responses
+                    const errorPreview = text.substring(0, 200).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    throw new Error(`Server error (${response.status}): ${errorPreview}`);
+                }
+                
+                // Handle 401 with JSON error
                 if (response.status === 401 && !skipAuthRedirect) {
                     this.clearToken();
                     window.location.href = '/panel/login.html';
@@ -297,18 +318,25 @@ const AdminPanel = {
                 }
                 
                 // Handle structured error responses
-                if (typeof data.detail === 'object') {
-                    const errorMsg = data.detail.error || data.detail.message || 'Terjadi kesalahan';
-                    const remediation = data.detail.remediation || '';
+                if (typeof errorData.detail === 'object') {
+                    const errorMsg = errorData.detail.error || errorData.detail.message || 'Terjadi kesalahan';
+                    const remediation = errorData.detail.remediation || '';
                     throw new Error(remediation ? `${errorMsg}\n\n${remediation}` : errorMsg);
                 }
                 
-                throw new Error(data.detail || 'Terjadi kesalahan');
+                throw new Error(errorData.detail || 'Terjadi kesalahan');
             }
 
+            // Only parse JSON if response.ok === true
+            const data = await response.json();
             return data;
         } catch (error) {
-            throw error;
+            // If error is already Error object, rethrow
+            if (error instanceof Error) {
+                throw error;
+            }
+            // Network errors or other exceptions
+            throw new Error(`Network error: ${String(error)}`);
         }
     },
 
