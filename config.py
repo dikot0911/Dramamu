@@ -2,6 +2,9 @@ import os
 import sys
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def now_utc():
     """
@@ -164,7 +167,19 @@ else:
     TELEGRAM_ADMIN_IDS = []
     print("⚠️  TELEGRAM_ADMIN_IDS belum di-set - Semua user bisa upload")
 
-# DOKU Payment Gateway
+# QRIS.PW Payment Gateway (Primary payment method)
+QRIS_PW_API_KEY = get_env('QRIS_PW_API_KEY', '')
+QRIS_PW_API_SECRET = get_env('QRIS_PW_API_SECRET', '')
+QRIS_PW_API_URL = 'https://qris.pw/api'
+
+if not QRIS_PW_API_KEY or not QRIS_PW_API_SECRET:
+    print("⚠️  QRIS.PW credentials belum di-set - Fitur pembayaran QRIS disabled")
+    print("   Set QRIS_PW_API_KEY dan QRIS_PW_API_SECRET di Replit Secrets")
+else:
+    print("✅ QRIS.PW payment gateway configured")
+    print(f"   API URL: {QRIS_PW_API_URL}")
+
+# DOKU Payment Gateway (Legacy - deprecated)
 DOKU_CLIENT_ID = get_env('DOKU_CLIENT_ID', '')
 DOKU_SECRET_KEY = get_env('DOKU_SECRET_KEY', '')
 
@@ -172,10 +187,9 @@ DOKU_SECRET_KEY = get_env('DOKU_SECRET_KEY', '')
 DOKU_API_URL = get_env('DOKU_API_URL', 'https://api-sandbox.doku.com')  # Default sandbox
 
 if not DOKU_CLIENT_ID or not DOKU_SECRET_KEY:
-    print("⚠️  DOKU credentials belum di-set - Fitur pembayaran terbatas")
-    print("   Set DOKU_CLIENT_ID dan DOKU_SECRET_KEY di environment variables")
+    print("⚠️  DOKU credentials belum di-set (Legacy payment method)")
 else:
-    print("✅ DOKU payment gateway configured")
+    print("✅ DOKU payment gateway configured (Legacy)")
     api_env = "SANDBOX" if DOKU_API_URL and "sandbox" in DOKU_API_URL.lower() else "PRODUCTION"
     print(f"   Environment: {api_env}")
 
@@ -194,8 +208,9 @@ else:
 
 # Backend URL (API)
 # Auto-detect production environment atau manual configuration
-# Priority: API_BASE_URL > RENDER_EXTERNAL_URL > DEV_DOMAIN > localhost
-dev_domain = get_env('DEV_DOMAIN')
+# Priority: API_BASE_URL > RENDER_EXTERNAL_URL > DEV_DOMAIN > REPLIT_DOMAINS > localhost
+# IMPORTANT: Replit provides REPLIT_DOMAINS (bukan REPLIT_DEV_DOMAIN)
+dev_domain = get_env('DEV_DOMAIN') or get_env('REPLIT_DOMAINS')
 BASE_URL = (
     get_env('API_BASE_URL') or 
     get_env('RENDER_EXTERNAL_URL') or 
@@ -208,7 +223,8 @@ if os.getenv('API_BASE_URL'):
 elif os.getenv('RENDER_EXTERNAL_URL'):
     print(f"✅ Auto-detected Render URL: {BASE_URL}")
 elif dev_domain:
-    print(f"✅ Auto-detected Development URL: {BASE_URL}")
+    print(f"✅ Auto-detected Replit Development URL: {BASE_URL}")
+    print(f"   Domain: {dev_domain}")
 else:
     print("⚠️  Pake localhost (development mode) - Telegram Mini App buttons TIDAK akan jalan!")
     print("   Telegram requires HTTPS for Web App buttons")
@@ -253,7 +269,7 @@ elif is_production():
         # Fallback ke BASE_URL biar minimal API bisa diakses dari domain sendiri
         ALLOWED_ORIGINS = [BASE_URL]
         print("=" * 80)
-        print("⚠️  PENTING: Production tanpa CORS config yang benar!")
+        print("⚠️  CRITICAL: Production tanpa CORS config yang benar!")
         print(f"   Fallback ke BASE_URL: {BASE_URL}")
         print("")
         print("SEGERA set ALLOWED_ORIGINS atau FRONTEND_URL di environment variables!")
@@ -275,4 +291,3 @@ URL_CARI_CUAN = f"{FRONTEND_URL}/referal.html"
 URL_BELI_VIP = f"{FRONTEND_URL}/payment.html"
 URL_REQUEST = f"{FRONTEND_URL}/request.html"
 URL_HUBUNGI_KAMI = f"{FRONTEND_URL}/contact.html"
-    

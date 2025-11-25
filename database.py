@@ -157,10 +157,14 @@ class Payment(Base):
     id = Column(Integer, primary_key=True, index=True)
     telegram_id = Column(String, nullable=False, index=True)
     order_id = Column(String, unique=True, nullable=False)
+    transaction_id = Column(String, nullable=True, index=True)
     package_name = Column(String, nullable=False)
     amount = Column(Integer, nullable=False)
     status = Column(String, default='pending')
     screenshot_url = Column(String, nullable=True)
+    qris_url = Column(String, nullable=True)
+    qris_string = Column(Text, nullable=True)
+    expires_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=now_utc)
     paid_at = Column(DateTime, nullable=True)
 
@@ -255,6 +259,18 @@ class Settings(Base):
     description = Column(Text, nullable=True)
     updated_at = Column(DateTime, default=now_utc, onupdate=now_utc)
     updated_by = Column(String, nullable=True)
+
+class Broadcast(Base):
+    __tablename__ = 'broadcasts'
+    
+    id = Column(Integer, primary_key=True, index=True)
+    message = Column(Text, nullable=False)
+    target = Column(String, default='all')
+    is_active = Column(Boolean, default=True)
+    broadcast_type = Column(String, default='v1')  # v1=telegram, v2=miniapp
+    created_at = Column(DateTime, default=now_utc)
+    created_by = Column(String, nullable=True)
+    updated_at = Column(DateTime, default=now_utc, onupdate=now_utc)
 
 
 def seed_sample_movies():

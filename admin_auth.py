@@ -11,6 +11,8 @@ from config import now_utc
 
 logger = logging.getLogger(__name__)
 
+_warning_printed = False
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 24
 
@@ -205,7 +207,10 @@ def ensure_admin_exists() -> Dict[str, Any]:
             "3. Restart aplikasi setelah environment variables di-set\n"
             "=" * 80
         )
-        logger.warning(remediation_msg)
+        global _warning_printed
+        if not _warning_printed:
+            logger.warning(remediation_msg)
+            _warning_printed = True
         
         return {
             "status": "missing_secrets",

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, Header, Request, Response, Cookie
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, cast
 from datetime import timedelta, datetime
 from admin_auth import (
     authenticate_admin, 
@@ -23,7 +23,7 @@ from admin_auth import (
 )
 from database import (
     SessionLocal, User, Movie, Part, DramaRequest, Withdrawal, Payment, Admin,
-    PendingUpload, Settings,
+    PendingUpload, Settings, Broadcast,
     get_parts_by_movie_id, create_part, update_part, delete_part,
     get_part_by_id, get_pending_uploads, get_unique_short_id
 )
@@ -33,6 +33,7 @@ from sqlalchemy.exc import IntegrityError
 import logging
 import httpx
 import io
+import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -158,6 +159,11 @@ class QRISApproveRequest(BaseModel):
 class QRISRejectRequest(BaseModel):
     order_id: str
     reason: Optional[str] = None
+
+class ManualVIPActivationRequest(BaseModel):
+    telegram_id: str
+    package_name: str
+    order_id: Optional[str] = None
 
 def get_current_admin(
     authorization: Optional[str] = Header(None),
@@ -949,6 +955,7 @@ async def get_pending_counts(admin = Depends(get_current_admin)):
 class UserUpdateVIP(BaseModel):
     is_vip: bool
     vip_days: Optional[int] = None
+    mode: str = "absolute"
 
 @router.get("/users")
 async def get_all_users(page: int = 1, limit: int = 20, search: Optional[str] = None, admin = Depends(get_current_admin)):
@@ -1013,23 +1020,50 @@ async def get_user_detail(user_id: int, admin = Depends(get_current_admin)):
 
 @router.put("/users/{user_id}/vip")
 async def update_user_vip(user_id: int, data: UserUpdateVIP, admin = Depends(get_current_admin)):
+    """
+    Update VIP status user dengan mode delta atau absolute.
+    
+    Mode 'delta': vip_days positif = tambah durasi, negatif = kurangi durasi
+    Mode 'absolute': vip_days = set durasi baru dari sekarang
+    """
     db = SessionLocal()
     try:
+        from datetime import timedelta, datetime
+        
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User tidak ditemukan")
         
         user.is_vip = data.is_vip  # type: ignore
         
-        if data.is_vip and data.vip_days:
-            from datetime import timedelta
-            user.vip_expires_at = now_utc() + timedelta(days=data.vip_days)  # type: ignore
+        if data.is_vip and data.vip_days is not None:
+            if data.mode == "delta":
+                current_expiry = cast(datetime | None, user.vip_expires_at)
+                
+                if current_expiry is not None and current_expiry > now_utc():
+                    user.vip_expires_at = current_expiry + timedelta(days=data.vip_days)  # type: ignore
+                else:
+                    if data.vip_days > 0:
+                        user.vip_expires_at = now_utc() + timedelta(days=data.vip_days)  # type: ignore
+                    else:
+                        user.vip_expires_at = now_utc()  # type: ignore
+                
+                if user.vip_expires_at and user.vip_expires_at < now_utc():
+                    user.vip_expires_at = now_utc()  # type: ignore
+            else:
+                user.vip_expires_at = now_utc() + timedelta(days=data.vip_days)  # type: ignore
         elif not data.is_vip:
             user.vip_expires_at = None  # type: ignore
         
         db.commit()
         
-        return {"message": "VIP status berhasil diupdate", "is_vip": user.is_vip}
+        logger.info(f"Admin {admin.username} updated VIP for user {user_id}: is_vip={data.is_vip}, mode={data.mode}, days={data.vip_days}")
+        
+        return {
+            "message": "VIP status berhasil diupdate",
+            "is_vip": user.is_vip,
+            "vip_expires_at": to_iso_utc(user.vip_expires_at)
+        }
     except HTTPException:
         raise
     except Exception as e:
@@ -1626,11 +1660,6 @@ async def get_drama_requests(page: int = 1, limit: int = 20, status: Optional[st
             "limit": limit,
             "total_pages": (total + limit - 1) // limit
         }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error loading drama requests: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Gagal memuat data permintaan: {str(e)}")
     finally:
         db.close()
 
@@ -1828,7 +1857,10 @@ async def get_payments(page: int = 1, limit: int = 20, status: Optional[str] = N
                     "amount": p.amount,
                     "status": p.status,
                     "created_at": to_iso_utc(p.created_at),  # type: ignore
-                    "paid_at": to_iso_utc(p.paid_at)  # type: ignore
+                    "paid_at": to_iso_utc(p.paid_at),  # type: ignore
+                    "screenshot_url": p.screenshot_url,
+                    "qris_url": p.qris_url,
+                    "expires_at": to_iso_utc(p.expires_at)  # type: ignore
                 } for p in payments
             ],
             "total": total,
@@ -1884,7 +1916,6 @@ async def approve_qris_payment(data: QRISApproveRequest, admin = Depends(get_cur
         days = days_map.get(package_name_str, 1)
         
         user.is_vip = True
-        from typing import cast
         current_expiry_col = user.vip_expires_at
         current_expiry: datetime | None = cast(datetime | None, current_expiry_col)
         
@@ -2056,6 +2087,141 @@ async def reject_qris_payment(data: QRISRejectRequest, admin = Depends(get_curre
         logger.error(f"❌ Error reject QRIS payment: {e}")
         logger.exception("Full error traceback:")
         raise HTTPException(status_code=500, detail=f"Error reject payment: {str(e)}")
+    finally:
+        db.close()
+
+@router.post("/manual-vip-activation")
+async def manual_vip_activation(request: ManualVIPActivationRequest, admin = Depends(get_current_admin)):
+    """
+    Endpoint untuk admin mengaktifkan VIP user secara manual.
+    Untuk antisipasi ketika gateway error atau gangguan lain.
+    
+    Flow:
+    1. Cari user berdasarkan telegram_id
+    2. Set user.is_vip = True dan hitung expiry berdasarkan package_name
+    3. Update payment status jadi 'success' jika order_id diberikan
+    4. Kirim notifikasi Telegram ke user
+    5. Log semua aktivitas
+    """
+    db = SessionLocal()
+    try:
+        from datetime import datetime, timedelta
+        
+        telegram_id = request.telegram_id
+        package_name = request.package_name
+        order_id = request.order_id
+        
+        logger.info(f"👤 Admin {admin.username} manual activate VIP untuk user {telegram_id}, paket: {package_name}, order_id: {order_id}")
+        
+        # Cari user
+        user = db.query(User).filter(User.telegram_id == str(telegram_id)).first()
+        if not user:
+            logger.error(f"❌ User tidak ditemukan: {telegram_id}")
+            raise HTTPException(status_code=404, detail=f"User dengan telegram_id {telegram_id} tidak ditemukan")
+        
+        # Hitung jumlah hari dari package_name
+        days_map = {
+            "VIP 1 Hari": 1,
+            "VIP 3 Hari": 3,
+            "VIP 7 Hari": 7,
+            "VIP 15 Hari": 15,
+            "VIP 30 Hari": 30
+        }
+        days = days_map.get(str(package_name), 1)
+        
+        # Cek apakah user sudah VIP sebelum aktivasi (untuk notifikasi berbeda)
+        was_already_vip = user.is_vip
+        
+        # Aktifkan VIP
+        user.is_vip = True  # type: ignore
+        current_expiry_col = user.vip_expires_at
+        current_expiry = cast(datetime | None, current_expiry_col)
+        
+        if current_expiry is not None and current_expiry > now_utc():
+            # Jika VIP sudah aktif, extend expiry
+            user.vip_expires_at = current_expiry + timedelta(days=days)  # type: ignore
+        else:
+            # Jika VIP belum aktif, set expiry baru
+            user.vip_expires_at = now_utc() + timedelta(days=days)  # type: ignore
+        
+        # Update payment status jadi 'success' jika order_id diberikan
+        payment_updated = False
+        if order_id:
+            payment = db.query(Payment).filter(Payment.order_id == order_id).first()
+            if payment:
+                payment.status = 'success'  # type: ignore
+                payment.paid_at = now_utc()  # type: ignore
+                payment_updated = True
+                logger.info(f"✅ Payment {order_id} status updated to 'success'")
+            else:
+                logger.warning(f"⚠️ Payment with order_id {order_id} not found")
+        
+        db.commit()
+        
+        logger.info(f"✅ VIP manual diaktifkan untuk user {telegram_id} selama {days} hari (paket: {package_name})")
+        
+        # Kirim notifikasi Telegram dengan pesan berbeda berdasarkan status VIP sebelumnya
+        if TELEGRAM_BOT_TOKEN:
+            try:
+                telegram_id_int = int(str(telegram_id))
+                
+                # Bedakan pesan untuk upgrade vs aktivasi pertama
+                if was_already_vip:
+                    # User sudah VIP sebelumnya - ini adalah upgrade/penambahan durasi
+                    message = (
+                        f"✅ <b>VIP Ditambahkan!</b>\n\n"
+                        f"Admin: {admin.username}\n"
+                        f"Paket: {package_name}\n"
+                        f"Durasi VIP kamu sudah ditambahkan {days} hari!\n\n"
+                        f"Selamat menonton! 🎬"
+                    )
+                else:
+                    # User belum VIP sebelumnya - ini adalah aktivasi pertama
+                    message = (
+                        f"✅ <b>VIP Diaktifkan Manual!</b>\n\n"
+                        f"Admin: {admin.username}\n"
+                        f"Paket: {package_name}\n"
+                        f"Status VIP kamu sudah aktif!\n\n"
+                        f"Selamat menonton! 🎬"
+                    )
+                
+                async with httpx.AsyncClient() as client:
+                    await client.post(
+                        f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+                        json={
+                            "chat_id": telegram_id_int,
+                            "text": message,
+                            "parse_mode": "HTML"
+                        }
+                    )
+                logger.info(f"✅ Notifikasi manual VIP dikirim ke user {telegram_id}")
+            except Exception as notif_error:
+                logger.error(f"❌ Gagal kirim notifikasi manual VIP ke user {telegram_id}: {notif_error}")
+        else:
+            logger.warning("⚠️ TELEGRAM_BOT_TOKEN tidak tersedia - skip notifikasi")
+        
+        return {
+            "success": True,
+            "message": f"VIP berhasil diaktifkan manual untuk user {telegram_id}",
+            "user": {
+                "telegram_id": str(user.telegram_id),
+                "is_vip": user.is_vip,
+                "vip_expires_at": to_iso_utc(user.vip_expires_at),
+                "vip_days": days
+            },
+            "payment_updated": payment_updated,
+            "admin": admin.username,
+            "activated_at": to_iso_utc(now_utc())
+        }
+        
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"❌ Error manual VIP activation: {e}")
+        logger.exception("Full error traceback:")
+        raise HTTPException(status_code=500, detail=f"Error manual VIP activation: {str(e)}")
     finally:
         db.close()
 
@@ -2564,14 +2730,50 @@ class BroadcastRequest(BaseModel):
     message: str
     target: str = 'all'
     vip_only: bool = False
+    broadcast_type: str = 'v1'  # v1=telegram, v2=miniapp
 
 @router.post("/broadcast")
 async def broadcast_message(data: BroadcastRequest, admin = Depends(get_current_admin)):
     """
-    Send broadcast message to users via Telegram bot.
+    Send broadcast message to users.
+    - v1: Sends via Telegram bot API to each user
+    - v2: Saves to database only (mini app will fetch)
     
-    Note: This requires the bot to be running and TELEGRAM_BOT_TOKEN to be set.
+    Returns detailed results per user (success/failed) for v1.
     """
+    if data.broadcast_type == 'v1' and not TELEGRAM_BOT_TOKEN:
+        raise HTTPException(
+            status_code=503, 
+            detail="TELEGRAM_BOT_TOKEN tidak tersedia. Broadcast tidak dapat dikirim."
+        )
+    
+    # For v2, just save to database and return success immediately
+    if data.broadcast_type == 'v2':
+        db = SessionLocal()
+        try:
+            broadcast = Broadcast(
+                message=data.message,
+                target='vip' if data.vip_only else 'all',
+                is_active=True,
+                broadcast_type='v2',
+                created_by=admin.username
+            )
+            db.add(broadcast)
+            db.commit()
+            logger.info(f"Broadcast v2 saved to database by admin {admin.username}")
+            return {
+                "message": "Broadcast mini app berhasil disimpan",
+                "total": 1,
+                "success_count": 1,
+                "failed_count": 0
+            }
+        except Exception as e:
+            logger.error(f"Error saving v2 broadcast: {e}")
+            db.rollback()
+            raise HTTPException(status_code=500, detail=str(e))
+        finally:
+            db.close()
+    
     db = SessionLocal()
     try:
         query = db.query(User)
@@ -2584,18 +2786,245 @@ async def broadcast_message(data: BroadcastRequest, admin = Depends(get_current_
         if not users:
             raise HTTPException(status_code=404, detail="Tidak ada user yang memenuhi kriteria")
         
-        logger.info(f"Broadcast message prepared for {len(users)} users by admin {admin.username}")
+        logger.info(f"Sending broadcast to {len(users)} users by admin {admin.username}")
+        
+        async def send_message_to_user(user: User, client: httpx.AsyncClient):
+            """Send message to a single user and return result"""
+            try:
+                url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+                payload = {
+                    "chat_id": user.telegram_id,
+                    "text": data.message,
+                    "parse_mode": "HTML"
+                }
+                
+                response = await client.post(url, json=payload, timeout=10.0)
+                response.raise_for_status()
+                
+                result = response.json()
+                if result.get("ok"):
+                    return {
+                        "success": True,
+                        "telegram_id": user.telegram_id,
+                        "username": user.username or "Unknown"
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "telegram_id": user.telegram_id,
+                        "username": user.username or "Unknown",
+                        "error": result.get("description", "Unknown error")
+                    }
+            except httpx.HTTPStatusError as e:
+                error_msg = f"HTTP {e.response.status_code}"
+                try:
+                    error_data = e.response.json()
+                    error_msg = error_data.get("description", error_msg)
+                except:
+                    pass
+                return {
+                    "success": False,
+                    "telegram_id": user.telegram_id,
+                    "username": user.username or "Unknown",
+                    "error": error_msg
+                }
+            except httpx.RequestError as e:
+                return {
+                    "success": False,
+                    "telegram_id": user.telegram_id,
+                    "username": user.username or "Unknown",
+                    "error": f"Network error: {str(e)}"
+                }
+            except Exception as e:
+                return {
+                    "success": False,
+                    "telegram_id": user.telegram_id,
+                    "username": user.username or "Unknown",
+                    "error": str(e)
+                }
+        
+        async with httpx.AsyncClient() as client:
+            tasks = [send_message_to_user(user, client) for user in users]
+            results = await asyncio.gather(*tasks)
+        
+        success_list = [r for r in results if r["success"]]
+        failed_list = [r for r in results if not r["success"]]
+        
+        logger.info(f"Broadcast completed: {len(success_list)} success, {len(failed_list)} failed")
+        
+        # Save broadcast to database
+        try:
+            broadcast = Broadcast(
+                message=data.message,
+                target='vip' if data.vip_only else 'all',
+                is_active=True,
+                broadcast_type=data.broadcast_type,
+                created_by=admin.username
+            )
+            db.add(broadcast)
+            db.commit()
+            logger.info(f"Broadcast saved to database with ID {broadcast.id}, type: {data.broadcast_type}")
+        except Exception as e:
+            logger.error(f"Failed to save broadcast to database: {e}")
+            db.rollback()
         
         return {
-            "message": f"Broadcast akan dikirim ke {len(users)} users",
-            "user_count": len(users),
-            "note": "Fitur broadcast memerlukan bot Telegram aktif. Message akan dikirim via background task."
+            "message": f"Broadcast selesai: {len(success_list)} berhasil, {len(failed_list)} gagal",
+            "total": len(users),
+            "success_count": len(success_list),
+            "failed_count": len(failed_list),
+            "success": success_list,
+            "failed": failed_list
         }
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error preparing broadcast: {e}")
+        logger.error(f"Error sending broadcast: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+# ==================== BROADCAST MANAGEMENT ====================
+
+class UpdateBroadcastRequest(BaseModel):
+    message: Optional[str] = None
+    is_active: Optional[bool] = None
+
+@router.get("/broadcasts")
+async def get_all_broadcasts(
+    page: int = 1,
+    limit: int = 20,
+    admin = Depends(get_current_admin)
+):
+    """Get all broadcasts with pagination"""
+    db = SessionLocal()
+    try:
+        offset = (page - 1) * limit
+        
+        total = db.query(func.count(Broadcast.id)).scalar()
+        broadcasts = db.query(Broadcast).order_by(
+            desc(Broadcast.created_at)
+        ).offset(offset).limit(limit).all()
+        
+        result = []
+        for broadcast in broadcasts:
+            result.append({
+                "id": broadcast.id,
+                "message": broadcast.message,
+                "target": broadcast.target,
+                "is_active": broadcast.is_active,
+                "created_at": to_iso_utc(broadcast.created_at),
+                "created_by": broadcast.created_by,
+                "updated_at": to_iso_utc(broadcast.updated_at)
+            })
+        
+        return {
+            "broadcasts": result,
+            "total": total,
+            "page": page,
+            "limit": limit,
+            "total_pages": (total + limit - 1) // limit
+        }
+    except Exception as e:
+        logger.error(f"Error getting broadcasts: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+@router.patch("/broadcasts/{broadcast_id}")
+async def update_broadcast(
+    broadcast_id: int,
+    data: UpdateBroadcastRequest,
+    admin = Depends(get_current_admin)
+):
+    """Update broadcast message or toggle is_active"""
+    db = SessionLocal()
+    try:
+        broadcast = db.query(Broadcast).filter(Broadcast.id == broadcast_id).first()
+        
+        if not broadcast:
+            raise HTTPException(status_code=404, detail="Broadcast tidak ditemukan")
+        
+        if data.message is not None:
+            broadcast.message = data.message
+        
+        if data.is_active is not None:
+            broadcast.is_active = data.is_active
+        
+        broadcast.updated_at = now_utc()
+        db.commit()
+        
+        return {
+            "message": "Broadcast berhasil diupdate",
+            "broadcast": {
+                "id": broadcast.id,
+                "message": broadcast.message,
+                "target": broadcast.target,
+                "is_active": broadcast.is_active,
+                "created_at": to_iso_utc(broadcast.created_at),
+                "created_by": broadcast.created_by,
+                "updated_at": to_iso_utc(broadcast.updated_at)
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating broadcast: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+@router.delete("/broadcasts/{broadcast_id}")
+async def delete_broadcast(broadcast_id: int, admin = Depends(get_current_admin)):
+    """Delete a broadcast"""
+    db = SessionLocal()
+    try:
+        broadcast = db.query(Broadcast).filter(Broadcast.id == broadcast_id).first()
+        
+        if not broadcast:
+            raise HTTPException(status_code=404, detail="Broadcast tidak ditemukan")
+        
+        db.delete(broadcast)
+        db.commit()
+        
+        return {"message": "Broadcast berhasil dihapus"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting broadcast: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+# ==================== PUBLIC BROADCAST V2 ENDPOINT (NO AUTH) ====================
+
+# Note: This endpoint is in admin_router but is accessible publicly
+# It's for mini app only, returns v2 broadcasts
+@router.get("/broadcasts-v2/active")
+async def get_active_broadcasts_v2():
+    """Get active v2 broadcasts for mini app (no authentication required)"""
+    db = SessionLocal()
+    try:
+        broadcasts = db.query(Broadcast).filter(
+            Broadcast.is_active == True,
+            Broadcast.broadcast_type == 'v2'
+        ).order_by(desc(Broadcast.created_at)).all()
+        
+        result = []
+        for broadcast in broadcasts:
+            result.append({
+                "id": broadcast.id,
+                "message": broadcast.message,
+                "target": broadcast.target,
+                "created_at": to_iso_utc(broadcast.created_at)
+            })
+        
+        return {"broadcasts": result}
+    except Exception as e:
+        logger.error(f"Error getting active v2 broadcasts: {e}")
+        return {"broadcasts": []}
     finally:
         db.close()
 

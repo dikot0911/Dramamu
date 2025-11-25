@@ -5,14 +5,14 @@ import hashlib
 import os
 from urllib.parse import parse_qsl
 from typing import cast
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, File, UploadFile, Form
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 from pydantic import BaseModel
 from sqlalchemy import text
-from database import SessionLocal, User, Movie, Favorite, Like, WatchHistory, DramaRequest, Withdrawal, Payment, init_db, check_and_update_vip_expiry, serialize_movie
-from config import DOKU_CLIENT_ID, DOKU_SECRET_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_BOT_USERNAME, URL_CARI_JUDUL, URL_BELI_VIP, ALLOWED_ORIGINS, now_utc, is_production
+from database import SessionLocal, User, Movie, Favorite, Like, WatchHistory, DramaRequest, Withdrawal, Payment, Broadcast, init_db, check_and_update_vip_expiry, serialize_movie
+from config import DOKU_CLIENT_ID, DOKU_SECRET_KEY, QRIS_PW_API_KEY, QRIS_PW_API_SECRET, QRIS_PW_API_URL, TELEGRAM_BOT_TOKEN, TELEGRAM_BOT_USERNAME, URL_CARI_JUDUL, URL_BELI_VIP, ALLOWED_ORIGINS, BASE_URL, FRONTEND_URL, now_utc, is_production
 from telebot import types
 from admin_api import router as admin_router
 import telegram_delivery
@@ -90,17 +90,6 @@ async def startup_event():
     """Setup database waktu app startup"""
     init_db()
     
-    from admin_auth import ensure_admin_exists
-    result = ensure_admin_exists()
-    
-    if result['status'] == 'success':
-        logger.info(f"✅ Admin user ready: {result.get('message', 'Admin verified')}")
-    elif result['status'] == 'missing_secrets':
-        logger.warning("⚠️  Admin panel belum dikonfigurasi - menunggu secrets")
-        logger.warning(f"   Kurang: {', '.join(result.get('missing_secrets', []))}")
-    else:
-        logger.error(f"❌ Admin setup error: {result.get('message', 'Unknown error')}")
-    
     # Setup Telegram webhook untuk production
     if is_production() and TELEGRAM_BOT_TOKEN:
         logger.info("🌐 Production mode - setting up webhook...")
@@ -118,11 +107,17 @@ async def startup_event():
     elif TELEGRAM_BOT_TOKEN:
         logger.info("🔧 Development mode - bot pakai polling (dijalankan oleh runner.py)")
 
-if DOKU_CLIENT_ID and DOKU_SECRET_KEY:
-    logger.info("✅ DOKU payment gateway initialized")
+if QRIS_PW_API_KEY and QRIS_PW_API_SECRET:
+    logger.info("✅ QRIS.PW payment gateway initialized")
+    logger.info(f"   API URL: {QRIS_PW_API_URL}")
 else:
-    logger.warning("⚠️ DOKU credentials belum di-set - Fitur pembayaran terbatas")
-    logger.warning("   Set DOKU_CLIENT_ID dan DOKU_SECRET_KEY di environment variables")
+    logger.warning("⚠️ QRIS.PW credentials belum di-set - Fitur pembayaran QRIS disabled")
+    logger.warning("   Set QRIS_PW_API_KEY dan QRIS_PW_API_SECRET di Replit Secrets")
+
+if DOKU_CLIENT_ID and DOKU_SECRET_KEY:
+    logger.info("✅ DOKU payment gateway initialized (Legacy)")
+else:
+    logger.info("ℹ️  DOKU credentials not set (Legacy payment method)")
 
 # Import bot instance dari bot.py (sudah ada message handlers)
 # CRITICAL: Jangan buat TeleBot baru, pakai bot yang sudah register handlers
@@ -266,9 +261,30 @@ class PaymentCallback(BaseModel):
     status_code: str | None = None
     gross_amount: str | None = None
 
-@app.get("/")
-async def root():
-    return {"message": "Dramamu Bot API", "status": "ok"}
+@app.get("/api/config")
+async def get_config(request: Request):
+    """
+    Get dynamic configuration dari current request.
+    This helps frontend auto-detect backend URL even jika Replit URL berubah.
+    """
+    # Detect hostname dari request headers (akurat untuk development)
+    host_header = request.headers.get('host', '')
+    protocol = 'https' if request.url.scheme == 'https' else 'http'
+    
+    # Build dynamic API URL dari current request
+    if host_header:
+        base_url = f"{protocol}://{host_header}"
+    else:
+        base_url = BASE_URL
+    
+    return {
+        "status": "ok",
+        "API_BASE_URL": base_url.rstrip('/'),
+        "FRONTEND_URL": FRONTEND_URL.rstrip('/'),
+        "environment": "production" if is_production() else "development",
+        "version": "2.0",
+        "auto_detected": bool(host_header)
+    }
 
 @app.get("/health")
 async def health_check():
@@ -653,157 +669,638 @@ async def select_movie(request: MovieSelectionRequest):
 
 @app.post("/api/v1/create_payment")
 async def create_payment_link(request: PaymentRequest):
-    if not (DOKU_CLIENT_ID and DOKU_SECRET_KEY):
-        raise HTTPException(status_code=500, detail="DOKU payment gateway belum dikonfigurasi")
+    """
+    Create QRIS payment via QRIS.PW API
+    Enhanced with error sanitization and complete data persistence
+    """
+    if not (QRIS_PW_API_KEY and QRIS_PW_API_SECRET):
+        raise HTTPException(status_code=500, detail="Pembayaran sedang dalam maintenance, silakan coba lagi nanti")
     
-    import json
-    import uuid
-    from datetime import datetime, timezone
-    import base64
     import requests
-    from config import DOKU_API_URL
+    import json
+    from datetime import datetime
     
     order_id = f"DRAMAMU-{request.telegram_id}-{int(time.time())}"
     
     try:
+        # Call QRIS.PW API to create payment
+        callback_url = f"{BASE_URL}/api/v1/qris_callback"
+        
+        payload = {
+            "amount": request.gross_amount,
+            "order_id": order_id,
+            "customer_name": f"User {request.telegram_id}",
+            "customer_phone": "",
+            "callback_url": callback_url
+        }
+        
+        headers = {
+            "Content-Type": "application/json",
+            "X-API-Key": QRIS_PW_API_KEY,
+            "X-API-Secret": QRIS_PW_API_SECRET
+        }
+        
+        logger.info(f"📤 Calling QRIS.PW API for order {order_id}, amount: Rp {request.gross_amount}")
+        logger.debug(f"   Callback URL: {callback_url}")
+        
+        response = requests.post(
+            f"{QRIS_PW_API_URL}/create-payment.php",
+            json=payload,
+            headers=headers,
+            timeout=30
+        )
+        
+        logger.info(f"QRIS.PW API response status: {response.status_code}")
+        
+        if response.status_code != 200:
+            error_text = response.text[:200]  # Sanitize: limit error length
+            logger.error(f"❌ QRIS.PW API error (status {response.status_code}): {error_text}")
+            # User-friendly error message (sanitized)
+            raise HTTPException(status_code=500, detail="Gagal membuat pembayaran, silakan coba lagi")
+        
+        try:
+            result = response.json()
+        except json.JSONDecodeError as json_error:
+            logger.error(f"❌ Invalid JSON response from QRIS.PW: {response.text[:200]}")
+            raise HTTPException(status_code=500, detail="Gagal membuat pembayaran, silakan coba lagi")
+        
+        if not result.get("success"):
+            error_msg = str(result.get("error", "Unknown error"))[:100]  # Sanitize
+            logger.error(f"❌ QRIS.PW returned error: {error_msg}")
+            # User-friendly error (don't expose internal details)
+            raise HTTPException(status_code=500, detail="Gagal membuat pembayaran, silakan coba lagi")
+        
+        # Extract response data
+        transaction_id = result.get("transaction_id")
+        qris_url = result.get("qris_url")
+        qris_string = result.get("qris_string") or result.get("qris_content")  # Fallback field name
+        expires_at_str = result.get("expires_at")
+        
+        # Validate required fields
+        if not transaction_id:
+            logger.error(f"❌ QRIS.PW response missing transaction_id: {result}")
+            raise HTTPException(status_code=500, detail="Gagal membuat pembayaran, silakan coba lagi")
+        
+        if not qris_string:
+            logger.error(f"❌ QRIS.PW response missing qris_string (checked both 'qris_string' and 'qris_content' fields)")
+            raise HTTPException(status_code=500, detail="Gagal membuat pembayaran, silakan coba lagi")
+        
+        logger.info(f"✅ QRIS.PW payment created successfully")
+        logger.info(f"   Transaction ID: {transaction_id}")
+        logger.info(f"   QR Code URL: {qris_url[:50] if qris_url else 'N/A'}...")
+        logger.info(f"   QR String: {'Present' if qris_string else 'Missing'}")
+        logger.info(f"   Expires at: {expires_at_str}")
+        
+        # Parse expires_at to DateTime
+        expires_at_datetime = None
+        if expires_at_str:
+            try:
+                if isinstance(expires_at_str, (int, float)):
+                    expires_at_datetime = datetime.fromtimestamp(expires_at_str)
+                elif isinstance(expires_at_str, str):
+                    try:
+                        # Try ISO format first
+                        expires_at_datetime = datetime.fromisoformat(expires_at_str.replace('Z', '+00:00'))
+                    except ValueError:
+                        # Try timestamp format
+                        try:
+                            expires_at_datetime = datetime.fromtimestamp(float(expires_at_str))
+                        except (ValueError, TypeError):
+                            logger.warning(f"⚠️ Could not parse expires_at: {expires_at_str}")
+            except Exception as parse_error:
+                logger.warning(f"⚠️ Failed to parse expires_at: {parse_error}")
+        
+        # Save payment record to database with ALL data
         db = SessionLocal()
         try:
             payment = Payment(
                 telegram_id=str(request.telegram_id),
                 order_id=order_id,
+                transaction_id=transaction_id,
                 package_name=request.nama_paket,
                 amount=request.gross_amount,
-                status='pending'
+                status='pending',
+                qris_url=qris_url,
+                qris_string=qris_string,  # Save QRIS string to database
+                expires_at=expires_at_datetime
             )
             db.add(payment)
             db.commit()
+            db.refresh(payment)
+            logger.info(f"✅ Payment record saved to database")
+            logger.info(f"   Order ID: {order_id}")
+            logger.info(f"   Transaction ID: {transaction_id}")
+            logger.info(f"   QRIS String saved: {'Yes' if qris_string else 'No'}")
         except Exception as db_error:
-            logger.error(f"Error waktu simpan record pembayaran: {db_error}")
+            logger.error(f"❌ Database error while saving payment: {db_error}")
             db.rollback()
-            raise HTTPException(status_code=500, detail=f"Gagal menyimpan data pembayaran: {str(db_error)}")
+            # Sanitized error for user
+            raise HTTPException(status_code=500, detail="Gagal menyimpan data pembayaran, silakan coba lagi")
         finally:
             db.close()
         
-        # Call DOKU Jokul Checkout API - Try QRIS first, fallback to VA banks
-        request_id = str(uuid.uuid4())
-        request_timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
-        target_path = "/checkout/v1/payment"
-        
-        # Try payment method options in order of preference
-        payment_methods_to_try = [
-            ["QRIS"],  # Primary: QRIS
-            ["VA_BCA", "VA_MANDIRI", "VA_BNI"],  # Fallback: VA banks
-        ]
-        
-        payment_url = None
-        last_error = None
-        
-        for payment_methods in payment_methods_to_try:
-            try:
-                # Request body (ensure consistent key ordering for signature)
-                request_body = {
-                    "order": {
-                        "amount": request.gross_amount,
-                        "invoice_number": order_id
-                    },
-                    "payment": {
-                        "payment_due_date": 60,
-                        "payment_method_types": payment_methods
-                    }
-                }
-                
-                # Generate digest (use separators for consistent JSON formatting)
-                body_json = json.dumps(request_body, separators=(',', ':'), sort_keys=True)
-                digest_value = base64.b64encode(hashlib.sha256(body_json.encode()).digest()).decode()
-                
-                # Build signature string
-                component_signature = (
-                    f"Client-Id:{DOKU_CLIENT_ID}\n"
-                    f"Request-Id:{request_id}\n"
-                    f"Request-Timestamp:{request_timestamp}\n"
-                    f"Request-Target:{target_path}\n"
-                    f"Digest:{digest_value}"
-                )
-                
-                # Generate HMAC-SHA256 signature
-                signature_bytes = hmac.new(
-                    DOKU_SECRET_KEY.encode(),
-                    component_signature.encode(),
-                    hashlib.sha256
-                ).digest()
-                signature = "HMACSHA256=" + base64.b64encode(signature_bytes).decode()
-                
-                # Call DOKU API
-                headers = {
-                    "Client-Id": DOKU_CLIENT_ID,
-                    "Request-Id": request_id,
-                    "Request-Timestamp": request_timestamp,
-                    "Signature": signature,
-                    "Content-Type": "application/json"
-                }
-                
-                logger.info(f"📤 Calling DOKU API for order {order_id} with methods: {payment_methods}")
-                
-                response = requests.post(
-                    f"{DOKU_API_URL}{target_path}",
-                    data=body_json,
-                    headers=headers,
-                    timeout=30
-                )
-                
-                logger.info(f"DOKU API response status: {response.status_code} for methods: {payment_methods}")
-                
-                if response.status_code == 200:
-                    result = response.json()
-                    payment_url = result.get("response", {}).get("payment", {}).get("url")
-                    if payment_url:
-                        logger.info(f"✅ DOKU payment URL created with methods: {payment_methods}")
-                        break
-                else:
-                    last_error = f"Status {response.status_code}: {response.text}"
-                    logger.warning(f"⚠️ Failed with {payment_methods}: {last_error}")
-                    continue
-                    
-            except Exception as e:
-                last_error = str(e)
-                logger.warning(f"⚠️ Error trying {payment_methods}: {last_error}")
-                continue
-        
-        if not payment_url:
-            logger.error(f"❌ All payment methods failed. Last error: {last_error}")
-            if last_error and ("PAYMENT CHANNEL IS INACTIVE" in last_error or "CHANNEL IS INACTIVE" in last_error):
-                error_detail = "Tidak ada payment method yang aktif di DOKU Dashboard Anda. Silakan enable minimal satu metode pembayaran di https://dashboard.doku.com → Settings → Payment Methods"
-            else:
-                error_detail = f"Gagal membuat payment link. Error: {last_error}"
-            raise HTTPException(status_code=500, detail=error_detail)
-        
-        result = response.json()
-        payment_url = result.get("response", {}).get("payment", {}).get("url")
-        
-        if not payment_url:
-            logger.error(f"❌ No payment URL in DOKU response: {result}")
-            raise HTTPException(status_code=500, detail="DOKU tidak mengembalikan payment URL")
-        
-        logger.info(f"✅ DOKU payment URL created: {payment_url}")
-        
+        # Return response
         return {
+            "success": True,
             "order_id": order_id,
-            "payment_url": payment_url,
-            "amount": request.gross_amount
+            "transaction_id": transaction_id,
+            "qris_url": qris_url,
+            "qris_string": qris_string,
+            "amount": request.gross_amount,
+            "expires_at": expires_at_str,
+            "message": "QRIS payment berhasil dibuat"
         }
     
     except HTTPException:
         raise
+    except requests.exceptions.Timeout:
+        logger.error(f"❌ Timeout calling QRIS.PW API")
+        raise HTTPException(status_code=504, detail="Koneksi timeout, silakan coba lagi")
+    except requests.exceptions.ConnectionError:
+        logger.error(f"❌ Connection error to QRIS.PW API")
+        raise HTTPException(status_code=503, detail="Tidak dapat terhubung ke server pembayaran, silakan coba lagi")
     except Exception as e:
-        logger.error(f"Error waktu bikin pembayaran: {e}")
+        logger.error(f"❌ Unexpected error in create_payment: {e}")
+        logger.exception("Full error traceback:")
+        # Sanitized generic error for user
+        raise HTTPException(status_code=500, detail="Terjadi kesalahan, silakan coba lagi")
+
+@app.post("/api/v1/qris_callback")
+async def qris_payment_callback(request: Request):
+    """
+    Webhook callback dari QRIS.PW ketika pembayaran berhasil
+    """
+    try:
+        from datetime import datetime, timedelta
+        import json
+        
+        # Get raw body untuk signature verification
+        body_bytes = await request.body()
+        body_str = body_bytes.decode('utf-8')
+        
+        # Parse JSON payload
+        payload = json.loads(body_str)
+        
+        logger.info(f"📥 QRIS.PW webhook received for transaction: {payload.get('transaction_id')}")
+        
+        # Verify signature
+        if not QRIS_PW_API_SECRET:
+            logger.error("❌ QRIS_PW_API_SECRET not configured")
+            raise HTTPException(status_code=500, detail="Payment gateway not configured")
+        
+        signature = payload.get('signature')
+        if not signature:
+            logger.error("❌ No signature in webhook payload")
+            raise HTTPException(status_code=401, detail="Missing signature")
+        
+        # Remove signature from payload for verification
+        payload_copy = payload.copy()
+        payload_copy.pop('signature', None)
+        
+        # Calculate expected signature
+        payload_json = json.dumps(payload_copy, separators=(',', ':'), sort_keys=True)
+        expected_signature = hmac.new(
+            QRIS_PW_API_SECRET.encode('utf-8'),
+            payload_json.encode('utf-8'),
+            hashlib.sha256
+        ).hexdigest()
+        
+        if not hmac.compare_digest(expected_signature, signature):
+            logger.error(f"❌ Signature verification failed")
+            logger.error(f"   Expected: {expected_signature[:20]}...")
+            logger.error(f"   Received: {signature[:20]}...")
+            raise HTTPException(status_code=401, detail="Invalid signature")
+        
+        logger.info(f"✅ Signature verified for transaction: {payload.get('transaction_id')}")
+        
+        # Extract data from webhook
+        transaction_id = payload.get('transaction_id')
+        order_id = payload.get('order_id')
+        status = payload.get('status')
+        amount = payload.get('amount')
+        paid_at_str = payload.get('paid_at')
+        
+        # Order ID fallback: Try transaction_id if order_id missing
+        if not order_id and transaction_id:
+            logger.warning(f"⚠️ order_id missing in webhook, using transaction_id as fallback")
+            order_id = transaction_id
+        
+        if not order_id:
+            logger.error(f"❌ Both order_id and transaction_id missing in webhook: {payload}")
+            raise HTTPException(status_code=400, detail="Missing order_id and transaction_id")
+        
+        # Find payment in database
+        db = SessionLocal()
+        try:
+            # Try to find by order_id first, then by transaction_id
+            payment = db.query(Payment).filter(Payment.order_id == order_id).first()
+            
+            if not payment and transaction_id:
+                logger.info(f"Payment not found by order_id, trying transaction_id: {transaction_id}")
+                payment = db.query(Payment).filter(Payment.transaction_id == transaction_id).first()
+            
+            if not payment:
+                logger.error(f"❌ Payment not found: order_id={order_id}, transaction_id={transaction_id}")
+                raise HTTPException(status_code=404, detail="Payment not found")
+            
+            logger.info(f"Payment status update: {payment.order_id} -> {status}")
+            
+            # Handle payment status
+            if status == 'paid':
+                # Type ignore untuk SQLAlchemy column assignments
+                payment.status = 'success'  # type: ignore
+                payment.paid_at = now_utc()  # type: ignore
+                
+                # Activate VIP
+                user = db.query(User).filter(User.telegram_id == payment.telegram_id).first()
+                if user:
+                    days_map = {
+                        "VIP 1 Hari": 1,
+                        "VIP 3 Hari": 3,
+                        "VIP 7 Hari": 7,
+                        "VIP 15 Hari": 15,
+                        "VIP 30 Hari": 30
+                    }
+                    package_name_str = str(payment.package_name)
+                    days = days_map.get(package_name_str, 1)
+                    
+                    user.is_vip = True  # type: ignore
+                    current_expiry_col = user.vip_expires_at
+                    current_expiry = cast(datetime | None, current_expiry_col)
+                    
+                    if current_expiry is not None and current_expiry > now_utc():
+                        user.vip_expires_at = current_expiry + timedelta(days=days)  # type: ignore
+                    else:
+                        user.vip_expires_at = now_utc() + timedelta(days=days)  # type: ignore
+                    
+                    logger.info(f"✅ VIP activated for user {payment.telegram_id} for {days} days")
+                    
+                    # Process referral commission (25% of payment for first payment)
+                    referred_by_code_value = cast('str | None', user.referred_by_code)
+                    if referred_by_code_value:
+                        is_first_payment = db.query(Payment).filter(
+                            Payment.telegram_id == payment.telegram_id,
+                            Payment.status == 'success',
+                            Payment.id != payment.id
+                        ).first() is None
+                        
+                        if is_first_payment:
+                            referrer = db.query(User).filter(User.ref_code == referred_by_code_value).first()
+                            if referrer:
+                                payment_amount = cast('int', payment.amount)
+                                commission = int(payment_amount * 0.25)
+                                
+                                from sqlalchemy import update
+                                db.execute(
+                                    update(User)
+                                    .where(User.id == referrer.id)
+                                    .values(commission_balance=User.commission_balance + commission)
+                                )
+                                logger.info(f"💰 Commission paid: Rp {commission} to user {referrer.telegram_id}")
+                            else:
+                                logger.warning(f"Referrer with code {referred_by_code_value} not found")
+                        else:
+                            logger.info(f"⏭️ Skip commission - not first payment for user {payment.telegram_id}")
+                
+                db.commit()
+                
+                # Send Telegram notification
+                if bot:
+                    try:
+                        telegram_id_str = str(payment.telegram_id)
+                        bot.send_message(
+                            int(telegram_id_str),
+                            f"✅ <b>Pembayaran Berhasil!</b>\n\n"
+                            f"Paket: {payment.package_name}\n"
+                            f"Status VIP kamu sudah aktif!\n\n"
+                            f"Selamat menonton! 🎬",
+                            parse_mode='HTML'
+                        )
+                        logger.info(f"✅ Success notification sent to user {payment.telegram_id}")
+                    except Exception as bot_error:
+                        logger.error(f"❌ Failed to send Telegram notification: {bot_error}")
+                else:
+                    logger.warning("⚠️ Bot not configured - cannot send payment success notification")
+                
+                return {"status": "success", "message": "Payment processed successfully"}
+            
+            elif status == 'pending':
+                payment.status = 'pending'  # type: ignore
+                db.commit()
+                return {"status": "pending", "message": "Payment still pending"}
+            
+            elif status in ['expired', 'failed', 'cancelled']:
+                payment.status = 'failed'  # type: ignore
+                db.commit()
+                logger.info(f"Payment marked as failed: {payment.order_id} (status: {status})")
+                return {"status": "failed", "message": f"Payment {status}"}
+            
+            else:
+                logger.warning(f"Unknown payment status: {status} for order {order_id}")
+                return {"status": "unknown", "message": f"Unknown status: {status}"}
+                
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Error processing webhook: {e}")
+            db.rollback()
+            raise HTTPException(status_code=500, detail=str(e))
+        finally:
+            db.close()
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in webhook handler: {e}")
         logger.exception("Full error traceback:")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/v1/check_payment_status")
+async def check_payment_status(transaction_id: str):
+    """
+    Check payment status from QRIS.PW API and sync with local database
+    This ensures VIP activation even if webhook fails or is delayed
+    
+    RACE CONDITION PROTECTION:
+    - Uses SELECT FOR UPDATE to lock payment row during processing
+    - Checks payment.status == 'pending' for idempotency
+    - Atomic database updates with proper commit/rollback
+    """
+    if not (QRIS_PW_API_KEY and QRIS_PW_API_SECRET):
+        raise HTTPException(status_code=500, detail="QRIS.PW not configured")
+    
+    db = SessionLocal()
+    try:
+        import requests
+        from datetime import datetime, timedelta
+        
+        # Query QRIS.PW API for payment status
+        headers = {
+            "X-API-Key": QRIS_PW_API_KEY,
+            "X-API-Secret": QRIS_PW_API_SECRET
+        }
+        
+        logger.info(f"🔍 Checking payment status for transaction: {transaction_id}")
+        
+        try:
+            response = requests.get(
+                f"{QRIS_PW_API_URL}/check-payment.php",
+                params={"transaction_id": transaction_id},
+                headers=headers,
+                timeout=10
+            )
+        except requests.RequestException as req_error:
+            logger.error(f"❌ QRIS.PW API request failed: {req_error}")
+            raise HTTPException(status_code=503, detail="Payment gateway unavailable")
+        
+        if response.status_code != 200:
+            logger.error(f"QRIS.PW check status error: {response.text}")
+            raise HTTPException(status_code=500, detail="Failed to check payment status")
+        
+        try:
+            result = response.json()
+        except ValueError as json_error:
+            logger.error(f"❌ Invalid JSON response from QRIS.PW: {json_error}")
+            raise HTTPException(status_code=500, detail="Invalid payment gateway response")
+        
+        if not result.get("success"):
+            error_msg = result.get("error", "Unknown error")
+            logger.error(f"❌ QRIS.PW API error: {error_msg}")
+            raise HTTPException(status_code=500, detail=f"QRIS.PW error: {error_msg}")
+        
+        payment_status = result.get("status")
+        if not payment_status:
+            logger.error(f"❌ Missing status in QRIS.PW response: {result}")
+            raise HTTPException(status_code=500, detail="Invalid payment status response")
+        
+        logger.info(f"📊 QRIS.PW payment status: {payment_status}")
+        
+        # CRITICAL: Lock payment row to prevent race condition with webhook
+        # This ensures only one process (webhook OR polling) processes the payment
+        payment = db.query(Payment).filter(
+            Payment.transaction_id == transaction_id
+        ).with_for_update().first()
+        
+        if not payment:
+            logger.warning(f"⚠️ Payment record not found for transaction: {transaction_id}")
+            return result
+        
+        # IDEMPOTENCY CHECK: Only process if payment is still pending
+        # This prevents duplicate VIP activation if both webhook and polling run
+        current_status = str(payment.status)
+        
+        if payment_status == 'paid':
+            if current_status != 'pending':
+                logger.info(f"⏭️ Payment already processed (status: {current_status}), skipping")
+                return result
+            
+            logger.info(f"💳 Processing paid payment from polling: {transaction_id}")
+            
+            try:
+                # Update payment status atomically
+                payment.status = 'success'  # type: ignore
+                payment.paid_at = now_utc()  # type: ignore
+                
+                # Activate VIP (same logic as webhook for consistency)
+                user = db.query(User).filter(User.telegram_id == payment.telegram_id).first()
+                if not user:
+                    logger.error(f"❌ User not found for payment: telegram_id={payment.telegram_id}")
+                    db.rollback()
+                    raise HTTPException(status_code=404, detail="User not found")
+                
+                # Map package name to days
+                days_map = {
+                    "VIP 1 Hari": 1,
+                    "VIP 3 Hari": 3,
+                    "VIP 7 Hari": 7,
+                    "VIP 15 Hari": 15,
+                    "VIP 30 Hari": 30
+                }
+                package_name_str = str(payment.package_name)
+                days = days_map.get(package_name_str, 1)
+                
+                # Activate VIP and extend expiry
+                user.is_vip = True  # type: ignore
+                current_expiry_col = user.vip_expires_at
+                current_expiry = cast(datetime | None, current_expiry_col)
+                
+                if current_expiry is not None and current_expiry > now_utc():
+                    # Extend existing VIP
+                    user.vip_expires_at = current_expiry + timedelta(days=days)  # type: ignore
+                else:
+                    # New VIP or expired VIP
+                    user.vip_expires_at = now_utc() + timedelta(days=days)  # type: ignore
+                
+                logger.info(f"✅ VIP activated via polling for user {payment.telegram_id} for {days} days")
+                
+                # Process referral commission (25% of payment for first payment)
+                referred_by_code_value = cast('str | None', user.referred_by_code)
+                if referred_by_code_value:
+                    is_first_payment = db.query(Payment).filter(
+                        Payment.telegram_id == payment.telegram_id,
+                        Payment.status == 'success',
+                        Payment.id != payment.id
+                    ).first() is None
+                    
+                    if is_first_payment:
+                        referrer = db.query(User).filter(User.ref_code == referred_by_code_value).first()
+                        if referrer:
+                            payment_amount = cast('int', payment.amount)
+                            commission = int(payment_amount * 0.25)
+                            
+                            from sqlalchemy import update
+                            db.execute(
+                                update(User)
+                                .where(User.id == referrer.id)
+                                .values(commission_balance=User.commission_balance + commission)
+                            )
+                            logger.info(f"💰 Commission paid via polling: Rp {commission} to user {referrer.telegram_id}")
+                        else:
+                            logger.warning(f"Referrer with code {referred_by_code_value} not found")
+                    else:
+                        logger.info(f"⏭️ Skip commission - not first payment for user {payment.telegram_id}")
+                
+                # Commit all changes atomically
+                db.commit()
+                logger.info(f"✅ Payment processing completed successfully for {transaction_id}")
+                
+                # Send Telegram notification (outside transaction to avoid blocking)
+                if bot:
+                    try:
+                        telegram_id_str = str(payment.telegram_id)
+                        bot.send_message(
+                            int(telegram_id_str),
+                            f"✅ <b>Pembayaran Berhasil!</b>\n\n"
+                            f"Paket: {payment.package_name}\n"
+                            f"Status VIP kamu sudah aktif!\n\n"
+                            f"Selamat menonton! 🎬",
+                            parse_mode='HTML'
+                        )
+                        logger.info(f"✅ Success notification sent to user {payment.telegram_id}")
+                    except Exception as bot_error:
+                        logger.error(f"❌ Failed to send Telegram notification: {bot_error}")
+                else:
+                    logger.warning("⚠️ Bot not configured - cannot send payment success notification")
+                    
+            except HTTPException:
+                db.rollback()
+                raise
+            except Exception as process_error:
+                logger.error(f"❌ Error processing payment success: {process_error}")
+                logger.exception("Payment processing error details:")
+                db.rollback()
+                raise HTTPException(status_code=500, detail="Failed to process payment")
+        
+        elif payment_status == 'expired':
+            if current_status == 'pending':
+                payment.status = 'expired'  # type: ignore
+                db.commit()
+                logger.info(f"⏰ Payment expired: {transaction_id}")
+            else:
+                logger.info(f"⏭️ Payment status already updated to {current_status}, skipping")
+        
+        elif payment_status in ['failed', 'cancelled']:
+            if current_status == 'pending':
+                payment.status = 'failed'  # type: ignore
+                db.commit()
+                logger.info(f"❌ Payment failed/cancelled: {transaction_id}")
+            else:
+                logger.info(f"⏭️ Payment status already updated to {current_status}, skipping")
+        
+        else:
+            logger.warning(f"⚠️ Unknown payment status from QRIS.PW: {payment_status}")
+        
+        return result
+        
+    except HTTPException:
+        # HTTPException already has proper status code and message
+        raise
+    except Exception as e:
+        logger.error(f"❌ Unexpected error in check_payment_status: {e}")
+        logger.exception("Full error traceback:")
+        try:
+            db.rollback()
+        except Exception as rollback_error:
+            logger.error(f"❌ Rollback failed: {rollback_error}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+    finally:
+        try:
+            db.close()
+        except Exception as close_error:
+            logger.error(f"❌ DB session close failed: {close_error}")
+
+@app.post("/api/v1/upload_screenshot")
+async def upload_screenshot(
+    transaction_id: str = Form(...),
+    screenshot: UploadFile = File(...)
+):
+    """
+    Upload screenshot bukti pembayaran untuk order tertentu.
+    Screenshot disimpan di backend_assets/screenshots/ dan URL-nya disimpan ke database.
+    """
+    db = SessionLocal()
+    try:
+        # Validate file is an image
+        if not screenshot.content_type or not screenshot.content_type.startswith('image/'):
+            raise HTTPException(status_code=400, detail="File harus berupa gambar")
+        
+        # Find payment record
+        payment = db.query(Payment).filter(Payment.transaction_id == transaction_id).first()
+        if not payment:
+            raise HTTPException(status_code=404, detail=f"Payment dengan transaction_id {transaction_id} tidak ditemukan")
+        
+        # Create screenshots directory if not exists
+        screenshots_dir = "backend_assets/screenshots"
+        os.makedirs(screenshots_dir, exist_ok=True)
+        
+        # Delete old screenshot if exists
+        if payment.screenshot_url:
+            try:
+                old_screenshot_path = payment.screenshot_url.replace("/media/", "backend_assets/")
+                if os.path.exists(old_screenshot_path):
+                    os.remove(old_screenshot_path)
+                    logger.info(f"🗑️ Deleted old screenshot: {old_screenshot_path}")
+            except Exception as delete_error:
+                logger.warning(f"⚠️ Failed to delete old screenshot: {delete_error}")
+        
+        # Generate unique filename
+        timestamp = int(time.time())
+        file_extension = screenshot.filename.split('.')[-1] if '.' in screenshot.filename else 'jpg'
+        filename = f"payment_{transaction_id}_{timestamp}.{file_extension}"
+        file_path = os.path.join(screenshots_dir, filename)
+        
+        # Save file
+        with open(file_path, "wb") as f:
+            content = await screenshot.read()
+            f.write(content)
+        
+        # Update payment record with screenshot URL
+        screenshot_url = f"/media/screenshots/{filename}"
+        payment.screenshot_url = screenshot_url
+        db.commit()
+        
+        logger.info(f"✅ Screenshot uploaded for payment {transaction_id}: {screenshot_url}")
+        
+        return {
+            "success": True,
+            "screenshot_url": screenshot_url,
+            "message": "Screenshot berhasil diupload"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error uploading screenshot: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Gagal mengupload screenshot")
+    finally:
+        db.close()
 
 @app.post("/api/v1/create_qris_payment")
 async def create_qris_payment(request: PaymentRequest):
     """
-    Temporary QRIS payment endpoint - creates payment record and returns QRIS path
-    User akan scan QRIS dan kirim bukti pembayaran ke admin untuk manual verification
+    DEPRECATED: Legacy QRIS payment endpoint with static QR codes
+    Use /api/v1/create_payment instead for dynamic QRIS via QRIS.PW
     """
     order_id = f"QRIS-{request.telegram_id}-{int(time.time())}"
     
@@ -1237,6 +1734,31 @@ async def get_drama_requests(request: UserDataRequest):
     finally:
         db.close()
 
+@app.get("/api/broadcasts/active")
+async def get_active_broadcasts():
+    """Get all active broadcasts for frontend display"""
+    db = SessionLocal()
+    try:
+        broadcasts = db.query(Broadcast).filter(
+            Broadcast.is_active == True
+        ).order_by(Broadcast.created_at.desc()).all()
+        
+        result = []
+        for broadcast in broadcasts:
+            result.append({
+                "id": broadcast.id,
+                "message": broadcast.message,
+                "target": broadcast.target,
+                "created_at": broadcast.created_at.isoformat() + 'Z' if broadcast.created_at is not None else None
+            })
+        
+        return {"broadcasts": result}
+    except Exception as e:
+        logger.error(f"Error getting active broadcasts: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
 @app.post("/api/v1/withdrawal")
 async def submit_withdrawal(request: WithdrawalRequest):
     validated_user = validate_telegram_webapp(request.init_data)
@@ -1402,6 +1924,48 @@ async def get_payment_history(request: UserDataRequest):
         raise
     except Exception as e:
         logger.error(f"Error waktu ambil riwayat pembayaran: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+@app.post("/api/v1/pending_payments")
+async def get_pending_payments(request: UserDataRequest):
+    """
+    Endpoint untuk mendapatkan riwayat pembayaran yang belum sukses (pending/failed/expired)
+    untuk user tertentu. Digunakan untuk menampilkan history di halaman payment.
+    """
+    validated_user = validate_telegram_webapp(request.init_data)
+    assert validated_user is not None, "validate_telegram_webapp should raise HTTPException if validation fails"
+    telegram_id = validated_user['telegram_id']
+    
+    db = SessionLocal()
+    try:
+        # Get payments with status: pending, failed, expired, cancelled (not success)
+        payments = db.query(Payment).filter(
+            Payment.telegram_id == str(telegram_id),
+            Payment.status.in_(['pending', 'failed', 'expired', 'cancelled'])
+        ).order_by(Payment.created_at.desc()).all()
+        
+        result = []
+        for payment in payments:
+            result.append({
+                "id": payment.id,
+                "order_id": payment.order_id,
+                "transaction_id": payment.transaction_id,
+                "package_name": payment.package_name,
+                "amount": payment.amount,
+                "status": payment.status,
+                "qris_url": payment.qris_url,
+                "expires_at": payment.expires_at.isoformat() + 'Z' if payment.expires_at is not None else None,
+                "created_at": payment.created_at.isoformat() + 'Z' if payment.created_at is not None else None,
+                "paid_at": payment.paid_at.isoformat() + 'Z' if payment.paid_at is not None else None
+            })
+        
+        return {"payments": result}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error waktu ambil riwayat pembayaran pending: {e}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         db.close()
