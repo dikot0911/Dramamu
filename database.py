@@ -31,20 +31,25 @@ if DATABASE_URL.startswith('postgresql'):
     else:
         logger.info(f"Using DB_SSLMODE: {db_sslmode}")
     
-    # PRODUCTION OPTIMIZATION: Conservative connection pool untuk Supabase free tier
+    # PRODUCTION OPTIMIZATION: Balanced connection pool untuk Supabase free tier
     # Supabase free tier limit: ~100 connections total
     # Render free tier: Multi-process bisa spawn 2-4 workers
-    # Recommendation: pool_size=5, max_overflow=10 per worker (safe untuk multi-process)
+    # Settings: Balance between availability dan connection limit compliance
     engine = create_engine(
         DATABASE_URL,
         pool_pre_ping=True,          # Test connection before use (prevent stale connections)
-        pool_recycle=300,             # Recycle connections after 5 minutes
-        pool_size=5,                  # Keep 5 connections in pool per worker
-        max_overflow=10,              # Allow up to 10 additional connections if needed
+        pool_recycle=300,             # Recycle connections after 5 minutes (prevent stale)
+        pool_size=5,                  # Keep 5 connections in pool per worker (balanced)
+        max_overflow=10,              # Allow up to 10 additional connections (adequate headroom)
+        pool_timeout=30,              # Wait up to 30s for connection from pool
         echo=False,
         connect_args={
             'sslmode': db_sslmode,
-            'connect_timeout': 10
+            'connect_timeout': 30,   # INCREASED: 30s timeout (was 10s) - prevent Supabase timeout
+            'keepalives': 1,         # Enable TCP keepalive
+            'keepalives_idle': 30,   # Start keepalive after 30s idle
+            'keepalives_interval': 10, # Send keepalive every 10s
+            'keepalives_count': 5    # Drop connection after 5 failed keepalives
         }
     )
 else:

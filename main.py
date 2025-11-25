@@ -1519,6 +1519,36 @@ async def toggle_like(request: LikeRequest):
     finally:
         db.close()
 
+@app.get("/api/broadcasts-v2/active")
+async def get_active_broadcasts_v2():
+    """
+    PUBLIC ENDPOINT: Get active v2 broadcasts for mini app (no authentication required).
+    This endpoint is accessible from frontend without auth.
+    """
+    db = SessionLocal()
+    try:
+        from sqlalchemy import desc
+        broadcasts = db.query(Broadcast).filter(
+            Broadcast.is_active == True,
+            Broadcast.broadcast_type == 'v2'
+        ).order_by(desc(Broadcast.created_at)).all()
+        
+        result = []
+        for broadcast in broadcasts:
+            result.append({
+                "id": broadcast.id,
+                "message": broadcast.message,
+                "target": broadcast.target,
+                "created_at": broadcast.created_at.isoformat() + 'Z' if broadcast.created_at else None
+            })
+        
+        return {"broadcasts": result}
+    except Exception as e:
+        logger.error(f"Error getting active v2 broadcasts: {e}")
+        return {"broadcasts": []}
+    finally:
+        db.close()
+
 @app.post("/api/v1/watch_history")
 async def add_watch_history(request: WatchHistoryRequest):
     validated_user = validate_telegram_webapp(request.init_data)
