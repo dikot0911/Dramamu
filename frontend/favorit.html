@@ -604,6 +604,81 @@
         .movie-card-premium:active {
             transform: translateY(-2px);
         }
+
+        /* Broadcast V2 Styles - Golden, Simple, Non-intrusive */
+        #broadcast-banner-v2 {
+            width: 100%;
+            background: rgba(212, 175, 55, 0.15);
+            border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+            padding: 0;
+        }
+
+        .broadcast-v2-item {
+            padding: 6px 10px;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            align-items: center;
+            gap: 8px;
+            background: rgba(212, 175, 55, 0.12);
+            border-bottom: 1px solid rgba(212, 175, 55, 0.1);
+        }
+
+        .broadcast-v2-item:last-child {
+            border-bottom: none;
+        }
+
+        .broadcast-v2-content {
+            min-width: 0;
+            text-align: center;
+        }
+
+        .broadcast-v2-text {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            color: rgba(212, 175, 55, 0.95);
+            line-height: 1.3;
+        }
+
+        .broadcast-v2-msg {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-style: italic;
+            text-align: center;
+        }
+
+        .broadcast-v2-text.expanded .broadcast-v2-msg {
+            white-space: normal;
+            overflow: visible;
+            text-overflow: clip;
+        }
+
+        .broadcast-v2-toggle {
+            background: none;
+            border: none;
+            color: rgba(212, 175, 55, 0.8);
+            font-size: 0.7rem;
+            cursor: pointer;
+            padding: 2px 4px;
+            flex-shrink: 0;
+        }
+
+        .broadcast-v2-dismiss {
+            background: none;
+            border: none;
+            color: rgba(212, 175, 55, 0.7);
+            font-size: 1.1rem;
+            cursor: pointer;
+            padding: 2px 6px;
+            line-height: 1;
+        }
+
+        .broadcast-v2-dismiss:active {
+            color: rgba(212, 175, 55, 1);
+        }
     </style>
 </head>
 <body>
@@ -613,6 +688,8 @@
         <header class="w-full z-20 py-3 text-center border-b" style="background: rgba(26, 26, 46, 0.95); border-color: rgba(212, 175, 55, 0.2); border-width: 1px;">
             <h1 class="text-xl font-bold tracking-wide">Film Favorit</h1>
         </header>
+
+        <div id="broadcast-banner-v2"></div>
 
         <main class="flex-1 overflow-y-auto scrollbar-hide p-4 pb-24">
             
@@ -1239,5 +1316,6 @@
     window.addEventListener('pagehide', cleanup);
     </script>
     <script src="navbar.js?v=222222222"></script>
+    <script src="broadcast-banner-v2.js"></script>
 </body>
 </html>

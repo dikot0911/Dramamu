@@ -128,7 +128,7 @@ body::before {
     content: '';
     position: absolute;
     top: 0;
-    left: 0;
+    left: -100%;
     width: 100%;
     height: 100%;
     background: linear-gradient(
@@ -138,19 +138,14 @@ body::before {
         transparent 100%
     );
     animation: shimmer-shine 3s linear infinite;
-    animation-play-state: paused;
-}
-
-.shimmer-text.shimmer-visible::after {
-    animation-play-state: running;
 }
 
 @keyframes shimmer-shine {
     0% {
-        transform: translateX(-100%);
+        left: -100%;
     }
     100% {
-        transform: translateX(200%);
+        left: 200%;
     }
 }
 
@@ -317,7 +312,7 @@ body::before {
         transparent 100%
     );
     animation: shimmer-animation 2s infinite;
-    animation-play-state: paused;
+    animation-play-state: running;
 }
 
 .shimmer-card.shimmer-visible::before {
@@ -325,8 +320,8 @@ body::before {
 }
 
 @keyframes shimmer-animation {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
+    0% { transform: translateX(0); }
+    100% { transform: translateX(200%); }
 }
 
 .shimmer-poster {
@@ -618,27 +613,4 @@ body::before {
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
     }
-}
-
-/* ===== IMAGE LOADING OPTIMIZATIONS ===== */
-.poster-img {
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    background-color: #1e293b;
-    will-change: opacity;
-}
-
-.poster-img.img-loading {
-    opacity: 0;
-    background-color: #1e293b;
-}
-
-.poster-img.img-loaded {
-    opacity: 1;
-    background-color: transparent;
-}
-
-.poster-img.img-error {
-    opacity: 1;
-    background-color: #374151;
 }

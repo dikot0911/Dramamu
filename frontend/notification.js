@@ -1,12 +1,16 @@
 /**
  * Notification System - Reusable notification handler
- * Features: Toast notification, sound, vibration
+ * Features: Toast notification, sound, vibration (iPhone-style)
+ * Manual dismiss for payment pending/success, auto-dismiss for others
+ * With comprehensive debugging
  */
 
 class NotificationSystem {
     constructor() {
         this.notificationTimeout = null;
         this.notificationElement = null;
+        this.globalAudioContext = null;
+        console.log('📢 Notification System: Initializing...');
         this.initNotificationElement();
     }
 
@@ -15,6 +19,7 @@ class NotificationSystem {
         this.notificationElement = document.getElementById('notificationContainer');
         
         if (!this.notificationElement) {
+            console.log('📢 Notification System: Creating DOM elements...');
             // Create notification element if it doesn't exist
             this.notificationElement = document.createElement('div');
             this.notificationElement.id = 'notificationContainer';
@@ -22,6 +27,7 @@ class NotificationSystem {
                 <div class="notification-toast" id="notificationToast">
                     <div class="notification-icon" id="notificationIcon"></div>
                     <div class="notification-message" id="notificationMessage"></div>
+                    <div class="notification-close-hint" id="notificationCloseHint"></div>
                 </div>
             `;
             document.body.appendChild(this.notificationElement);
@@ -29,6 +35,7 @@ class NotificationSystem {
             // Add click-to-close handler
             const toastElement = document.getElementById('notificationToast');
             toastElement.addEventListener('click', () => {
+                console.log('📢 Notification clicked - dismissing');
                 this.close();
             });
             
@@ -84,6 +91,13 @@ class NotificationSystem {
                         color: #E5E7EB;
                         line-height: 1.4;
                         font-family: 'Manrope', sans-serif;
+                        margin-bottom: 6px;
+                    }
+
+                    .notification-close-hint {
+                        font-size: 11px;
+                        color: rgba(255, 255, 255, 0.5);
+                        font-style: italic;
                     }
 
                     .notification-toast.success {
@@ -98,13 +112,33 @@ class NotificationSystem {
                         border-color: rgba(59, 130, 246, 0.3);
                     }
 
+                    .notification-toast.pending {
+                        border-color: rgba(168, 85, 247, 0.3);
+                    }
+
                     .notification-toast {
                         cursor: pointer;
                     }
                 `;
                 document.head.appendChild(styleElement);
             }
+            console.log('📢 Notification System: DOM elements created ✓');
         }
+    }
+
+    /**
+     * Get or create audio context (singleton pattern)
+     */
+    getAudioContext() {
+        if (!this.globalAudioContext) {
+            try {
+                this.globalAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+                console.log('🔊 Audio Context: Created successfully');
+            } catch (e) {
+                console.warn('🔊 Audio Context: Not supported -', e.message);
+            }
+        }
+        return this.globalAudioContext;
     }
 
     /**
@@ -123,20 +157,22 @@ class NotificationSystem {
     /**
      * Show notification
      * @param {string} message - Notification message
-     * @param {string} type - Type: 'success', 'error', 'info'
+     * @param {string} type - Type: 'success', 'error', 'info', 'pending'
      * @param {Object} options - Additional options
-     *   - duration: milliseconds (default: 3000)
-     *   - sound: boolean (default: false)
-     *   - vibrate: boolean (default: false)
-     *   - soundType: 'payment', 'success', 'error' (default: 'success')
+     *   - duration: milliseconds (auto-dismiss) - not used for pending/success
+     *   - sound: boolean (default: true except drama.html)
+     *   - vibrate: boolean (default: true except drama.html)
+     *   - soundType: 'payment' (backward compatibility)
      */
     show(message, type = 'success', options = {}) {
         const {
             duration = 3000,
-            sound = false,
-            vibrate = false,
-            soundType = 'success'
+            sound = true,
+            vibrate = true,
+            soundType = null  // backward compatibility
         } = options;
+
+        console.log(`📢 Notification: Showing [${type}] - sound: ${sound}, vibrate: ${vibrate}`);
 
         // Clear existing timeout
         if (this.notificationTimeout) {
@@ -146,21 +182,30 @@ class NotificationSystem {
         const toast = this.notificationElement.querySelector('.notification-toast');
         const iconElement = document.getElementById('notificationIcon');
         const messageElement = document.getElementById('notificationMessage');
+        const closeHintElement = document.getElementById('notificationCloseHint');
 
         // Remove all type classes
-        toast.classList.remove('success', 'error', 'info', 'show');
+        toast.classList.remove('success', 'error', 'info', 'pending', 'show');
 
         // Set icon
         const icons = {
             success: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
             error: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`,
-            info: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`
+            info: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`,
+            pending: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>`
         };
 
         iconElement.innerHTML = icons[type] || icons['success'];
-        iconElement.style.color = type === 'success' ? '#22c55e' : type === 'error' ? '#ef4444' : '#3b82f6';
+        iconElement.style.color = type === 'success' ? '#22c55e' : type === 'error' ? '#ef4444' : type === 'pending' ? '#a855f7' : '#3b82f6';
         
         messageElement.textContent = message;
+
+        // Show close hint only for pending and success
+        if (type === 'pending' || type === 'success') {
+            closeHintElement.textContent = 'Klik untuk tutup';
+        } else {
+            closeHintElement.textContent = '';
+        }
 
         // Add type class
         toast.classList.add(type);
@@ -172,177 +217,330 @@ class NotificationSystem {
 
         // Play sound if requested
         if (sound) {
-            this.playSound(soundType);
+            // Use soundType if provided (backward compatibility), otherwise use type
+            const effectType = soundType || type;
+            this.playSound(effectType);
         }
 
         // Vibrate if requested
         if (vibrate) {
-            this.vibrate();
+            this.vibrate(type);
         }
 
-        // Auto hide
-        this.notificationTimeout = setTimeout(() => {
-            toast.classList.remove('show');
-        }, duration);
+        // Auto dismiss only for error and info (not for pending/success)
+        if (type !== 'pending' && type !== 'success') {
+            this.notificationTimeout = setTimeout(() => {
+                toast.classList.remove('show');
+            }, duration);
+        }
 
         return this;
     }
 
     /**
      * Play notification sound
-     * @param {string} soundType - 'payment', 'success', 'error'
+     * @param {string} soundType - 'payment', 'success', 'error', 'pending', 'info'
      */
     playSound(soundType = 'success') {
         try {
-            // Try using Web Audio API for better compatibility
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            
-            if (soundType === 'payment') {
-                // iPhone payment success sound
-                this.playPaymentSound(audioContext);
-            } else if (soundType === 'error') {
-                // Error sound
-                this.playErrorSound(audioContext);
+            const ctx = this.getAudioContext();
+            if (!ctx) {
+                console.warn('🔊 Audio Context: Not available, skipping sound');
+                return;
+            }
+
+            console.log(`🔊 Playing sound: ${soundType}`);
+
+            // Resume context if suspended
+            if (ctx.state === 'suspended') {
+                console.log('🔊 Audio Context: Was suspended, resuming...');
+                ctx.resume().then(() => {
+                    console.log('🔊 Audio Context: Resumed successfully');
+                    this._playSoundEffect(ctx, soundType);
+                }).catch(e => {
+                    console.warn('🔊 Audio Context: Failed to resume -', e.message);
+                });
             } else {
-                // Default success sound
-                this.playSuccessSound(audioContext);
+                this._playSoundEffect(ctx, soundType);
             }
         } catch (e) {
-            console.warn('Audio context not available:', e);
-            // Fallback: try using Audio element if available
-            this.playAudioFallback(soundType);
+            console.warn('🔊 Audio error:', e.message);
         }
     }
 
     /**
-     * iPhone-like payment success sound using Web Audio API
+     * Internal sound effect player
      */
-    playPaymentSound(audioContext) {
-        try {
-            const now = audioContext.currentTime;
-            const gainNode = audioContext.createGain();
-            gainNode.connect(audioContext.destination);
+    _playSoundEffect(ctx, soundType) {
+        switch (soundType) {
+            case 'pending':
+                this.playPendingSound(ctx);
+                break;
+            case 'success':
+                this.playSuccessSound(ctx);
+                break;
+            case 'error':
+                this.playErrorSound(ctx);
+                break;
+            case 'info':
+                this.playInfoSound(ctx);
+                break;
+            case 'payment':
+                this.playPaymentSound(ctx);
+                break;
+            default:
+                this.playSuccessSound(ctx);
+        }
+    }
 
-            // First beep: higher frequency
-            const osc1 = audioContext.createOscillator();
-            osc1.frequency.value = 880; // A5
+    /**
+     * Payment sound - Two ascending beeps
+     */
+    playPaymentSound(ctx) {
+        try {
+            const now = ctx.currentTime;
+            const gainNode = ctx.createGain();
+            gainNode.connect(ctx.destination);
+
+            // First beep
+            const osc1 = ctx.createOscillator();
+            osc1.frequency.value = 880;
             osc1.type = 'sine';
             osc1.connect(gainNode);
-            gainNode.gain.setValueAtTime(0.3, now);
+            gainNode.gain.setValueAtTime(1.0, now);
             osc1.start(now);
             osc1.stop(now + 0.12);
 
-            // Second beep: even higher
-            const osc2 = audioContext.createOscillator();
-            osc2.frequency.value = 1100; // ~C#6
+            // Second beep
+            const osc2 = ctx.createOscillator();
+            osc2.frequency.value = 1100;
             osc2.type = 'sine';
             osc2.connect(gainNode);
+            gainNode.gain.setValueAtTime(1.0, now + 0.14);
             osc2.start(now + 0.14);
-            osc2.stop(now + 0.28);
+            osc2.stop(now + 0.26);
 
             // Fade out
-            gainNode.gain.setValueAtTime(0.3, now + 0.28);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+            console.log('🔊 Payment sound played ✓');
         } catch (e) {
-            console.warn('Payment sound error:', e);
+            console.warn('🔊 Payment sound error:', e.message);
         }
     }
 
     /**
-     * Success sound
+     * Pending sound - Double beep pattern
      */
-    playSuccessSound(audioContext) {
+    playPendingSound(ctx) {
         try {
-            const now = audioContext.currentTime;
-            const gainNode = audioContext.createGain();
-            gainNode.connect(audioContext.destination);
+            const now = ctx.currentTime;
+            const gainNode = ctx.createGain();
+            gainNode.connect(ctx.destination);
 
-            const osc = audioContext.createOscillator();
-            osc.frequency.value = 800;
+            // First beep
+            const osc1 = ctx.createOscillator();
+            osc1.frequency.value = 600;
+            osc1.type = 'sine';
+            osc1.connect(gainNode);
+            gainNode.gain.setValueAtTime(1.0, now);
+            osc1.start(now);
+            osc1.stop(now + 0.15);
+
+            // Second beep
+            const osc2 = ctx.createOscillator();
+            osc2.frequency.value = 600;
+            osc2.type = 'sine';
+            osc2.connect(gainNode);
+            gainNode.gain.setValueAtTime(1.0, now + 0.2);
+            osc2.start(now + 0.2);
+            osc2.stop(now + 0.35);
+
+            // Fade out
+            gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+            console.log('🔊 Pending sound played ✓');
+        } catch (e) {
+            console.warn('🔊 Pending sound error:', e.message);
+        }
+    }
+
+    /**
+     * Success sound - Two ascending beeps
+     */
+    playSuccessSound(ctx) {
+        try {
+            const now = ctx.currentTime;
+            const gainNode = ctx.createGain();
+            gainNode.connect(ctx.destination);
+
+            // First beep - lower frequency
+            const osc1 = ctx.createOscillator();
+            osc1.frequency.value = 800;
+            osc1.type = 'sine';
+            osc1.connect(gainNode);
+            gainNode.gain.setValueAtTime(1.0, now);
+            osc1.start(now);
+            osc1.stop(now + 0.12);
+
+            // Second beep - higher frequency
+            const osc2 = ctx.createOscillator();
+            osc2.frequency.value = 1000;
+            osc2.type = 'sine';
+            osc2.connect(gainNode);
+            gainNode.gain.setValueAtTime(1.0, now + 0.14);
+            osc2.start(now + 0.14);
+            osc2.stop(now + 0.26);
+
+            // Fade out
+            gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+            console.log('🔊 Success sound played ✓');
+        } catch (e) {
+            console.warn('🔊 Success sound error:', e.message);
+        }
+    }
+
+    /**
+     * Error sound - Descending beep
+     */
+    playErrorSound(ctx) {
+        try {
+            const now = ctx.currentTime;
+            const gainNode = ctx.createGain();
+            gainNode.connect(ctx.destination);
+
+            const osc = ctx.createOscillator();
+            osc.frequency.setValueAtTime(800, now);
+            osc.frequency.exponentialRampToValueAtTime(400, now + 0.2);
             osc.type = 'sine';
             osc.connect(gainNode);
 
-            gainNode.gain.setValueAtTime(0.3, now);
+            gainNode.gain.setValueAtTime(1.0, now);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+
+            osc.start(now);
+            osc.stop(now + 0.25);
+            console.log('🔊 Error sound played ✓');
+        } catch (e) {
+            console.warn('🔊 Error sound error:', e.message);
+        }
+    }
+
+    /**
+     * Info sound - Rising tone
+     */
+    playInfoSound(ctx) {
+        try {
+            const now = ctx.currentTime;
+            const gainNode = ctx.createGain();
+            gainNode.connect(ctx.destination);
+
+            const osc = ctx.createOscillator();
+            osc.frequency.setValueAtTime(500, now);
+            osc.frequency.exponentialRampToValueAtTime(900, now + 0.2);
+            osc.type = 'sine';
+            osc.connect(gainNode);
+
+            gainNode.gain.setValueAtTime(1.0, now);
             gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
 
             osc.start(now);
             osc.stop(now + 0.2);
+            console.log('🔊 Info sound played ✓');
         } catch (e) {
-            console.warn('Success sound error:', e);
+            console.warn('🔊 Info sound error:', e.message);
         }
     }
 
     /**
-     * Error sound
+     * Vibrate device with pattern based on notification type
+     * @param {string} type - 'pending', 'success', 'error', 'info'
      */
-    playErrorSound(audioContext) {
-        try {
-            const now = audioContext.currentTime;
-            const gainNode = audioContext.createGain();
-            gainNode.connect(audioContext.destination);
-
-            const osc = audioContext.createOscillator();
-            osc.frequency.value = 400;
-            osc.type = 'sine';
-            osc.connect(gainNode);
-
-            gainNode.gain.setValueAtTime(0.3, now);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-
-            osc.start(now);
-            osc.stop(now + 0.3);
-        } catch (e) {
-            console.warn('Error sound error:', e);
-        }
-    }
-
-    /**
-     * Fallback audio method
-     */
-    playAudioFallback(soundType) {
-        try {
-            // This is a fallback - in production you might use actual audio files
-            console.log(`Sound played: ${soundType}`);
-        } catch (e) {
-            console.warn('Audio fallback error:', e);
-        }
-    }
-
-    /**
-     * Vibrate device (if supported)
-     * @param {array|number} pattern - Vibration pattern [on, off, on...]
-     */
-    vibrate(pattern = [50, 30, 50]) {
-        if ('vibrate' in navigator) {
+    vibrate(type = 'success') {
+        console.log(`📳 Attempting vibration: ${type}`);
+        
+        if ('vibrate' in navigator || window.Telegram?.WebApp?.HapticFeedback) {
             try {
-                navigator.vibrate(pattern);
+                // Try Telegram haptic feedback first (iPhone-style)
+                if (window.Telegram?.WebApp?.HapticFeedback) {
+                    console.log('📳 Using Telegram HapticFeedback');
+                    switch (type) {
+                        case 'pending':
+                            window.Telegram.WebApp.HapticFeedback.impactOccurred('medium');
+                            console.log('📳 Haptic: medium ✓');
+                            break;
+                        case 'success':
+                            window.Telegram.WebApp.HapticFeedback.impactOccurred('heavy');
+                            console.log('📳 Haptic: heavy ✓');
+                            break;
+                        case 'error':
+                            window.Telegram.WebApp.HapticFeedback.impactOccurred('heavy');
+                            console.log('📳 Haptic: heavy ✓');
+                            break;
+                        case 'info':
+                            window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
+                            console.log('📳 Haptic: light ✓');
+                            break;
+                    }
+                } else if (navigator.vibrate) {
+                    console.log('📳 Using navigator.vibrate');
+                    // Fallback to vibration API
+                    let pattern;
+                    switch (type) {
+                        case 'pending':
+                            pattern = [50, 30, 50]; // Medium
+                            break;
+                        case 'success':
+                            pattern = [100, 50, 100]; // Heavy
+                            break;
+                        case 'error':
+                            pattern = [80, 20, 80, 20, 80]; // Rapid
+                            break;
+                        case 'info':
+                            pattern = [30, 30, 30]; // Light
+                            break;
+                        default:
+                            pattern = [50, 30, 50];
+                    }
+                    navigator.vibrate(pattern);
+                    console.log(`📳 Vibration pattern applied: ${pattern} ✓`);
+                }
             } catch (e) {
-                console.warn('Vibration not supported:', e);
+                console.warn('📳 Vibration error:', e.message);
             }
+        } else {
+            console.warn('📳 Vibration API not available');
         }
     }
 
     /**
-     * Success notification with all effects
+     * Success notification
      */
     success(message, options = {}) {
-        return this.show(message, 'success', options);
+        return this.show(message, 'success', { ...options, sound: true, vibrate: true });
     }
 
     /**
      * Error notification
      */
     error(message, options = {}) {
-        return this.show(message, 'error', options);
+        return this.show(message, 'error', { ...options, sound: true, vibrate: true });
     }
 
     /**
      * Info notification
      */
     info(message, options = {}) {
-        return this.show(message, 'info', options);
+        return this.show(message, 'info', { ...options, sound: true, vibrate: true });
+    }
+
+    /**
+     * Pending notification (manual dismiss required)
+     */
+    pending(message, options = {}) {
+        return this.show(message, 'pending', { ...options, sound: true, vibrate: true });
     }
 }
 
 // Initialize global notification system
+console.log('📢 Initializing Notification System...');
 const notification = new NotificationSystem();
+console.log('📢 Notification System initialized ✓');

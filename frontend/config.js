@@ -12,27 +12,39 @@ const API_CONFIG = {
     DEVELOPMENT_API_URL: 'http://localhost:5000'
 };
 
-// Auto-detect environment dari hostname
+// Auto-detect environment dari hostname dan fallback ke API
 function getApiBaseUrl() {
     const hostname = window.location.hostname;
+    const protocol = window.location.protocol;
     
-    // Cek apakah kita lagi development local
+    // Priority 1: Cek apakah kita lagi development local
     const isLocal = hostname === 'localhost' || 
                    hostname === '127.0.0.1';
     
     if (isLocal) {
-        console.log('🔧 Mode development - pake backend local');
+        console.log('🔧 Mode development local - pake backend local');
         return API_CONFIG.DEVELOPMENT_API_URL;
     }
     
-    // Cek apakah kita di environment development (subdomain .dev)
-    const DEV_DOMAIN_SUFFIX = '.dev';
-    if (hostname.endsWith(DEV_DOMAIN_SUFFIX)) {
-        console.log('✅ Auto-detected Development environment');
-        return `https://${hostname}`;
+    // Priority 2: Cek apakah kita di environment development (Replit, Vercel, dll)
+    // Replit: *.replit.dev
+    // Vercel: *.vercel.app
+    // Railway: *.up.railway.app
+    const isDev = hostname.includes('replit.dev') || 
+                 hostname.includes('vercel.app') ||
+                 hostname.includes('railway.app') ||
+                 hostname.includes('localhost') ||
+                 hostname.endsWith('.dev');
+    
+    if (isDev) {
+        console.log('✅ Auto-detected Development environment:', hostname);
+        // Dynamically construct URL dari current hostname
+        const apiUrl = `${protocol}//${hostname}`;
+        console.log('   Backend URL:', apiUrl);
+        return apiUrl;
     }
     
-    // SEMUA production hostnames (termasuk custom domains) HARUS use PRODUCTION_API_URL
+    // Priority 3: PRODUCTION - Use config value
     // Ini ensure placeholder alert akan trigger jika build script tidak jalan
     console.log('🌐 Mode production - pake backend dari config');
     return API_CONFIG.PRODUCTION_API_URL;

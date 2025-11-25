@@ -1,0 +1,73 @@
+/* Smooth Page Transitions */
+
+/* Fade in animation untuk page load */
+html {
+    opacity: 1;
+    transition: opacity 0.3s ease-in;
+}
+
+html.page-loading {
+    opacity: 0;
+}
+
+/* Smooth main content fade */
+main, #app-content {
+    animation: fadeInContent 0.4s ease-out forwards;
+}
+
+@keyframes fadeInContent {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Navbar stay fixed dan tidak fade */
+#persistent-navbar-container,
+nav.absolute.bottom-0 {
+    animation: none !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+
+/* Link active state dengan smooth color transition */
+.spa-nav-link {
+    position: relative;
+    transition: color 0.3s ease-out;
+}
+
+.spa-nav-link::before {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #d4af37;
+    opacity: 0;
+    transition: opacity 0.3s ease-out;
+}
+
+.spa-nav-link.text-white::before {
+    opacity: 1;
+}
+
+/* Prevent layout shift during transitions */
+body {
+    position: relative;
+    z-index: 1;
+}
+
+#persistent-navbar-container {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    pointer-events: auto;
+    width: 100%;
+}

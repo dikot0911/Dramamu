@@ -74,7 +74,7 @@
             border-radius: 18px;
             border: 2px solid rgba(212, 175, 55, 0.4);
             box-shadow: 0 8px 32px rgba(212, 175, 55, 0.2);
-            padding: 1.2rem;
+            padding: 0.9rem;
             transform: scale(0.95) translateY(10px);
             opacity: 0;
             transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.35s ease;
@@ -147,14 +147,14 @@
 
         .qris-header {
             text-align: center;
-            margin-bottom: 1.2rem;
+            margin-bottom: 0.65rem;
         }
 
         .qris-header h2 {
-            font-size: 1.125rem;
+            font-size: 1rem;
             font-weight: 700;
             color: #d4af37;
-            margin-bottom: 0.375rem;
+            margin-bottom: 0.25rem;
             animation: fade-in 0.5s ease 0.2s both;
         }
 
@@ -165,12 +165,12 @@
 
         .qris-header p {
             color: rgba(255, 255, 255, 0.7);
-            font-size: 0.75rem;
+            font-size: 0.7rem;
         }
 
         .qris-image-container {
             position: relative;
-            margin: 1.2rem 0;
+            margin: 0.65rem 0;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -246,16 +246,16 @@
         .qris-instructions {
             background: rgba(212, 175, 55, 0.1);
             border: 1px solid rgba(212, 175, 55, 0.3);
-            border-radius: 10px;
-            padding: 0.875rem;
-            margin-top: 1rem;
+            border-radius: 8px;
+            padding: 0.6rem;
+            margin-top: 0.6rem;
         }
 
         .qris-instructions h3 {
-            font-size: 0.8125rem;
+            font-size: 0.7rem;
             font-weight: 700;
             color: #d4af37;
-            margin-bottom: 0.625rem;
+            margin-bottom: 0.45rem;
             text-align: center;
         }
 
@@ -268,46 +268,47 @@
 
         .qris-instructions li {
             counter-increment: instruction-counter;
-            font-size: 0.75rem;
+            font-size: 0.65rem;
             color: rgba(255, 255, 255, 0.8);
-            margin-bottom: 0.375rem;
-            padding-left: 1.5rem;
+            margin-bottom: 0.3rem;
+            padding-left: 1.3rem;
             position: relative;
+            line-height: 1.3;
         }
 
         .qris-instructions li::before {
             content: counter(instruction-counter);
             position: absolute;
             left: 0;
-            width: 20px;
-            height: 20px;
+            width: 17px;
+            height: 17px;
             background: linear-gradient(135deg, #d4af37, #8b5cf6);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: 700;
-            font-size: 0.7rem;
+            font-size: 0.6rem;
             color: #0f0f1e;
         }
 
         .qris-price {
             text-align: center;
-            margin-top: 0.875rem;
-            padding: 0.875rem;
+            margin-top: 0.6rem;
+            padding: 0.6rem;
             background: linear-gradient(135deg, rgba(212, 175, 55, 0.15), rgba(139, 92, 246, 0.15));
             border-radius: 10px;
             border: 1px solid rgba(212, 175, 55, 0.3);
         }
 
         .qris-price p {
-            font-size: 0.8125rem;
+            font-size: 0.7rem;
             color: rgba(255, 255, 255, 0.7);
-            margin-bottom: 0.2rem;
+            margin-bottom: 0.15rem;
         }
 
         .qris-price h3 {
-            font-size: 1.375rem;
+            font-size: 1.15rem;
             font-weight: 700;
             color: #d4af37;
         }
@@ -423,12 +424,31 @@
 </head>
 <body>
     <div class="w-full h-screen overflow-hidden relative flex flex-col">
-        <header class="w-full z-20 py-3 text-center">
+        <header class="w-full z-20 py-3 text-center relative">
             <h1 class="text-xl font-bold tracking-wide">Beli VIP</h1>
+            <!-- History Button - Pojok Kanan Atas -->
+            <button onclick="openHistoryModal()" id="historyBtn" style="position: absolute; top: 12px; right: 12px; background: linear-gradient(135deg, rgba(212, 175, 55, 0.2), rgba(139, 92, 246, 0.2)); border: 1px solid rgba(212, 175, 55, 0.4); border-radius: 8px; padding: 6px 12px; color: #d4af37; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; gap: 4px; z-index: 30;" onmouseover="this.style.background='linear-gradient(135deg, rgba(212, 175, 55, 0.3), rgba(139, 92, 246, 0.3))'; this.style.transform='translateY(-1px)'" onmouseout="this.style.background='linear-gradient(135deg, rgba(212, 175, 55, 0.2), rgba(139, 92, 246, 0.2))'; this.style.transform='translateY(0)'">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                <span id="historyCount"></span>
+            </button>
         </header>
         
         <main class="flex-1 overflow-y-auto scrollbar-hide p-4 pb-24">
             <div class="max-w-md mx-auto">
+                <!-- DEBUG: Test Notification -->
+                <div style="display: none;" id="debugPanel" class="mb-4 p-3 bg-yellow-900 bg-opacity-30 border border-yellow-600 rounded-lg">
+                    <p class="text-xs text-yellow-200 mb-2">🧪 Debug Panel (Ctrl+D to toggle)</p>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="testNotification('success')" class="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700">✓ Success</button>
+                        <button onclick="testNotification('error')" class="px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700">✗ Error</button>
+                        <button onclick="testNotification('pending')" class="px-2 py-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700">⏳ Pending</button>
+                        <button onclick="testNotification('info')" class="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">ℹ Info</button>
+                    </div>
+                </div>
+
                 <div class="mb-6 text-center">
                     <h1 class="text-2xl font-bold text-white mb-2">💎 Pilih Paket VIP</h1>
                     <p class="text-sm text-gray-400">Akses unlimited semua drama premium</p>
@@ -520,21 +540,32 @@
                 <h3 id="qrisAmount">Rp 0</h3>
             </div>
 
-            <!-- Screenshot Upload Section -->
-            <div class="screenshot-upload-section" style="background: rgba(212, 175, 55, 0.1); border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 10px; padding: 0.75rem; margin-top: 0.75rem;">
-                <p class="screenshot-title" style="font-size: 0.75rem; color: rgba(255, 255, 255, 0.8); margin-bottom: 0.5rem; font-weight: 600;">📸 Upload Screenshot (Opsional)</p>
-                <div style="position: relative;">
-                    <input type="file" id="screenshotInput" accept="image/*" style="display: none;">
-                    <button onclick="document.getElementById('screenshotInput').click()" class="screenshot-button" style="width: 100%; padding: 0.5rem; background: linear-gradient(135deg, rgba(212, 175, 55, 0.3), rgba(139, 92, 246, 0.2)); border: 2px dashed rgba(212, 175, 55, 0.5); border-radius: 6px; color: rgba(255, 255, 255, 0.8); cursor: pointer; font-size: 0.75rem; transition: all 0.3s ease;" onmouseover="this.style.background='linear-gradient(135deg, rgba(212, 175, 55, 0.4), rgba(139, 92, 246, 0.3))'; this.style.borderColor='rgba(212, 175, 55, 0.7)'" onmouseout="this.style.background='linear-gradient(135deg, rgba(212, 175, 55, 0.3), rgba(139, 92, 246, 0.2))'; this.style.borderColor='rgba(212, 175, 55, 0.5)'">
-                        📁 Pilih File
-                    </button>
-                    <p id="screenshotName" style="font-size: 0.65rem; color: rgba(255, 255, 255, 0.5); margin-top: 0.375rem; text-align: center;">Belum ada file</p>
+            <!-- Order ID & Countdown Timer Section (2 kolom) -->
+            <div class="order-id-timer-section" style="display: flex; gap: 0.5rem; margin-top: 0.55rem;">
+                <!-- Kolom Kiri: Order ID -->
+                <div style="flex: 1; background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; padding: 0.4rem; text-align: center;">
+                    <p style="font-size: 0.55rem; color: rgba(255, 255, 255, 0.6); margin-bottom: 0.1rem;">Order ID</p>
+                    <p id="qrisOrderId" style="font-size: 0.65rem; font-weight: 700; color: #8b5cf6; font-family: 'Courier New', monospace; letter-spacing: 0.3px;">-</p>
+                </div>
+                
+                <!-- Kolom Kanan: Timer -->
+                <div style="flex: 1; background: rgba(255, 107, 107, 0.1); border: 1px solid rgba(255, 107, 107, 0.3); border-radius: 8px; padding: 0.4rem; text-align: center;">
+                    <p style="font-size: 0.55rem; color: rgba(255, 255, 255, 0.7); margin-bottom: 0.1rem;">⏱️ Waktu</p>
+                    <h3 id="qrisTimer" style="font-size: 0.75rem; font-weight: 700; color: #ff6b6b; font-family: 'Courier New', monospace; letter-spacing: 0.5px;">--:--:--</h3>
+                    <p id="qrisExpiredWarning" style="font-size: 0.5rem; color: rgba(255, 107, 107, 0.9); margin-top: 0.1rem; display: none; font-weight: 600;">Expired!</p>
                 </div>
             </div>
 
-            <div class="order-id-section" style="background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; padding: 0.5rem; margin-top: 0.75rem; text-align: center;">
-                <p style="font-size: 0.65rem; color: rgba(255, 255, 255, 0.6); margin-bottom: 0.125rem;">Order ID</p>
-                <p id="qrisOrderId" style="font-size: 0.75rem; font-weight: 700; color: #8b5cf6; font-family: 'Courier New', monospace; letter-spacing: 0.3px;">-</p>
+            <!-- Screenshot Upload Section -->
+            <div class="screenshot-upload-section" style="background: rgba(212, 175, 55, 0.1); border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 8px; padding: 0.5rem; margin-top: 0.55rem;">
+                <p class="screenshot-title" style="font-size: 0.65rem; color: rgba(255, 255, 255, 0.8); margin-bottom: 0.35rem; font-weight: 600;">📸 Upload Screenshot (Opsional)</p>
+                <div style="position: relative;">
+                    <input type="file" id="screenshotInput" accept="image/*" style="display: none;">
+                    <button onclick="document.getElementById('screenshotInput').click()" class="screenshot-button" style="width: 100%; padding: 0.4rem; background: linear-gradient(135deg, rgba(212, 175, 55, 0.3), rgba(139, 92, 246, 0.2)); border: 2px dashed rgba(212, 175, 55, 0.5); border-radius: 6px; color: rgba(255, 255, 255, 0.8); cursor: pointer; font-size: 0.65rem; transition: all 0.3s ease;" onmouseover="this.style.background='linear-gradient(135deg, rgba(212, 175, 55, 0.4), rgba(139, 92, 246, 0.3))'; this.style.borderColor='rgba(212, 175, 55, 0.7)'" onmouseout="this.style.background='linear-gradient(135deg, rgba(212, 175, 55, 0.3), rgba(139, 92, 246, 0.2))'; this.style.borderColor='rgba(212, 175, 55, 0.5)'">
+                        📁 Pilih File
+                    </button>
+                    <p id="screenshotName" style="font-size: 0.6rem; color: rgba(255, 255, 255, 0.5); margin-top: 0.3rem; text-align: center;">Belum ada file</p>
+                </div>
             </div>
 
             <div class="qris-instructions">
@@ -545,14 +576,34 @@
                     <li>Scan kode QR di atas</li>
                     <li>Konfirmasi pembayaran sesuai nominal</li>
                     <li>Screenshot bukti pembayaran bersama Order ID di atas</li>
-                    <li>Klik tombol "Sudah Bayar" di bawah untuk konfirmasi</li>
+                    <li>Klik tombol "Cek Pembayaran" di bawah untuk verifikasi status</li>
                 </ol>
             </div>
 
-            <!-- Sudah Bayar Button -->
-            <button onclick="submitQRISPayment()" class="submit-payment-btn" style="width: 100%; padding: 0.75rem; margin-top: 0.75rem; background: linear-gradient(135deg, #22c55e, #16a34a); border: none; border-radius: 8px; color: white; font-weight: 700; font-size: 0.875rem; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);" onmouseover="this.style.boxShadow='0 6px 20px rgba(34, 197, 94, 0.5)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='0 4px 12px rgba(34, 197, 94, 0.3)'; this.style.transform='translateY(0)'">
-                ✅ Sudah Bayar
+            <!-- Cek Status Pembayaran Button -->
+            <button onclick="checkPaymentStatus()" class="submit-payment-btn" style="width: 100%; padding: 0.65rem; margin-top: 0.6rem; background: linear-gradient(135deg, rgba(212, 175, 55, 0.15), rgba(139, 92, 246, 0.15)); border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 8px; color: #3b82f6; font-weight: 700; font-size: 0.8rem; cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 0.5rem;" onmouseover="this.style.background='linear-gradient(135deg, rgba(212, 175, 55, 0.25), rgba(139, 92, 246, 0.25))'; this.style.borderColor='rgba(212, 175, 55, 0.5)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='linear-gradient(135deg, rgba(212, 175, 55, 0.15), rgba(139, 92, 246, 0.15))'; this.style.borderColor='rgba(212, 175, 55, 0.3)'; this.style.transform='translateY(0)'">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                </svg>
+                Cek Status Pembayaran
             </button>
+        </div>
+    </div>
+
+    <!-- History Modal -->
+    <div id="historyModal" class="qris-modal-backdrop" style="display: none;">
+        <div class="qris-modal-container" style="max-width: 380px;">
+            <div class="qris-close-btn" onclick="closeHistoryModal()">Close</div>
+            
+            <div class="qris-header">
+                <h2>📋 Riwayat Transaksi</h2>
+                <p>Pembayaran Pending/Failed</p>
+            </div>
+
+            <div id="historyList" style="margin-top: 1rem; max-height: 60vh; overflow-y: auto;">
+                <!-- Will be populated by JavaScript -->
+            </div>
         </div>
     </div>
     
@@ -576,58 +627,31 @@
         }
         const telegram_id = user?.id || 'unknown';
 
-        // Mapping harga ke file QRIS
-        const qrisMapping = {
-            2000: 'assets/qris/2000.png',
-            5000: 'assets/qris/5000.png',
-            10000: 'assets/qris/10000.png',
-            30000: 'assets/qris/30000.png',
-            150000: 'assets/qris/150000.png'
-        };
-
         function formatRupiah(amount) {
             return 'Rp ' + amount.toLocaleString('id-ID');
         }
 
         let currentOrderData = null;
+        let paymentStatusChecker = null;
+        let countdownInterval = null;
 
         async function tampilkanQRIS(harga, namaPaket) {
             console.log(`Menampilkan QRIS untuk: ${namaPaket} (${formatRupiah(harga)})`);
             
-            const qrisFile = qrisMapping[harga];
-            if (!qrisFile) {
-                alert('QRIS tidak tersedia untuk paket ini');
-                return;
-            }
-
-            // Create payment record di backend TANPA submit notifikasi
             try {
-                let screenshotFile = null;
-                const screenshotInput = document.getElementById('screenshotInput');
-                
-                // Convert screenshot to base64 if available
-                if (screenshotInput && screenshotInput.files && screenshotInput.files.length > 0) {
-                    const file = screenshotInput.files[0];
-                    const reader = new FileReader();
-                    
-                    screenshotFile = await new Promise((resolve, reject) => {
-                        reader.onload = () => resolve(reader.result);
-                        reader.onerror = reject;
-                        reader.readAsDataURL(file);
-                    });
-                    
-                    console.log('📸 Screenshot loaded for upload');
-                }
+                // Show loading - don't auto-hide (very long duration)
+                notification.info('⏳ Loading QRIS...', 'info', {
+                    duration: 60000
+                });
 
                 const paymentData = {
                     telegram_id: telegram_id,
                     paket_id: 1,
                     gross_amount: harga,
-                    nama_paket: namaPaket,
-                    screenshot_file: screenshotFile
+                    nama_paket: namaPaket
                 };
 
-                const apiUrl = window.API_BASE_URL + '/api/v1/create_qris_payment';
+                const apiUrl = window.API_BASE_URL + '/api/v1/create_payment';
                 const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -636,26 +660,27 @@
 
                 if (!response.ok) {
                     const errData = await response.json();
-                    throw new Error(errData.detail || 'Gagal membuat payment record');
+                    throw new Error(errData.detail || 'Gagal membuat QRIS payment');
                 }
 
                 const data = await response.json();
-                const orderId = data.order_id;
+                
+                console.log(`✅ QRIS payment created:`, data);
 
-                console.log(`✅ Payment record created: ${orderId}`);
-
-                // Save order data untuk submit nanti
+                // Save order data
                 currentOrderData = {
-                    orderId: orderId,
+                    orderId: data.order_id,
+                    transactionId: data.transaction_id,
                     harga: harga,
-                    namaPaket: namaPaket
+                    namaPaket: namaPaket,
+                    expiresAt: data.expires_at
                 };
 
                 // Update modal content
                 document.getElementById('qrisSubtitle').textContent = namaPaket;
                 document.getElementById('qrisAmount').textContent = formatRupiah(harga);
-                document.getElementById('qrisImage').src = qrisFile;
-                document.getElementById('qrisOrderId').textContent = orderId;
+                document.getElementById('qrisImage').src = data.qris_url;
+                document.getElementById('qrisOrderId').textContent = data.transaction_id;
 
                 // Show modal dengan animasi
                 const modal = document.getElementById('qrisModal');
@@ -664,9 +689,25 @@
                 // Prevent body scroll
                 document.body.style.overflow = 'hidden';
 
+                // Start payment status checker (polling setiap 5 detik)
+                startPaymentStatusChecker(data.transaction_id);
+
+                // Start countdown timer
+                if (data.expires_at) {
+                    startCountdownTimer(data.expires_at);
+                }
+
+                // Hide "Loading QRIS" notification manually
+                notification.close();
+                
+                // Show success notification after popup opened
+                notification.success('✅ Kode Pembayaran Siap!\n\nSilakan scan untuk melakukan pembayaran.', 'success', {
+                    duration: 3000
+                });
+
             } catch (error) {
                 console.error('Error creating QRIS payment:', error);
-                notification.error(`❌ Gagal membuat payment: ${error.message}`, 'error', {
+                notification.error('❌ Terjadi Kesalahan\n\nMohon maaf, silakan coba beberapa saat lagi.', 'error', {
                     duration: 3000,
                     sound: true,
                     soundType: 'error'
@@ -674,39 +715,243 @@
             }
         }
 
-        function submitQRISPayment() {
-            if (!currentOrderData) {
-                alert('Error: Order data tidak ditemukan');
+        function startPaymentStatusChecker(transactionId) {
+            // Clear existing checker
+            if (paymentStatusChecker) {
+                clearInterval(paymentStatusChecker);
+            }
+
+            console.log(`🔍 Starting payment status checker for: ${transactionId}`);
+
+            // Check status setiap 5 detik
+            paymentStatusChecker = setInterval(async () => {
+                try {
+                    const apiUrl = window.API_BASE_URL + `/api/v1/check_payment_status?transaction_id=${transactionId}`;
+                    const response = await fetch(apiUrl);
+
+                    if (!response.ok) {
+                        console.error('Failed to check payment status');
+                        return;
+                    }
+
+                    const result = await response.json();
+                    console.log('Payment status:', result.status);
+
+                    if (result.status === 'paid') {
+                        // Payment success!
+                        clearInterval(paymentStatusChecker);
+                        paymentStatusChecker = null;
+
+                        notification.success('🎉 Pembayaran Berhasil!\n\nAkses VIP Anda sudah aktif!\nSelamat menikmati semua konten premium kami 🎬', 'success', {
+                            duration: 5000,
+                            sound: true,
+                            vibrate: true,
+                            soundType: 'payment'
+                        });
+
+                        // Close modal after 3 seconds
+                        setTimeout(() => {
+                            tutupQRIS();
+                        }, 3000);
+                    } else if (result.status === 'expired') {
+                        clearInterval(paymentStatusChecker);
+                        paymentStatusChecker = null;
+
+                        notification.error('⏰ Waktu Pembayaran Habis\n\nMohon maaf, waktu untuk pembayaran ini telah berakhir.\nSilakan buat transaksi baru untuk melanjutkan.', 'error', {
+                            duration: 4000,
+                            sound: true
+                        });
+
+                        setTimeout(() => {
+                            tutupQRIS();
+                        }, 4000);
+                    }
+                } catch (error) {
+                    console.error('Error checking payment status:', error);
+                }
+            }, 5000);
+        }
+
+        async function checkPaymentStatus() {
+            if (!currentOrderData || !currentOrderData.transactionId) {
+                notification.error('❌ Terjadi Kesalahan\n\nSilakan tutup dan buka kembali halaman pembayaran.', 'error', {
+                    duration: 3000
+                });
                 return;
             }
 
-            console.log(`Submitting payment: ${currentOrderData.orderId}`);
+            try {
+                // Show loading
+                notification.info('🔍 Mengecek Pembayaran...', 'info', {
+                    duration: 2000
+                });
 
-            // Show success notification dengan sound + vibration
-            notification.success('✅ Pembayaran Berhasil Dicatat!\n\nSpot bukti transfer Anda ke admin untuk aktivasi VIP.', 'success', {
-                duration: 5000,
-                sound: true,
-                vibrate: true,
-                soundType: 'payment'
-            });
+                const apiUrl = window.API_BASE_URL + `/api/v1/check_payment_status?transaction_id=${currentOrderData.transactionId}`;
+                const response = await fetch(apiUrl);
 
-            // Close modal after 2 seconds
-            setTimeout(() => {
-                tutupQRIS();
-                // Reset
-                currentOrderData = null;
-                document.getElementById('screenshotInput').value = '';
-                document.getElementById('screenshotName').textContent = 'Belum ada file';
-                document.getElementById('screenshotName').style.color = 'rgba(255, 255, 255, 0.5)';
-            }, 2000);
+                if (!response.ok) {
+                    throw new Error('Gagal memeriksa status pembayaran');
+                }
+
+                const result = await response.json();
+                console.log('Manual check payment status:', result);
+
+                // Check if result has data property
+                const paymentData = result.data || result;
+                const status = paymentData.status || result.status;
+
+                if (status === 'paid' || status === 'success') {
+                    // Payment successful
+                    notification.success('🎉 Pembayaran Berhasil!\n\nAkses VIP Anda sudah aktif!\nSelamat menikmati semua konten premium kami 🎬', 'success', {
+                        duration: 5000,
+                        sound: true,
+                        vibrate: true,
+                        soundType: 'payment'
+                    });
+
+                    // Stop auto-checker
+                    if (paymentStatusChecker) {
+                        clearInterval(paymentStatusChecker);
+                        paymentStatusChecker = null;
+                    }
+
+                    // Close modal after 3 seconds
+                    setTimeout(() => {
+                        tutupQRIS();
+                    }, 3000);
+                } else if (status === 'pending') {
+                    // Still pending - manual dismiss required
+                    notification.pending('⏳ Pembayaran Sedang Diproses\n\nMohon tunggu sebentar.\nAnda bisa cek kembali dalam beberapa saat.');
+                } else if (status === 'expired') {
+                    // Expired
+                    notification.error('⏰ Waktu Pembayaran Habis\n\nMohon maaf, waktu untuk pembayaran ini telah berakhir.\nSilakan buat transaksi baru untuk melanjutkan.', 'error', {
+                        duration: 4000,
+                        sound: true
+                    });
+
+                    // Stop auto-checker
+                    if (paymentStatusChecker) {
+                        clearInterval(paymentStatusChecker);
+                        paymentStatusChecker = null;
+                    }
+                } else if (status === 'failed' || status === 'cancelled') {
+                    // Failed
+                    notification.error('❌ Pembayaran Tidak Berhasil\n\nMohon maaf, transaksi Anda tidak dapat diproses.\nSilakan coba lagi atau hubungi customer service.', 'error', {
+                        duration: 4000,
+                        sound: true
+                    });
+
+                    // Stop auto-checker
+                    if (paymentStatusChecker) {
+                        clearInterval(paymentStatusChecker);
+                        paymentStatusChecker = null;
+                    }
+                } else {
+                    // Unknown status - treat as pending
+                    notification.pending('ℹ️ Pembayaran Sedang Diproses\n\nMohon tunggu sebentar.\nJika ada kendala, silakan hubungi customer service kami.');
+                }
+
+            } catch (error) {
+                console.error('Error checking payment status:', error);
+                notification.error('❌ Tidak Dapat Mengecek Status\n\nSilakan coba lagi dalam beberapa saat.', 'error', {
+                    duration: 3000,
+                    sound: true
+                });
+            }
+        }
+
+        function startCountdownTimer(expiresAt) {
+            // Clear existing countdown
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+            }
+
+            const timerElement = document.getElementById('qrisTimer');
+            const warningElement = document.getElementById('qrisExpiredWarning');
+            const countdownBox = document.getElementById('qrisCountdown');
+            
+            // Hide warning initially
+            warningElement.style.display = 'none';
+
+            function updateCountdown() {
+                const now = new Date().getTime();
+                const expiryTime = new Date(expiresAt).getTime();
+                const timeLeft = expiryTime - now;
+
+                if (timeLeft <= 0) {
+                    // Expired
+                    timerElement.textContent = '00:00:00';
+                    timerElement.style.color = '#ff4444';
+                    warningElement.style.display = 'block';
+                    countdownBox.style.borderColor = 'rgba(255, 68, 68, 0.6)';
+                    countdownBox.style.background = 'linear-gradient(135deg, rgba(255, 68, 68, 0.2), rgba(255, 107, 107, 0.2))';
+                    
+                    // Stop countdown
+                    if (countdownInterval) {
+                        clearInterval(countdownInterval);
+                        countdownInterval = null;
+                    }
+                    
+                    console.log('⏰ QRIS payment expired');
+                    return;
+                }
+
+                // Calculate time components
+                const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+
+                // Format with leading zeros
+                const formatted = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                timerElement.textContent = formatted;
+
+                // Change color based on time left
+                if (timeLeft < 5 * 60 * 1000) {
+                    // Less than 5 minutes - red warning
+                    timerElement.style.color = '#ff4444';
+                    countdownBox.style.borderColor = 'rgba(255, 68, 68, 0.6)';
+                } else if (timeLeft < 15 * 60 * 1000) {
+                    // Less than 15 minutes - orange warning
+                    timerElement.style.color = '#ff9f40';
+                    countdownBox.style.borderColor = 'rgba(255, 159, 64, 0.5)';
+                } else {
+                    // Normal - green/yellow
+                    timerElement.style.color = '#ffd93d';
+                    countdownBox.style.borderColor = 'rgba(255, 217, 61, 0.4)';
+                }
+            }
+
+            // Update immediately
+            updateCountdown();
+
+            // Update every second
+            countdownInterval = setInterval(updateCountdown, 1000);
+            console.log('⏱️ Countdown timer started');
         }
 
         function tutupQRIS() {
             const modal = document.getElementById('qrisModal');
             modal.classList.remove('active');
             
+            // Clear payment status checker
+            if (paymentStatusChecker) {
+                clearInterval(paymentStatusChecker);
+                paymentStatusChecker = null;
+                console.log('🛑 Payment status checker stopped');
+            }
+            
+            // Clear countdown timer
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+                countdownInterval = null;
+                console.log('🛑 Countdown timer stopped');
+            }
+            
             // Restore body scroll
             document.body.style.overflow = '';
+            
+            // Reset order data
+            currentOrderData = null;
         }
 
         // Close modal saat klik backdrop
@@ -724,20 +969,256 @@
         });
 
         // Handle screenshot file input change
-        document.getElementById('screenshotInput').addEventListener('change', function(e) {
+        document.getElementById('screenshotInput').addEventListener('change', async function(e) {
             const file = e.target.files[0];
             const nameDisplay = document.getElementById('screenshotName');
+            const uploadButton = document.querySelector('.screenshot-button');
             
-            if (file) {
-                const sizeMB = (file.size / 1024 / 1024).toFixed(2);
-                nameDisplay.textContent = `✅ ${file.name} (${sizeMB} MB)`;
-                nameDisplay.style.color = 'rgba(34, 197, 94, 0.8)';
-            } else {
+            if (!file) {
                 nameDisplay.textContent = 'Belum ada file';
                 nameDisplay.style.color = 'rgba(255, 255, 255, 0.5)';
+                return;
+            }
+
+            if (!currentOrderData || !currentOrderData.transactionId) {
+                notification.error('❌ Terjadi Kesalahan\n\nSilakan tutup dan buka kembali halaman pembayaran.', 'error', {
+                    duration: 3000
+                });
+                return;
+            }
+
+            // Show uploading status
+            nameDisplay.textContent = '⏳ Mengupload...';
+            nameDisplay.style.color = 'rgba(59, 130, 246, 0.8)';
+            uploadButton.disabled = true;
+            uploadButton.style.opacity = '0.6';
+            uploadButton.style.cursor = 'not-allowed';
+
+            try {
+                // Create FormData and upload
+                const formData = new FormData();
+                formData.append('screenshot', file);
+                formData.append('transaction_id', currentOrderData.transactionId);
+
+                const apiUrl = window.API_BASE_URL + '/api/v1/upload_screenshot';
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error('Upload gagal');
+                }
+
+                const result = await response.json();
+                
+                // Success - update UI
+                const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+                nameDisplay.textContent = `✅ ${file.name} (${sizeMB} MB) - Terkirim`;
+                nameDisplay.style.color = 'rgba(34, 197, 94, 0.8)';
+                
+                // Change button style to show upload success
+                uploadButton.textContent = '✓ Ganti Bukti Transaksi';
+                uploadButton.style.border = '2px solid rgba(34, 197, 94, 0.6)';
+                uploadButton.style.background = 'linear-gradient(135deg, rgba(34, 197, 94, 0.3), rgba(34, 197, 94, 0.2))';
+                uploadButton.disabled = false;
+                uploadButton.style.opacity = '1';
+                uploadButton.style.cursor = 'pointer';
+
+                notification.success('✅ Screenshot Terkirim!\n\nBukti pembayaran berhasil dikirim ke admin.', 'success', {
+                    duration: 3000
+                });
+
+                console.log('✅ Screenshot uploaded:', result.screenshot_url);
+
+            } catch (error) {
+                console.error('Error uploading screenshot:', error);
+                nameDisplay.textContent = '❌ Upload gagal - Coba lagi';
+                nameDisplay.style.color = 'rgba(239, 68, 68, 0.8)';
+                uploadButton.disabled = false;
+                uploadButton.style.opacity = '1';
+                uploadButton.style.cursor = 'pointer';
+
+                notification.error('❌ Upload Gagal\n\nSilakan coba lagi atau hubungi customer service.', 'error', {
+                    duration: 3000
+                });
             }
         });
         
+        // History Modal Functions
+        let pendingPayments = [];
+
+        async function loadPendingPayments() {
+            try {
+                const initData = tg?.initData;
+                if (!initData) {
+                    console.warn('⚠️ No Telegram init data available');
+                    return;
+                }
+
+                const apiUrl = window.API_BASE_URL + '/api/v1/pending_payments';
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ init_data: initData })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to load pending payments');
+                }
+
+                const result = await response.json();
+                pendingPayments = result.payments || [];
+                
+                // Update history button count
+                const historyBtn = document.getElementById('historyCount');
+                if (pendingPayments.length > 0) {
+                    historyBtn.textContent = `(${pendingPayments.length})`;
+                    historyBtn.style.display = 'inline';
+                } else {
+                    historyBtn.textContent = '';
+                }
+
+                console.log(`✅ Loaded ${pendingPayments.length} pending payments`);
+            } catch (error) {
+                console.error('Error loading pending payments:', error);
+            }
+        }
+
+        function openHistoryModal() {
+            displayHistoryList();
+            const modal = document.getElementById('historyModal');
+            modal.style.display = 'flex';
+            setTimeout(() => {
+                modal.classList.add('active');
+            }, 10);
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeHistoryModal() {
+            const modal = document.getElementById('historyModal');
+            modal.classList.remove('active');
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 300);
+            document.body.style.overflow = '';
+        }
+
+        function displayHistoryList() {
+            const listContainer = document.getElementById('historyList');
+            
+            if (!pendingPayments || pendingPayments.length === 0) {
+                listContainer.innerHTML = `
+                    <div style="text-align: center; padding: 2rem; color: rgba(255, 255, 255, 0.5);">
+                        <p style="font-size: 2rem; margin-bottom: 0.5rem;">📭</p>
+                        <p style="font-size: 0.85rem;">Tidak ada transaksi pending</p>
+                    </div>
+                `;
+                return;
+            }
+
+            listContainer.innerHTML = pendingPayments.map(payment => {
+                const statusColor = {
+                    'pending': '#ffd93d',
+                    'failed': '#ff4444',
+                    'expired': '#ff9f40',
+                    'cancelled': '#999'
+                }[payment.status] || '#999';
+
+                const statusText = {
+                    'pending': 'Pending',
+                    'failed': 'Gagal',
+                    'expired': 'Expired',
+                    'cancelled': 'Dibatalkan'
+                }[payment.status] || payment.status;
+
+                const createdDate = new Date(payment.created_at);
+                const formattedDate = createdDate.toLocaleDateString('id-ID', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+
+                return `
+                    <div onclick="reopenTransaction('${payment.transaction_id}')" style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95)); border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 10px; padding: 0.75rem; margin-bottom: 0.75rem; cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.borderColor='rgba(212, 175, 55, 0.6)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='rgba(212, 175, 55, 0.3)'; this.style.transform='translateY(0)'">
+                        <div style="display: flex; justify-between; align-items: start; margin-bottom: 0.4rem;">
+                            <div>
+                                <p style="font-size: 0.8rem; font-weight: 700; color: #d4af37; margin-bottom: 0.2rem;">${payment.package_name}</p>
+                                <p style="font-size: 0.65rem; color: rgba(255, 255, 255, 0.5); font-family: 'Courier New', monospace;">${payment.transaction_id}</p>
+                            </div>
+                            <span style="background: ${statusColor}; color: #0f0f1e; padding: 2px 8px; border-radius: 4px; font-size: 0.65rem; font-weight: 700;">${statusText}</span>
+                        </div>
+                        <div style="display: flex; justify-between; align-items: center;">
+                            <p style="font-size: 0.85rem; font-weight: 700; color: #fff;">${formatRupiah(payment.amount)}</p>
+                            <p style="font-size: 0.65rem; color: rgba(255, 255, 255, 0.5);">${formattedDate}</p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function reopenTransaction(transactionId) {
+            const payment = pendingPayments.find(p => p.transaction_id === transactionId);
+            if (!payment) {
+                console.error('Payment not found:', transactionId);
+                return;
+            }
+
+            // Close history modal
+            closeHistoryModal();
+
+            // Wait for modal animation
+            await new Promise(resolve => setTimeout(resolve, 300));
+
+            // Set current order data
+            currentOrderData = {
+                orderId: payment.order_id,
+                transactionId: payment.transaction_id,
+                harga: payment.amount,
+                namaPaket: payment.package_name,
+                expiresAt: payment.expires_at
+            };
+
+            // Update QRIS modal content
+            document.getElementById('qrisSubtitle').textContent = payment.package_name;
+            document.getElementById('qrisAmount').textContent = formatRupiah(payment.amount);
+            document.getElementById('qrisImage').src = payment.qris_url || '';
+            document.getElementById('qrisOrderId').textContent = payment.transaction_id;
+
+            // Show QRIS modal
+            const modal = document.getElementById('qrisModal');
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+
+            // Start countdown timer if expires_at is available
+            if (payment.expires_at) {
+                startCountdownTimer(payment.expires_at);
+            }
+
+            // Start payment status checker
+            startPaymentStatusChecker(payment.transaction_id);
+
+            notification.info('📄 Transaksi Dibuka Kembali\n\nSilakan lanjutkan pembayaran Anda.', 'info', {
+                duration: 3000
+            });
+        }
+
+        // Load pending payments on page load
+        window.addEventListener('load', () => {
+            loadPendingPayments();
+            // Refresh every 30 seconds
+            setInterval(loadPendingPayments, 30000);
+        });
+
+        // Close history modal when clicking backdrop
+        document.getElementById('historyModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeHistoryModal();
+            }
+        });
+
         // Cleanup function to prevent memory leaks
         function cleanup() {
             console.log('🧹 Cleaning up resources...');
@@ -806,8 +1287,38 @@
         // Add cleanup on page unload
         window.addEventListener('beforeunload', cleanup);
         window.addEventListener('pagehide', cleanup);
+
+        // DEBUG: Test notification function
+        function testNotification(type) {
+            console.log(`🧪 Testing notification: ${type}`);
+            if (type === 'success') {
+                notification.success('🎉 Test Success Notification\n\nWith sound & vibration', { sound: true, vibrate: true });
+            } else if (type === 'error') {
+                notification.error('❌ Test Error Notification\n\nWith sound & vibration', { sound: true, vibrate: true });
+            } else if (type === 'pending') {
+                notification.pending('⏳ Test Pending Notification\n\nManual dismiss required - With sound & vibration');
+            } else if (type === 'info') {
+                notification.info('ℹ️ Test Info Notification\n\nWith sound & vibration', { sound: true, vibrate: true });
+            }
+        }
+
+        // DEBUG: Toggle debug panel with Ctrl+D
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'd') {
+                const panel = document.getElementById('debugPanel');
+                const style = window.getComputedStyle(panel);
+                panel.style.display = style.display === 'none' ? 'block' : 'none';
+                console.log('🧪 Debug panel toggled');
+            }
+        });
+
+        // DEBUG: Show debug panel on startup for testing
+        if (window.location.hostname === 'localhost' || window.location.hostname.includes('127.0.0.1')) {
+            document.getElementById('debugPanel').style.display = 'block';
+            console.log('🧪 Debug panel enabled (localhost)');
+        }
     </script>
     <script src="cache-manager.js?v=555555555"></script>
-    <script src="notification.js"></script>
+    <script src="notification.js?v=222222223"></script>
 </body>
 </html>
