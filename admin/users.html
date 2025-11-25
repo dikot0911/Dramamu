@@ -16,6 +16,7 @@
     <script src="themeToggle.js"></script>
     <script src="sidebar.js"></script>
     <script src="expand.js"></script>
+    <script src="confirm-modal.js"></script>
 </head>
 <body data-page="users">
     <div class="admin-layout">
@@ -197,6 +198,17 @@
                                 <span>Refresh</span>
                             </button>
                         </div>
+                        <div class="filter-group">
+                            <div style="display: flex; align-items: center; gap: 8px; background: var(--bg-secondary); padding: 8px 12px; border-radius: 6px;">
+                                <label style="font-size: 0.85em; color: var(--text-secondary); font-weight: 500; margin: 0; white-space: nowrap;">Tampilkan:</label>
+                                <select id="entriesPerPage" onchange="changeEntriesPerPage()" style="padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); cursor: pointer; font-weight: 500; min-width: 60px; transition: all 0.2s ease; font-size: 0.9em;">
+                                    <option value="10">10</option>
+                                    <option value="25" selected>25</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
 
                     <div id="tableContent">
@@ -227,7 +239,7 @@
     <div id="vipModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Update Status VIP</h2>
+                <h2>Edit VIP User</h2>
                 <button class="modal-close" onclick="closeVIPModal()">&times;</button>
             </div>
             <div class="modal-body">
@@ -238,9 +250,27 @@
                         <option value="false">Reguler</option>
                     </select>
                 </div>
+                <div class="form-group" id="vipCurrentExpiryGroup" style="display: none;">
+                    <label>VIP Berlaku Hingga</label>
+                    <input type="text" id="vipCurrentExpiry" readonly style="background: var(--bg-tertiary);">
+                </div>
+                <div class="form-group" id="vipModeGroup">
+                    <label>Mode Durasi</label>
+                    <select id="vipMode">
+                        <option value="delta">Tambah/Kurangi Durasi (Delta)</option>
+                        <option value="absolute">Set Durasi Baru (Absolute)</option>
+                    </select>
+                    <small style="display: block; margin-top: 6px; color: var(--text-secondary); font-size: var(--font-xs);">
+                        Delta: +30 tambah 30 hari, -7 kurangi 7 hari<br>
+                        Absolute: set durasi baru dari sekarang
+                    </small>
+                </div>
                 <div class="form-group" id="vipDaysGroup">
-                    <label>Durasi VIP (hari)</label>
-                    <input type="number" id="vipDays" min="1" value="30">
+                    <label>Durasi (hari)</label>
+                    <input type="number" id="vipDays" value="30">
+                    <small id="vipDaysHint" style="display: block; margin-top: 6px; color: var(--text-secondary); font-size: var(--font-xs);">
+                        Gunakan angka positif untuk tambah, negatif untuk kurangi (mode delta)
+                    </small>
                 </div>
             </div>
             <div class="modal-footer">
@@ -273,9 +303,11 @@
         </div>
     </div>
 
+    <script src="confirm-modal.js"></script>
     <script src="admin.js"></script>
     <script>
         let currentPage = 1;
+        let currentLimit = 25;
         let currentUserId = null;
         let userTypeChart = null;
         let userGrowthChartUsers = null;
@@ -517,6 +549,12 @@
             return days;
         }
 
+        function changeEntriesPerPage() {
+            const select = document.getElementById('entriesPerPage');
+            currentLimit = parseInt(select.value);
+            loadUsers(1);
+        }
+
         async function loadUsers(page = 1) {
             const user = await AdminPanel.checkAuth();
             if (!user) return;
@@ -524,7 +562,7 @@
             document.getElementById('adminUsername').textContent = user.username;
 
             const search = document.getElementById('searchInput').value;
-            const params = new URLSearchParams({ page, limit: 20 });
+            const params = new URLSearchParams({ page, limit: currentLimit });
             if (search) params.append('search', search);
 
             try {
@@ -573,8 +611,9 @@
                                                 <button class="btn btn-sm btn-secondary" onclick="openUserDetailModal(${u.id})" title="Lihat Detail">
                                                     <span data-icon="info" data-icon-size="sm"></span>
                                                 </button>
-                                                <button class="btn btn-sm btn-primary" onclick="openVIPModal(${u.id}, ${u.is_vip})">
-                                                    VIP
+                                                <button class="btn btn-sm btn-primary" onclick="openVIPModal(${u.id}, ${u.is_vip}, '${u.vip_expires_at || ''}')">
+                                                    <span data-icon="edit" data-icon-size="sm"></span>
+                                                    <span>Edit VIP</span>
                                                 </button>
                                                 <button class="btn btn-sm btn-danger" onclick="deleteUser(${u.id})">
                                                     Hapus
@@ -610,12 +649,22 @@
             if (e.key === 'Enter') searchUsers();
         });
 
-        function openVIPModal(userId, isVip) {
+        function openVIPModal(userId, isVip, vipExpiresAt) {
             currentUserId = userId;
             document.getElementById('vipStatus').value = isVip.toString();
             document.getElementById('vipDays').value = '30';
+            document.getElementById('vipMode').value = 'delta';
+            
+            if (isVip && vipExpiresAt && vipExpiresAt !== 'null' && vipExpiresAt !== '') {
+                document.getElementById('vipCurrentExpiryGroup').style.display = 'flex';
+                document.getElementById('vipCurrentExpiry').value = AdminPanel.formatDate(vipExpiresAt);
+            } else {
+                document.getElementById('vipCurrentExpiryGroup').style.display = 'none';
+            }
+            
             document.getElementById('vipModal').classList.add('show');
             updateVIPDaysVisibility();
+            updateVIPModeHint();
         }
 
         function closeVIPModal() {
@@ -624,10 +673,23 @@
         }
 
         document.getElementById('vipStatus').addEventListener('change', updateVIPDaysVisibility);
+        document.getElementById('vipMode').addEventListener('change', updateVIPModeHint);
 
         function updateVIPDaysVisibility() {
             const isVip = document.getElementById('vipStatus').value === 'true';
             document.getElementById('vipDaysGroup').style.display = isVip ? 'flex' : 'none';
+            document.getElementById('vipModeGroup').style.display = isVip ? 'flex' : 'none';
+        }
+
+        function updateVIPModeHint() {
+            const mode = document.getElementById('vipMode').value;
+            const hint = document.getElementById('vipDaysHint');
+            
+            if (mode === 'delta') {
+                hint.textContent = 'Gunakan angka positif untuk tambah, negatif untuk kurangi (mode delta)';
+            } else {
+                hint.textContent = 'Durasi akan di-set dari sekarang (mode absolute)';
+            }
         }
 
         async function saveVIPStatus() {
@@ -635,19 +697,22 @@
 
             const isVip = document.getElementById('vipStatus').value === 'true';
             const vipDays = isVip ? parseInt(document.getElementById('vipDays').value) : null;
+            const mode = document.getElementById('vipMode').value;
 
             try {
-                await AdminPanel.apiCall(`/admin/users/${currentUserId}/vip`, {
+                const response = await AdminPanel.apiCall(`/admin/users/${currentUserId}/vip`, {
                     method: 'PUT',
                     body: JSON.stringify({
                         is_vip: isVip,
-                        vip_days: vipDays
+                        vip_days: vipDays,
+                        mode: mode
                     })
                 });
 
-                AdminPanel.showToast('VIP status updated successfully', 'success');
+                AdminPanel.showToast('VIP status berhasil diupdate', 'success');
                 closeVIPModal();
                 loadUsers(currentPage);
+                loadUserStats();
             } catch (error) {
                 AdminPanel.showToast(error.message, 'error');
             }

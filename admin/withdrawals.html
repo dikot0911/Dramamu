@@ -16,6 +16,7 @@
     <script src="themeToggle.js"></script>
     <script src="sidebar.js"></script>
     <script src="expand.js"></script>
+    <script src="confirm-modal.js"></script>
 </head>
 <body data-page="withdrawals">
     <div class="admin-layout">
@@ -193,6 +194,15 @@
                                 <option value="approved">Disetujui</option>
                                 <option value="rejected">Ditolak</option>
                             </select>
+                            <div style="display: flex; align-items: center; gap: 8px; background: var(--bg-secondary); padding: 8px 12px; border-radius: 6px;">
+                                <label style="font-size: 0.85em; color: var(--text-secondary); font-weight: 500; margin: 0; white-space: nowrap;">Tampilkan:</label>
+                                <select id="entriesPerPage" onchange="changeEntriesPerPage()" style="padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); cursor: pointer; font-weight: 500; min-width: 60px; transition: all 0.2s ease; font-size: 0.9em;">
+                                    <option value="10">10</option>
+                                    <option value="25" selected>25</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                </select>
+                            </div>
                             <button class="btn btn-secondary" onclick="loadWithdrawals(currentPage); loadWithdrawalStats();" title="Refresh data">
                                 <span data-icon="refreshCw" data-icon-size="sm"></span>
                                 <span>Refresh</span>
@@ -247,9 +257,11 @@
         </div>
     </div>
 
+    <script src="confirm-modal.js"></script>
     <script src="admin.js"></script>
     <script>
         let currentPage = 1;
+        let currentLimit = 25;
         let currentWithdrawalId = null;
         let currentWithdrawal = null;
         let withdrawalStatusChart = null;
@@ -526,6 +538,12 @@
             return days;
         }
 
+        function changeEntriesPerPage() {
+            const select = document.getElementById('entriesPerPage');
+            currentLimit = parseInt(select.value);
+            loadWithdrawals(1);
+        }
+
         async function loadWithdrawals(page = 1) {
             const user = await AdminPanel.checkAuth();
             if (!user) return;
@@ -533,7 +551,7 @@
             document.getElementById('adminUsername').textContent = user.username;
 
             const status = document.getElementById('statusFilter').value;
-            const params = new URLSearchParams({ page, limit: 20 });
+            const params = new URLSearchParams({ page, limit: currentLimit });
             if (status) params.append('status', status);
 
             try {

@@ -16,6 +16,7 @@
     <script src="themeToggle.js"></script>
     <script src="sidebar.js"></script>
     <script src="expand.js"></script>
+    <script src="confirm-modal.js"></script>
 </head>
 <body data-page="payments">
     <div class="admin-layout">
@@ -197,6 +198,15 @@
                                 <option value="expire">Expired</option>
                                 <option value="cancel">Cancelled</option>
                             </select>
+                            <div style="display: flex; align-items: center; gap: 8px; background: var(--bg-secondary); padding: 8px 12px; border-radius: 6px;">
+                                <label style="font-size: 0.85em; color: var(--text-secondary); font-weight: 500; margin: 0; white-space: nowrap;">Tampilkan:</label>
+                                <select id="entriesPerPage" onchange="changeEntriesPerPage()" style="padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); cursor: pointer; font-weight: 500; min-width: 60px; transition: all 0.2s ease; font-size: 0.9em;">
+                                    <option value="10">10</option>
+                                    <option value="25" selected>25</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                </select>
+                            </div>
                             <button class="btn btn-secondary" onclick="loadPayments(currentPage); loadPaymentStats();" title="Refresh data">
                                 <span data-icon="refreshCw" data-icon-size="sm"></span>
                                 <span>Refresh</span>
@@ -315,9 +325,122 @@
         </div>
     </div>
 
+    <div id="manualVIPConfirmModal" class="modal" style="z-index: 9999;">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>
+                    <span data-icon="gift" data-icon-size="sm" style="margin-right: 8px;"></span>
+                    Konfirmasi Aktifkan VIP Manual
+                </h2>
+                <button class="modal-close" onclick="closeManualVIPConfirmModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Telegram ID</label>
+                    <input type="text" id="confirmVIPTelegramId" readonly style="background: var(--bg-tertiary);">
+                </div>
+                <div class="form-group">
+                    <label>Nama Paket</label>
+                    <input type="text" id="confirmVIPPackageName" readonly style="background: var(--bg-tertiary);">
+                </div>
+                <div class="form-group">
+                    <label>Jumlah Pembayaran</label>
+                    <input type="text" id="confirmVIPAmount" readonly style="background: var(--bg-tertiary);">
+                </div>
+                <p style="margin-top: 16px; color: var(--text-secondary); font-size: var(--font-sm); line-height: 1.6;">
+                    ✅ Status VIP akan langsung aktif<br>
+                    📱 User mendapat notifikasi Telegram<br>
+                    📊 Aktivitas akan dicatat untuk audit trail
+                </p>
+                <p style="margin-top: 12px; padding: 12px; background: var(--warning-bg); border-radius: 6px; color: var(--warning-text); font-size: var(--font-sm);">
+                    ⚠️ Apakah Anda yakin ingin mengaktifkan VIP ini secara manual?
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" type="button" onclick="closeManualVIPConfirmModal()">Batal</button>
+                <button class="btn btn-primary" type="button" id="confirmManualVIPBtn">
+                    <span data-icon="check" data-icon-size="sm"></span>
+                    <span>Ya, Aktifkan VIP</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="paymentDetailModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>
+                    <span data-icon="fileText" data-icon-size="sm" style="margin-right: 8px;"></span>
+                    Detail Pesanan
+                </h2>
+                <button class="modal-close" onclick="closePaymentDetailModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Order ID</label>
+                    <input type="text" id="detailOrderId" readonly style="background: var(--bg-tertiary);">
+                </div>
+                <div class="form-group">
+                    <label>Telegram ID</label>
+                    <input type="text" id="detailTelegramId" readonly style="background: var(--bg-tertiary);">
+                </div>
+                <div class="form-group">
+                    <label>Nama Paket</label>
+                    <input type="text" id="detailPackageName" readonly style="background: var(--bg-tertiary);">
+                </div>
+                <div class="form-group">
+                    <label>Jumlah Pembayaran</label>
+                    <input type="text" id="detailAmount" readonly style="background: var(--bg-tertiary);">
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <input type="text" id="detailStatus" readonly style="background: var(--bg-tertiary);">
+                </div>
+                <div class="form-group">
+                    <label>Tanggal Dibuat</label>
+                    <input type="text" id="detailCreatedAt" readonly style="background: var(--bg-tertiary);">
+                </div>
+                <div class="form-group">
+                    <label>Tanggal Dibayar</label>
+                    <input type="text" id="detailPaidAt" readonly style="background: var(--bg-tertiary);">
+                </div>
+                <div class="form-group" id="detailExpiresAtGroup" style="display: none;">
+                    <label>Tanggal Kadaluarsa</label>
+                    <input type="text" id="detailExpiresAt" readonly style="background: var(--bg-tertiary);">
+                </div>
+                <div class="form-group" id="detailQRISGroup" style="display: none;">
+                    <label>QRIS Code</label>
+                    <div style="text-align: center; padding: 10px; background: white; border-radius: 8px;">
+                        <img id="detailQRISImage" src="" alt="QRIS Code" style="max-width: 100%; height: auto; border-radius: 4px;">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Screenshot Pembayaran</label>
+                    <div id="detailScreenshotContainer" style="text-align: center; padding: 10px; background: var(--bg-tertiary); border-radius: 8px;">
+                        <img id="detailScreenshotImage" src="" alt="Screenshot Pembayaran" style="max-width: 100%; height: auto; border-radius: 4px; cursor: pointer; display: none;" onclick="openImageInNewTab(this.src)">
+                        <p id="detailScreenshotHint" style="margin-top: 8px; font-size: var(--font-sm); color: var(--text-secondary); display: none;">Klik gambar untuk memperbesar</p>
+                        <p id="detailNoScreenshot" style="margin: 0; font-size: var(--font-sm); color: var(--text-tertiary); display: none;">
+                            <span data-icon="image" data-icon-size="sm" style="margin-right: 4px;"></span>
+                            User tidak upload screenshot transaksi
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="manualVIPButton" onclick="activateVIPManually()" style="display: none;">
+                    <span data-icon="gift" data-icon-size="sm"></span>
+                    <span>Aktifkan VIP Manual</span>
+                </button>
+                <button class="btn btn-secondary" onclick="closePaymentDetailModal()">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="confirm-modal.js"></script>
     <script src="admin.js"></script>
     <script>
         let currentPage = 1;
+        let currentLimit = 25;
         let paymentStatusChart = null;
         let paymentTrendChart = null;
         let currentPaymentsDateFilter = '30days';
@@ -577,6 +700,12 @@
             return days;
         }
 
+        function changeEntriesPerPage() {
+            const select = document.getElementById('entriesPerPage');
+            currentLimit = parseInt(select.value);
+            loadPayments(1);
+        }
+
         async function loadPayments(page = 1) {
             const user = await AdminPanel.checkAuth();
             if (!user) return;
@@ -584,7 +713,7 @@
             document.getElementById('adminUsername').textContent = user.username;
 
             const status = document.getElementById('statusFilter').value;
-            const params = new URLSearchParams({ page, limit: 20 });
+            const params = new URLSearchParams({ page, limit: currentLimit });
             if (status) params.append('status', status);
 
             try {
@@ -658,9 +787,16 @@
         }
 
         function renderActionButtons(payment) {
+            const detailButton = `
+                <button class="btn btn-sm btn-primary" onclick='showPaymentDetail(${JSON.stringify(payment)})' title="Lihat Detail">
+                    👁️
+                </button>
+            `;
+            
             if (payment.status === 'qris_pending') {
                 return `
                     <div style="display: flex; gap: 4px; justify-content: center;">
+                        ${detailButton}
                         <button class="btn btn-sm btn-success" onclick="approveQRISPayment('${payment.order_id}', '${payment.package_name}', ${payment.amount}, '${payment.telegram_id}')" title="Approve Payment">
                             ✅
                         </button>
@@ -670,7 +806,7 @@
                     </div>
                 `;
             }
-            return '<span style="color: var(--text-tertiary);">-</span>';
+            return `<div style="display: flex; gap: 4px; justify-content: center;">${detailButton}</div>`;
         }
 
         function filterPayments() {
@@ -914,6 +1050,153 @@
             });
         }
 
+        let currentDetailPayment = null;
+
+        function showPaymentDetail(payment) {
+            currentDetailPayment = payment;
+            document.getElementById('detailOrderId').value = payment.order_id || '-';
+            document.getElementById('detailTelegramId').value = payment.telegram_id || '-';
+            document.getElementById('detailPackageName').value = payment.package_name || '-';
+            document.getElementById('detailAmount').value = AdminPanel.formatCurrency(payment.amount) || '-';
+            document.getElementById('detailStatus').value = payment.status || '-';
+            document.getElementById('detailCreatedAt').value = AdminPanel.formatDate(payment.created_at) || '-';
+            document.getElementById('detailPaidAt').value = AdminPanel.formatDate(payment.paid_at) || '-';
+            
+            // Show manual VIP button only for pending/failed payments (not already paid)
+            const manualVIPButton = document.getElementById('manualVIPButton');
+            if (payment.status && ['pending', 'qris_pending', 'failed', 'expired'].includes(payment.status)) {
+                manualVIPButton.style.display = 'inline-block';
+            } else {
+                manualVIPButton.style.display = 'none';
+            }
+            
+            if (payment.expires_at) {
+                document.getElementById('detailExpiresAtGroup').style.display = 'block';
+                document.getElementById('detailExpiresAt').value = AdminPanel.formatDate(payment.expires_at);
+            } else {
+                document.getElementById('detailExpiresAtGroup').style.display = 'none';
+            }
+            
+            if (payment.qris_url) {
+                document.getElementById('detailQRISGroup').style.display = 'block';
+                document.getElementById('detailQRISImage').src = payment.qris_url;
+            } else {
+                document.getElementById('detailQRISGroup').style.display = 'none';
+            }
+            
+            if (payment.screenshot_url) {
+                document.getElementById('detailScreenshotImage').src = payment.screenshot_url;
+                document.getElementById('detailScreenshotImage').style.display = 'block';
+                document.getElementById('detailScreenshotHint').style.display = 'block';
+                document.getElementById('detailNoScreenshot').style.display = 'none';
+            } else {
+                document.getElementById('detailScreenshotImage').style.display = 'none';
+                document.getElementById('detailScreenshotHint').style.display = 'none';
+                document.getElementById('detailNoScreenshot').style.display = 'block';
+            }
+            
+            document.getElementById('paymentDetailModal').classList.add('show');
+            
+            if (window.Icons && window.Icons.renderIcons) {
+                window.Icons.renderIcons();
+            }
+        }
+
+        function closePaymentDetailModal() {
+            document.getElementById('paymentDetailModal').classList.remove('show');
+            currentDetailPayment = null;
+        }
+
+        function openImageInNewTab(url) {
+            if (url) {
+                window.open(url, '_blank');
+            }
+        }
+
+        function activateVIPManually() {
+            if (!currentDetailPayment) return;
+
+            console.log('🎁 Activate VIP Manually:', currentDetailPayment);
+
+            // Show custom confirmation modal
+            document.getElementById('confirmVIPTelegramId').value = currentDetailPayment.telegram_id || '';
+            document.getElementById('confirmVIPPackageName').value = currentDetailPayment.package_name || '';
+            document.getElementById('confirmVIPAmount').value = AdminPanel.formatCurrency(currentDetailPayment.amount) || '';
+            
+            const confirmModal = document.getElementById('manualVIPConfirmModal');
+            if (confirmModal) {
+                confirmModal.classList.add('show');
+                console.log('✅ Confirm modal shown');
+            }
+            
+            if (window.Icons && window.Icons.renderIcons) {
+                window.Icons.renderIcons();
+            }
+        }
+
+        function closeManualVIPConfirmModal() {
+            console.log('❌ Close confirm modal');
+            const confirmModal = document.getElementById('manualVIPConfirmModal');
+            if (confirmModal) {
+                confirmModal.classList.remove('show');
+            }
+        }
+
+        async function confirmManualVIPActivation() {
+            console.log('🚀 Confirm Manual VIP Activation');
+            
+            if (!currentDetailPayment) {
+                AdminPanel.showToast('❌ Payment data tidak ditemukan', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('confirmManualVIPBtn');
+            const originalHTML = btn.innerHTML;
+            
+            try {
+                btn.disabled = true;
+                btn.innerHTML = '<span data-icon="loader" data-icon-size="sm" class="spinner"></span><span>Processing...</span>';
+                if (window.Icons && window.Icons.renderIcons) {
+                    window.Icons.renderIcons();
+                }
+
+                console.log('📤 Sending request:', {
+                    telegram_id: currentDetailPayment.telegram_id,
+                    package_name: currentDetailPayment.package_name,
+                    order_id: currentDetailPayment.order_id
+                });
+
+                const response = await AdminPanel.apiCall('/admin/manual-vip-activation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        telegram_id: String(currentDetailPayment.telegram_id),
+                        package_name: String(currentDetailPayment.package_name),
+                        order_id: String(currentDetailPayment.order_id)
+                    })
+                });
+
+                console.log('✅ Response:', response);
+                AdminPanel.showToast('✅ VIP berhasil diaktifkan manual! User sudah mendapat notifikasi.', 'success');
+                
+                // Close modals dan reload data
+                setTimeout(() => {
+                    closeManualVIPConfirmModal();
+                    closePaymentDetailModal();
+                    loadPayments(currentPage);
+                    loadPaymentStats();
+                }, 1500);
+            } catch (error) {
+                console.error('❌ Error:', error);
+                AdminPanel.showToast(error.message || 'Gagal mengaktifkan VIP manual', 'error');
+                btn.disabled = false;
+                btn.innerHTML = originalHTML;
+                if (window.Icons && window.Icons.renderIcons) {
+                    window.Icons.renderIcons();
+                }
+            }
+        }
+
         window.addEventListener('DOMContentLoaded', function() {
             updateThemeIcon();
             AdminPanel.initSidebarUserInfo();
@@ -922,6 +1205,17 @@
             loadPaymentStats();
             loadPayments();
             initCardExpandFeature();
+            
+            // Add event listener untuk confirm manual VIP button
+            const confirmBtn = document.getElementById('confirmManualVIPBtn');
+            if (confirmBtn) {
+                confirmBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Button clicked!');
+                    confirmManualVIPActivation();
+                });
+            }
         });
     </script>
 

@@ -1,9 +1,48 @@
 const API_BASE_URL = window.location.origin;
 
-// Timezone handling - semua waktu dalam WIB (UTC+7)
-// Backend nyimpen timestamp dalam UTC, frontend convert ke WIB
-// Fungsi yang ada: formatDate(), formatDateLong(), formatRelativeTime()
-// Untuk chart: pake toWIBDate() biar data dikelompokkan dengan bener
+/**
+ * TIMEZONE HANDLING POLICY - KONSISTENSI WAKTU INDONESIA (WIB)
+ * 
+ * Backend menyimpan semua timestamp dalam UTC (tanpa timezone info).
+ * Frontend WAJIB menampilkan semua waktu dalam WIB (Asia/Jakarta, UTC+7).
+ * 
+ * FUNGSI YANG TERSEDIA:
+ * 
+ * 1. formatDate(dateString)
+ *    - Format: "19 Nov 2025, 14:30 WIB"
+ *    - Gunakan untuk menampilkan tanggal & waktu lengkap
+ * 
+ * 2. formatDateLong(dateString)
+ *    - Format: "Selasa, 19 November 2025, 14:30:45 WIB"
+ *    - Gunakan untuk detail lengkap dengan hari & detik
+ * 
+ * 3. formatRelativeTime(dateString)
+ *    - Format: "5 menit yang lalu", "2 jam yang lalu", dll
+ *    - Gunakan untuk menampilkan waktu relatif (last login, activity, dll)
+ * 
+ * 4. toWIBDate(dateString)
+ *    - Konversi UTC timestamp ke WIB date (jam 00:00:00)
+ *    - WAJIB digunakan di chart generation untuk grouping by date
+ *    - Mencegah off-by-one-day error akibat perbedaan timezone
+ * 
+ * 5. getNowWIB()
+ *    - Dapatkan waktu sekarang dalam WIB
+ *    - Gunakan untuk kalkulasi real-time
+ * 
+ * CONTOH PENGGUNAAN DI CHART:
+ * 
+ *   // SALAH - Bisa menyebabkan data dikelompokkan ke hari yang salah
+ *   const date = new Date(payment.created_at);
+ *   date.setHours(0, 0, 0, 0);
+ * 
+ *   // BENAR - Konversi ke WIB dulu sebelum grouping
+ *   const date = AdminPanel.toWIBDate(payment.created_at);
+ * 
+ * CATATAN PENTING:
+ * - Jangan pernah gunakan new Date() tanpa timezone conversion untuk display
+ * - Semua waktu yang ditampilkan ke user HARUS include "WIB" di akhir
+ * - Untuk chart/analytics, SELALU gunakan toWIBDate() untuk grouping yang akurat
+ */
 
 const AdminPanel = {
     init() {
@@ -68,9 +107,7 @@ const AdminPanel = {
                 console.error('Failed to load active admins:', error);
             }
             
-            const otherAdmins = activeAdmins.filter(a => 
-                a.id !== user.id && a.username !== 'Notfound'
-            );
+            const otherAdmins = activeAdmins.filter(a => a.id !== user.id);
             
             let adminListHtml = '';
             if (otherAdmins.length > 0) {
@@ -485,8 +522,29 @@ const AdminPanel = {
         });
     },
 
-    confirmAction(message) {
-        return confirm(message);
+    confirmAction(message, options = {}) {
+        return new Promise((resolve, reject) => {
+            if (typeof window.showConfirmModal !== 'function') {
+                // Fallback to native confirm if custom modal not loaded
+                console.warn('Custom confirm modal not loaded, using native confirm');
+                resolve(confirm(message));
+                return;
+            }
+
+            showConfirmModal({
+                title: options.title || 'Konfirmasi',
+                message: message,
+                confirmText: options.confirmText || 'Ya',
+                cancelText: options.cancelText || 'Batal',
+                type: options.type || 'warning',
+                onConfirm: () => {
+                    resolve(true);
+                },
+                onCancel: () => {
+                    resolve(false);
+                }
+            });
+        });
     },
 
     createPagination(currentPage, totalPages, onPageChange) {
@@ -661,9 +719,8 @@ const AdminPanel = {
                 console.error('Failed to load active admins:', error);
             }
 
-            const otherAdmins = activeAdmins.filter(a => 
-                a.id !== user.id && a.username !== 'Notfound'
-            );
+            // Filter out current user from admin list
+            const otherAdmins = activeAdmins.filter(a => a.id !== user.id);
 
             // Show admin section for ALL admins (but button only for super admin)
             let adminListHtml = '';

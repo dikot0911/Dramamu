@@ -939,14 +939,16 @@ body {
 .card {
     background: var(--bg-secondary);
     border-radius: var(--radius-md);
-    box-shadow: var(--shadow-md);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     overflow: hidden;
-    border: 1px solid var(--border-color);
-    transition: var(--transition);
+    border: 1.5px solid var(--border-color);
+    transition: all 0.3s ease;
 }
 
 .card:hover {
-    box-shadow: var(--shadow-lg);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    border-color: rgba(var(--primary-rgb), 0.3);
+    transform: translateY(-2px);
 }
 
 /* Card Expandable - untuk grafik trend yang bisa di-expand */
@@ -1045,21 +1047,34 @@ body {
 
 .card-header {
     padding: var(--space-lg) var(--space-xl);
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 2px solid var(--border-color);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: var(--bg-tertiary);
+    background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-secondary) 100%);
+    position: relative;
+}
+
+.card-header::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 60px;
+    height: 2px;
+    background: linear-gradient(90deg, var(--primary), transparent);
 }
 
 .card-header h2 {
     font-size: var(--font-heading-sm);
-    font-weight: 600;
+    font-weight: 700;
     color: var(--text-primary);
+    letter-spacing: -0.02em;
 }
 
 .card-body {
     padding: var(--space-xl);
+    background: var(--bg-secondary);
 }
 
 /* Lists */
@@ -1495,30 +1510,38 @@ tbody tr:hover {
 .form-group input,
 .form-group textarea,
 .form-group select {
-    padding: 8px var(--space-xl);
-    border: 2px solid var(--border-color);
+    padding: 10px var(--space-lg);
+    border: 1.5px solid var(--border-color);
     border-radius: var(--radius-sm);
     font-size: var(--font-md);
     outline: none;
-    transition: var(--transition);
+    transition: all 0.2s ease;
     font-family: inherit;
-    background: var(--bg-secondary);
+    background: var(--bg-tertiary);
     color: var(--text-primary);
-    height: 36px;
+    height: 40px;
 }
 
 .form-group textarea {
     height: auto;
-    min-height: 72px;
+    min-height: 80px;
     resize: vertical;
-    padding: 8px var(--space-xl);
+    padding: 10px var(--space-lg);
+    line-height: 1.5;
 }
 
 .form-group input:focus,
 .form-group textarea:focus,
 .form-group select:focus {
     border-color: var(--primary);
-    box-shadow: 0 0 0 2px rgba(36, 129, 204, 0.1);
+    box-shadow: 0 0 0 3px rgba(36, 129, 204, 0.12);
+    background: var(--bg-secondary);
+}
+
+.form-group input:hover,
+.form-group textarea:hover,
+.form-group select:hover {
+    border-color: rgba(36, 129, 204, 0.4);
 }
 
 .form-group input::placeholder,
@@ -1726,9 +1749,22 @@ tbody tr:hover {
 
 .empty-state {
     text-align: center;
-    padding: var(--space-xl);
-    color: var(--text-tertiary);
+    padding: var(--space-xxl) var(--space-xl);
+    color: var(--text-secondary);
     font-size: var(--font-md);
+    background: linear-gradient(135deg, rgba(36, 129, 204, 0.03) 0%, rgba(36, 129, 204, 0.01) 100%);
+    border-radius: var(--radius-md);
+    border: 1.5px dashed var(--border-color);
+    position: relative;
+    line-height: 1.6;
+}
+
+.empty-state::before {
+    content: '📋';
+    display: block;
+    font-size: 2.5rem;
+    margin-bottom: var(--space-md);
+    opacity: 0.6;
 }
 
 .spinner {

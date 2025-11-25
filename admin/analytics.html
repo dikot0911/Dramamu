@@ -16,6 +16,7 @@
     <script src="themeToggle.js"></script>
     <script src="sidebar.js"></script>
     <script src="expand.js"></script>
+    <script src="confirm-modal.js"></script>
 </head>
 <body data-page="analytics">
     <div class="admin-layout">
@@ -188,11 +189,20 @@
                     </div>
 
                     <div class="card">
-                        <div class="card-header">
+                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
                             <h2>
                                 <span data-icon="barChart" data-icon-size="sm" style="margin-right: 8px;"></span>
-                                Top 10 Drama Populer
+                                <span id="topMoviesTitle">Top 10 Drama Populer</span>
                             </h2>
+                            <div style="display: flex; align-items: center; gap: 8px; background: var(--bg-secondary); padding: 8px 12px; border-radius: 6px;">
+                                <label style="font-size: 0.85em; color: var(--text-secondary); font-weight: 500; margin: 0; white-space: nowrap;">Tampilkan:</label>
+                                <select id="entriesPerPage" onchange="changeEntriesPerPage()" style="padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); cursor: pointer; font-weight: 500; min-width: 60px; transition: all 0.2s ease; font-size: 0.9em;">
+                                    <option value="10" selected>10</option>
+                                    <option value="25">25</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                </select>
+                            </div>
                         </div>
                         <div class="card-body">
                             <div id="topMovies" class="loading">Memuat...</div>
@@ -226,11 +236,20 @@
         </div>
     </div>
 
+    <script src="confirm-modal.js"></script>
     <script src="admin.js"></script>
     <script>
         let userGrowthChart, revenueChart;
+        let currentLimit = 10;
         let currentAnalyticsDateFilter = '30days';
         let currentAnalyticsCustomDates = null;
+
+        function changeEntriesPerPage() {
+            const select = document.getElementById('entriesPerPage');
+            currentLimit = parseInt(select.value);
+            document.getElementById('topMoviesTitle').textContent = `Top ${currentLimit} Drama Populer`;
+            loadAnalytics();
+        }
 
         function setAnalyticsDateFilter(filter) {
             currentAnalyticsDateFilter = filter;
@@ -312,7 +331,7 @@
                     AdminPanel.apiCall('/admin/analytics/conversion'),
                     AdminPanel.apiCall(`/admin/analytics/user-growth?period=daily&days=${days}`),
                     AdminPanel.apiCall(`/admin/analytics/revenue?period=daily&days=${days}`),
-                    AdminPanel.apiCall('/admin/analytics/top-movies?limit=10')
+                    AdminPanel.apiCall(`/admin/analytics/top-movies?limit=${currentLimit}`)
                 ]);
 
                 document.getElementById('totalUsers').textContent = conversion.total_users.toLocaleString();

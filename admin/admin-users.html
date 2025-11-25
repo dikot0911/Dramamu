@@ -15,6 +15,7 @@
     <script src="themeToggle.js"></script>
     <script src="sidebar.js"></script>
     <script src="expand.js"></script>
+    <script src="confirm-modal.js"></script>
 </head>
 <body data-page="admin-users">
     <div class="admin-layout">
@@ -102,9 +103,27 @@
                 </div>
 
                 <div class="table-container">
+                    <div class="table-header">
+                        <div class="filter-group">
+                            <div style="display: flex; align-items: center; gap: 8px; background: var(--bg-secondary); padding: 8px 12px; border-radius: 6px;">
+                                <label style="font-size: 0.85em; color: var(--text-secondary); font-weight: 500; margin: 0; white-space: nowrap;">Tampilkan:</label>
+                                <select id="entriesPerPage" onchange="changeEntriesPerPage()" style="padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); cursor: pointer; font-weight: 500; min-width: 60px; transition: all 0.2s ease; font-size: 0.9em;">
+                                    <option value="10">10</option>
+                                    <option value="25" selected>25</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                </select>
+                            </div>
+                            <button class="btn btn-secondary" onclick="loadAdmins();" title="Refresh data">
+                                <span data-icon="refreshCw" data-icon-size="sm"></span>
+                                <span>Refresh</span>
+                            </button>
+                        </div>
+                    </div>
                     <div id="tableContent">
                         <div class="loading">Loading admin users...</div>
                     </div>
+                    <div id="paginationContainer"></div>
                 </div>
             </div>
         </main>
@@ -145,15 +164,25 @@
         </div>
     </div>
 
+    <script src="confirm-modal.js"></script>
     <script src="admin.js"></script>
     <script>
+        let currentPage = 1;
+        let currentLimit = 25;
         let currentAdminId = null;
         let isEditMode = false;
 
-        async function loadAdmins() {
+        function changeEntriesPerPage() {
+            const select = document.getElementById('entriesPerPage');
+            currentLimit = parseInt(select.value);
+            loadAdmins(1);
+        }
+
+        async function loadAdmins(page = 1) {
             try {
-                const admins = await AdminPanel.apiCall('/admin/admin-users');
-                const filteredAdmins = admins.filter(admin => admin.username !== 'Notfound');
+                const params = new URLSearchParams({ page, limit: currentLimit });
+                const data = await AdminPanel.apiCall(`/admin/admin-users?${params}`);
+                const admins = data.admins || data;
                 
                 const tableHtml = `
                     <table>
@@ -169,7 +198,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            ${filteredAdmins.map(admin => `
+                            ${admins.map(admin => `
                                 <tr>
                                     <td>${AdminPanel.formatIdWithCopy(admin.id)}</td>
                                     <td>${AdminPanel.escapeHtml(admin.username)}</td>
@@ -206,6 +235,19 @@
                 `;
                 
                 document.getElementById('tableContent').innerHTML = tableHtml;
+                
+                // Render pagination if available
+                if (data.totalPages && data.totalPages > 1) {
+                    currentPage = page;
+                    AdminPanel.renderPagination(
+                        'paginationContainer',
+                        data.currentPage,
+                        data.totalPages,
+                        (page) => loadAdmins(page)
+                    );
+                } else {
+                    document.getElementById('paginationContainer').innerHTML = '';
+                }
                 
                 if (window.initIcons) {
                     initIcons();
