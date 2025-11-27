@@ -1049,6 +1049,98 @@ def run_migration_017_add_series_columns_to_movies():
     finally:
         db.close()
 
+def run_migration_018_fix_missing_columns():
+    """
+    Migration 018: Fix missing columns that were not created properly
+    
+    CRITICAL FIX: Some migrations were recorded but columns not actually created.
+    This migration ensures ALL required columns exist:
+    - users.deleted_at: Soft delete support for users
+    - payments.transaction_id: QRIS.PW transaction ID storage
+    - payments.qris_url: QRIS QR code URL
+    - payments.qris_string: QRIS string for dynamic QR
+    
+    Migration ini idempotent - cek dulu sebelum create.
+    """
+    logger.info("🔧 Running migration 018: Fix missing columns (users.deleted_at, payments.transaction_id)")
+    
+    from config import DATABASE_URL
+    db = SessionLocal()
+    
+    try:
+        is_postgresql = DATABASE_URL.startswith('postgresql')
+        
+        # Fix 1: users.deleted_at
+        if not column_exists(db, 'users', 'deleted_at'):
+            logger.info("  → Adding deleted_at to users...")
+            if is_postgresql:
+                db.execute(text("""
+                    ALTER TABLE users 
+                    ADD COLUMN deleted_at TIMESTAMP WITH TIME ZONE
+                """))
+            else:
+                db.execute(text("""
+                    ALTER TABLE users 
+                    ADD COLUMN deleted_at DATETIME
+                """))
+            
+            db.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_users_deleted_at 
+                ON users(deleted_at)
+            """))
+            logger.info("  ✓ Added users.deleted_at")
+        else:
+            logger.info("  ✓ Column users.deleted_at already exists")
+        
+        # Fix 2: payments.transaction_id
+        if not column_exists(db, 'payments', 'transaction_id'):
+            logger.info("  → Adding transaction_id to payments...")
+            db.execute(text("""
+                ALTER TABLE payments 
+                ADD COLUMN transaction_id VARCHAR
+            """))
+            
+            db.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_payments_transaction_id 
+                ON payments(transaction_id)
+            """))
+            logger.info("  ✓ Added payments.transaction_id")
+        else:
+            logger.info("  ✓ Column payments.transaction_id already exists")
+        
+        # Fix 3: payments.qris_url
+        if not column_exists(db, 'payments', 'qris_url'):
+            logger.info("  → Adding qris_url to payments...")
+            db.execute(text("""
+                ALTER TABLE payments 
+                ADD COLUMN qris_url VARCHAR
+            """))
+            logger.info("  ✓ Added payments.qris_url")
+        else:
+            logger.info("  ✓ Column payments.qris_url already exists")
+        
+        # Fix 4: payments.qris_string
+        if not column_exists(db, 'payments', 'qris_string'):
+            logger.info("  → Adding qris_string to payments...")
+            db.execute(text("""
+                ALTER TABLE payments 
+                ADD COLUMN qris_string TEXT
+            """))
+            logger.info("  ✓ Added payments.qris_string")
+        else:
+            logger.info("  ✓ Column payments.qris_string already exists")
+        
+        db.commit()
+        logger.info("  ✅ Migration 018 complete! Missing columns fixed.")
+        return True
+        
+    except Exception as e:
+        logger.error(f"  ❌ Migration 018 failed: {e}")
+        db.rollback()
+        return False
+    finally:
+        db.close()
+
 MIGRATIONS = [
     ('001_add_referred_by_code', run_migration_001_add_referred_by_code),
     ('002_ensure_movie_columns', run_migration_002_ensure_movie_columns),
@@ -1067,6 +1159,7 @@ MIGRATIONS = [
     ('015_add_deleted_at_to_broadcasts', run_migration_015_add_deleted_at_to_broadcasts),
     ('016_add_telegram_columns_to_movies', run_migration_016_add_telegram_columns_to_movies),
     ('017_add_series_columns_to_movies', run_migration_017_add_series_columns_to_movies),
+    ('018_fix_missing_columns', run_migration_018_fix_missing_columns),
 ]
 
 def run_migrations():
