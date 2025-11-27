@@ -29,6 +29,7 @@ class VipPackage(str, Enum):
     Using Enum ensures type safety and prevents typos.
     Each package has exact duration mapping.
     """
+    VIP_1_HOUR = "VIP 1 Jam"
     VIP_1_DAY = "VIP 1 Hari"
     VIP_3_DAYS = "VIP 3 Hari"
     VIP_7_DAYS = "VIP 7 Hari"
@@ -36,18 +37,21 @@ class VipPackage(str, Enum):
     VIP_30_DAYS = "VIP 30 Hari"
 
 
-# Package duration mapping (days)
-PACKAGE_DURATIONS = {
-    VipPackage.VIP_1_DAY: 1,
-    VipPackage.VIP_3_DAYS: 3,
-    VipPackage.VIP_7_DAYS: 7,
-    VipPackage.VIP_15_DAYS: 15,
-    VipPackage.VIP_30_DAYS: 30,
+# Package duration mapping (days - supports fractional for hours)
+# 1 hour = 1/24 days
+PACKAGE_DURATIONS: dict[VipPackage, float] = {
+    VipPackage.VIP_1_HOUR: 1/24,  # 1 hour = 0.0416667 days
+    VipPackage.VIP_1_DAY: 1.0,
+    VipPackage.VIP_3_DAYS: 3.0,
+    VipPackage.VIP_7_DAYS: 7.0,
+    VipPackage.VIP_15_DAYS: 15.0,
+    VipPackage.VIP_30_DAYS: 30.0,
 }
 
 
 # Package price mapping (Rupiah)
 PACKAGE_PRICES = {
+    VipPackage.VIP_1_HOUR: 1000,
     VipPackage.VIP_1_DAY: 2000,
     VipPackage.VIP_3_DAYS: 5000,
     VipPackage.VIP_7_DAYS: 10000,
@@ -56,7 +60,7 @@ PACKAGE_PRICES = {
 }
 
 
-def validate_package_name(package_name: str) -> Tuple[bool, Optional[int], Optional[str]]:
+def validate_package_name(package_name: str) -> Tuple[bool, Optional[float], Optional[str]]:
     """
     Validate VIP package name and return duration if valid.
     

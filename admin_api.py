@@ -2174,6 +2174,7 @@ async def approve_qris_payment(data: QRISApproveRequest, admin = Depends(get_cur
             raise HTTPException(status_code=404, detail=f"User dengan telegram_id {payment.telegram_id} tidak ditemukan")
         
         days_map = {
+            "VIP 1 Jam": 1/24,  # 1 hour
             "VIP 1 Hari": 1,
             "VIP 3 Hari": 3,
             "VIP 7 Hari": 7,
@@ -2181,7 +2182,10 @@ async def approve_qris_payment(data: QRISApproveRequest, admin = Depends(get_cur
             "VIP 30 Hari": 30
         }
         package_name_str = str(payment.package_name)
-        days = days_map.get(package_name_str, 1)
+        if package_name_str not in days_map:
+            logger.error(f"❌ UNKNOWN PACKAGE: '{package_name_str}' - rejecting to prevent wrong VIP duration")
+            raise HTTPException(status_code=400, detail=f"Package tidak dikenal: {package_name_str}")
+        days = days_map[package_name_str]
         
         user.is_vip = True
         current_expiry_col = user.vip_expires_at
@@ -2365,13 +2369,18 @@ async def manual_vip_activation(request: ManualVIPActivationRequest, admin = Dep
         
         # Hitung jumlah hari dari package_name
         days_map = {
+            "VIP 1 Jam": 1/24,  # 1 hour
             "VIP 1 Hari": 1,
             "VIP 3 Hari": 3,
             "VIP 7 Hari": 7,
             "VIP 15 Hari": 15,
             "VIP 30 Hari": 30
         }
-        days = days_map.get(str(package_name), 1)
+        package_name_str = str(package_name)
+        if package_name_str not in days_map:
+            logger.error(f"❌ UNKNOWN PACKAGE: '{package_name_str}' - rejecting manual activation")
+            raise HTTPException(status_code=400, detail=f"Package tidak dikenal: {package_name_str}")
+        days = days_map[package_name_str]
         
         # Cek apakah user sudah VIP sebelum aktivasi (untuk notifikasi berbeda)
         was_already_vip = user.is_vip

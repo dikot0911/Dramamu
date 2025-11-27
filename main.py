@@ -1374,10 +1374,53 @@ async def check_payment_status(transaction_id: str):
         if payment:
             local_status = str(payment.status)
             
-            # If already success/paid, return immediately without calling QRIS.PW
-            # This handles admin manual activation because admin endpoints update payment.status
+            # If already success/paid, check if VIP is actually active
+            # BUG FIX: Previously, if payment was success but VIP activation failed (due to error/rollback),
+            # user would see "Payment confirmed" but not have VIP access. This ensures VIP is activated.
             if local_status in ['success', 'paid']:
                 logger.info(f"✅ Payment already confirmed locally (status: {local_status})")
+                
+                # BUG FIX: Verify and repair VIP status if payment is success but VIP not active
+                try:
+                    user = db.query(User).filter(
+                        User.telegram_id == payment.telegram_id,
+                        User.deleted_at == None
+                    ).first()
+                    
+                    if user:
+                        now = now_utc()
+                        is_vip_active = user.is_vip and user.vip_expires_at and user.vip_expires_at > now
+                        
+                        if not is_vip_active:
+                            # VIP not active but payment is success - this is a bug, fix it!
+                            logger.warning(
+                                f"⚠️ VIP RECOVERY: Payment {payment.order_id} is {local_status} but "
+                                f"user {payment.telegram_id} VIP is not active. Activating VIP now..."
+                            )
+                            
+                            from vip_packages import validate_package_name
+                            package_name_str = str(payment.package_name)
+                            valid, days, error = validate_package_name(package_name_str)
+                            
+                            if valid and days:
+                                success, vip_error = extend_vip_atomic(db, user, days)
+                                if success:
+                                    db.commit()
+                                    logger.info(
+                                        f"✅ VIP RECOVERED: User {payment.telegram_id} now has VIP for {days} days "
+                                        f"(payment {payment.order_id})"
+                                    )
+                                else:
+                                    logger.error(f"❌ VIP recovery failed: {vip_error}")
+                            else:
+                                logger.error(f"❌ VIP recovery skipped - invalid package: {package_name_str}")
+                        else:
+                            logger.info(f"✓ User {payment.telegram_id} VIP already active (expires: {user.vip_expires_at})")
+                    else:
+                        logger.warning(f"⚠️ User not found for payment {payment.order_id}")
+                except Exception as vip_check_error:
+                    logger.error(f"❌ Error during VIP status check/recovery: {vip_check_error}")
+                
                 return {
                     "success": True,
                     "status": "paid",
@@ -1385,7 +1428,7 @@ async def check_payment_status(transaction_id: str):
                     "local_status": local_status
                 }
             
-            # NOTE: We intentionally DO NOT check user's VIP status here!
+            # NOTE: We intentionally DO NOT check user's VIP status here for PENDING payments!
             # BUG FIX: Previously, if user had active VIP from PREVIOUS transaction,
             # this check would incorrectly mark NEW transactions as "paid" giving free VIP.
             # Admin manual activation should ONLY go through:
@@ -2450,12 +2493,18 @@ async def payment_callback(callback: PaymentCallback):
                 ).first()
                 if user:
                     days_map = {
+                        "VIP 1 Jam": 1/24,  # 1 hour
                         "VIP 1 Hari": 1,
                         "VIP 3 Hari": 3,
-                        "VIP 7 Hari": 7
+                        "VIP 7 Hari": 7,
+                        "VIP 15 Hari": 15,
+                        "VIP 30 Hari": 30
                     }
                     package_name_str = str(payment.package_name)
-                    days = days_map.get(package_name_str, 1)
+                    if package_name_str not in days_map:
+                        logger.error(f"❌ UNKNOWN PACKAGE: '{package_name_str}' - rejecting to prevent wrong VIP duration")
+                        raise HTTPException(status_code=400, detail=f"Package tidak dikenal: {package_name_str}")
+                    days = days_map[package_name_str]
                     
                     user.is_vip = True  # type: ignore
                     current_expiry_col = user.vip_expires_at
