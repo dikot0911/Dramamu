@@ -1196,6 +1196,187 @@ def run_migration_018_fix_missing_columns():
     finally:
         db.close()
 
+def run_migration_019_add_email_to_admins():
+    """
+    Migration 019: Add email column to admins table
+    
+    Kolom email untuk admin, digunakan untuk:
+    - Recovery password
+    - Notifikasi admin
+    - Identifikasi tambahan
+    
+    Migration ini idempotent - bisa dijalankan berulang kali dengan aman.
+    """
+    logger.info("🔧 Running migration 019: Add admins.email")
+    
+    db = SessionLocal()
+    try:
+        if column_exists(db, 'admins', 'email'):
+            logger.info("  ✓ Column email already exists, skip")
+            return True
+        
+        logger.info("  → Adding column email to admins...")
+        db.execute(text("""
+            ALTER TABLE admins 
+            ADD COLUMN email VARCHAR
+        """))
+        
+        db.commit()
+        logger.info("  ✅ Migration 019 complete!")
+        return True
+        
+    except Exception as e:
+        logger.error(f"  ❌ Migration 019 failed: {e}")
+        db.rollback()
+        return False
+    finally:
+        db.close()
+
+def table_exists(db, table_name):
+    """
+    Check apakah table exist (works for SQLite & PostgreSQL)
+    """
+    from config import DATABASE_URL
+    
+    try:
+        if DATABASE_URL.startswith('postgresql'):
+            result = db.execute(text(f"""
+                SELECT table_name 
+                FROM information_schema.tables 
+                WHERE table_name='{table_name}' AND table_schema='public'
+            """))
+            return result.fetchone() is not None
+        else:
+            result = db.execute(text(f"""
+                SELECT name FROM sqlite_master 
+                WHERE type='table' AND name='{table_name}'
+            """))
+            return result.fetchone() is not None
+    except Exception as e:
+        logger.error(f"Error checking table {table_name}: {e}")
+        return False
+
+def run_migration_020_create_admin_conversations_table():
+    """
+    Migration 020: Create admin_conversations table if not exists
+    
+    Table untuk menyimpan state conversation admin di Telegram bot.
+    Digunakan untuk multi-step workflows seperti:
+    - Upload movie/part
+    - Edit movie details
+    - Broadcast messages
+    
+    Migration ini idempotent - cek dulu sebelum create.
+    """
+    logger.info("🔧 Running migration 020: Create admin_conversations table")
+    
+    from config import DATABASE_URL
+    db = SessionLocal()
+    
+    try:
+        if table_exists(db, 'admin_conversations'):
+            logger.info("  ✓ Table admin_conversations already exists, skip")
+            return True
+        
+        logger.info("  → Creating admin_conversations table...")
+        
+        if DATABASE_URL.startswith('postgresql'):
+            db.execute(text("""
+                CREATE TABLE admin_conversations (
+                    id SERIAL PRIMARY KEY,
+                    admin_id VARCHAR NOT NULL,
+                    conversation_type VARCHAR NOT NULL,
+                    step VARCHAR NOT NULL,
+                    data TEXT,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+            db.execute(text("CREATE INDEX idx_admin_conversations_admin_id ON admin_conversations(admin_id)"))
+        else:
+            db.execute(text("""
+                CREATE TABLE admin_conversations (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    admin_id VARCHAR NOT NULL,
+                    conversation_type VARCHAR NOT NULL,
+                    step VARCHAR NOT NULL,
+                    data TEXT,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+            db.execute(text("CREATE INDEX idx_admin_conversations_admin_id ON admin_conversations(admin_id)"))
+        
+        db.commit()
+        logger.info("  ✅ Migration 020 complete! admin_conversations table created.")
+        return True
+        
+    except Exception as e:
+        logger.error(f"  ❌ Migration 020 failed: {e}")
+        db.rollback()
+        return False
+    finally:
+        db.close()
+
+def run_migration_021_create_settings_table():
+    """
+    Migration 021: Create settings table if not exists
+    
+    Table untuk menyimpan konfigurasi aplikasi:
+    - Payment gateway settings (QRIS API key, merchant ID)
+    - Bot settings
+    - Feature flags
+    
+    Migration ini idempotent - cek dulu sebelum create.
+    """
+    logger.info("🔧 Running migration 021: Create settings table")
+    
+    from config import DATABASE_URL
+    db = SessionLocal()
+    
+    try:
+        if table_exists(db, 'settings'):
+            logger.info("  ✓ Table settings already exists, skip")
+            return True
+        
+        logger.info("  → Creating settings table...")
+        
+        if DATABASE_URL.startswith('postgresql'):
+            db.execute(text("""
+                CREATE TABLE settings (
+                    id SERIAL PRIMARY KEY,
+                    key VARCHAR NOT NULL UNIQUE,
+                    value TEXT,
+                    description TEXT,
+                    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_by VARCHAR
+                )
+            """))
+            db.execute(text("CREATE UNIQUE INDEX idx_settings_key ON settings(key)"))
+        else:
+            db.execute(text("""
+                CREATE TABLE settings (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    key VARCHAR NOT NULL UNIQUE,
+                    value TEXT,
+                    description TEXT,
+                    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_by VARCHAR
+                )
+            """))
+            db.execute(text("CREATE UNIQUE INDEX idx_settings_key ON settings(key)"))
+        
+        db.commit()
+        logger.info("  ✅ Migration 021 complete! settings table created.")
+        return True
+        
+    except Exception as e:
+        logger.error(f"  ❌ Migration 021 failed: {e}")
+        db.rollback()
+        return False
+    finally:
+        db.close()
+
 MIGRATIONS = [
     ('001_add_referred_by_code', run_migration_001_add_referred_by_code),
     ('002_ensure_movie_columns', run_migration_002_ensure_movie_columns),
@@ -1215,6 +1396,9 @@ MIGRATIONS = [
     ('016_add_telegram_columns_to_movies', run_migration_016_add_telegram_columns_to_movies),
     ('017_add_series_columns_to_movies', run_migration_017_add_series_columns_to_movies),
     ('018_fix_missing_columns', run_migration_018_fix_missing_columns),
+    ('019_add_email_to_admins', run_migration_019_add_email_to_admins),
+    ('020_create_admin_conversations_table', run_migration_020_create_admin_conversations_table),
+    ('021_create_settings_table', run_migration_021_create_settings_table),
 ]
 
 def run_migrations():
@@ -1281,35 +1465,69 @@ def run_migrations():
 
 def validate_critical_schema():
     """
-    Validate bahwa critical columns yang dibutuhkan app ada di database.
+    Validate bahwa semua tables dan critical columns ada di database.
+    
+    Comprehensive check untuk semua 16 tables:
+    1. users - User accounts
+    2. movies - Movie/drama content
+    3. favorites - User favorites
+    4. likes - User likes
+    5. watch_history - Watch tracking
+    6. drama_requests - Drama requests
+    7. withdrawals - Withdrawal requests
+    8. payments - Payment records
+    9. payment_commissions - Commission tracking
+    10. admins - Admin accounts
+    11. admin_sessions - Admin sessions
+    12. parts - Series episodes
+    13. pending_uploads - Upload queue
+    14. admin_conversations - Admin conversation state
+    15. settings - App settings
+    16. broadcasts - Broadcast messages
     
     Kalau ada yang missing, kasih error jelas supaya user bisa fix.
     """
-    logger.info("🔍 Validating database schema...")
+    logger.info("🔍 Validating database schema (all 16 tables)...")
     
     db = SessionLocal()
     try:
-        # Test query critical columns
         critical_tests = [
-            ("users", ["telegram_id", "ref_code", "referred_by_code", "is_vip"]),
-            ("movies", ["id", "title", "category", "views"]),
-            ("admins", ["username", "password_hash", "display_name"]),
+            ("users", ["id", "telegram_id", "ref_code", "referred_by_code", "is_vip", "deleted_at"]),
+            ("movies", ["id", "short_id", "title", "category", "views", "poster_file_id", "telegram_file_id", "is_series", "deleted_at"]),
+            ("favorites", ["id", "telegram_id", "movie_id"]),
+            ("likes", ["id", "telegram_id", "movie_id"]),
+            ("watch_history", ["id", "telegram_id", "movie_id", "watched_at"]),
+            ("drama_requests", ["id", "telegram_id", "judul", "status", "admin_notes", "apk_source", "deleted_at"]),
+            ("withdrawals", ["id", "telegram_id", "amount", "status", "processed_at"]),
+            ("payments", ["id", "telegram_id", "order_id", "transaction_id", "status", "screenshot_url", "qris_url", "expires_at", "paid_at"]),
+            ("payment_commissions", ["id", "payment_id", "referrer_telegram_id", "commission_amount"]),
+            ("admins", ["id", "username", "password_hash", "email", "display_name", "deleted_at"]),
+            ("admin_sessions", ["id", "admin_id", "session_token", "csrf_token", "expires_at"]),
+            ("parts", ["id", "movie_id", "part_number", "title", "telegram_file_id", "deleted_at"]),
+            ("pending_uploads", ["id", "telegram_file_id", "content_type", "poster_width", "poster_height"]),
+            ("admin_conversations", ["id", "admin_id", "conversation_type", "step"]),
+            ("settings", ["id", "key", "value"]),
+            ("broadcasts", ["id", "message", "is_active", "broadcast_type", "deleted_at"]),
         ]
         
+        all_valid = True
         for table, columns in critical_tests:
             try:
-                # Build select query
                 col_str = ", ".join(columns)
                 query = text(f"SELECT {col_str} FROM {table} LIMIT 1")
                 db.execute(query)
-                logger.info(f"  ✓ Table '{table}' schema valid")
+                logger.info(f"  ✓ Table '{table}' ({len(columns)} columns) valid")
             except (OperationalError, ProgrammingError) as e:
                 logger.error(f"  ❌ Table '{table}' schema invalid: {e}")
-                logger.error(f"     Missing columns: run migrations!")
-                return False
+                logger.error(f"     Expected columns: {columns}")
+                all_valid = False
         
-        logger.info("✅ Schema validation passed!")
-        return True
+        if all_valid:
+            logger.info("✅ Schema validation passed! All 16 tables verified.")
+            return True
+        else:
+            logger.error("❌ Schema validation failed! Run migrations to fix.")
+            return False
         
     except Exception as e:
         logger.error(f"❌ Schema validation error: {e}")
