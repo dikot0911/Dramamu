@@ -344,17 +344,31 @@ const AdminPanel = {
         try {
             const response = await fetch(`${API_BASE_URL}${endpoint}`, fetchOptions);
 
-            // CRITICAL FIX: Check response.ok BEFORE parsing JSON
-            // This prevents "Unexpected token" errors when server returns HTML error pages
-            if (!response.ok) {
-                // Try to parse JSON error response
-                let errorData;
-                try {
-                    errorData = await response.json();
-                } catch (parseError) {
-                    // Fallback: response is not JSON (e.g., HTML error page)
-                    const text = await response.text();
-                    
+            // FIX: Read body as text first to avoid "body stream already read" error
+            // Then try to parse as JSON
+            const responseText = await response.text();
+            
+            // Handle empty responses (e.g., 204 No Content)
+            if (!responseText || responseText.trim() === '') {
+                if (response.ok) {
+                    return {}; // Return empty object for successful empty responses
+                }
+                // Handle 401 unauthorized with empty response
+                if (response.status === 401 && !skipAuthRedirect) {
+                    this.clearToken();
+                    window.location.href = '/panel/login.html';
+                    throw new Error('Session telah berakhir. Silakan login kembali.');
+                }
+                throw new Error(`Server error (${response.status})`);
+            }
+            
+            // Try to parse as JSON
+            let data;
+            try {
+                data = JSON.parse(responseText);
+            } catch (parseError) {
+                // Response is not JSON (e.g., HTML error page)
+                if (!response.ok) {
                     // Handle 401 unauthorized
                     if (response.status === 401 && !skipAuthRedirect) {
                         this.clearToken();
@@ -363,10 +377,15 @@ const AdminPanel = {
                     }
                     
                     // Generic error for non-JSON responses
-                    const errorPreview = text.substring(0, 200).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    const errorPreview = responseText.substring(0, 200).replace(/</g, '&lt;').replace(/>/g, '&gt;');
                     throw new Error(`Server error (${response.status}): ${errorPreview}`);
                 }
-                
+                // If response.ok but not JSON, return the text as-is wrapped in object
+                return { _text: responseText };
+            }
+            
+            // Handle error responses (response.ok = false)
+            if (!response.ok) {
                 // Handle 401 with JSON error
                 if (response.status === 401 && !skipAuthRedirect) {
                     this.clearToken();
@@ -375,17 +394,15 @@ const AdminPanel = {
                 }
                 
                 // Handle structured error responses
-                if (typeof errorData.detail === 'object') {
-                    const errorMsg = errorData.detail.error || errorData.detail.message || 'Terjadi kesalahan';
-                    const remediation = errorData.detail.remediation || '';
+                if (data.detail && typeof data.detail === 'object') {
+                    const errorMsg = data.detail.error || data.detail.message || 'Terjadi kesalahan';
+                    const remediation = data.detail.remediation || '';
                     throw new Error(remediation ? `${errorMsg}\n\n${remediation}` : errorMsg);
                 }
                 
-                throw new Error(errorData.detail || 'Terjadi kesalahan');
+                throw new Error(data.detail || 'Terjadi kesalahan');
             }
 
-            // Only parse JSON if response.ok === true
-            const data = await response.json();
             return data;
         } catch (error) {
             // If error is already Error object, rethrow

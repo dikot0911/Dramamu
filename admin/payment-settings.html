@@ -581,18 +581,25 @@
                     }
                 });
                 
-                let errorMessage = 'Gagal mengupload gambar';
-                if (!response.ok) {
+                const responseText = await response.text();
+                let result = {};
+                
+                // Parse JSON only if response has content
+                if (responseText && responseText.trim()) {
                     try {
-                        const errorData = await response.json();
-                        errorMessage = errorData.detail || errorMessage;
+                        result = JSON.parse(responseText);
                     } catch (e) {
-                        errorMessage = `Upload gagal (${response.status})`;
+                        if (!response.ok) {
+                            throw new Error(`Upload gagal (${response.status})`);
+                        }
+                        // Success but not JSON - that's okay
                     }
-                    throw new Error(errorMessage);
                 }
                 
-                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.detail || 'Gagal mengupload gambar');
+                }
+                
                 AdminPanel.showToast(result.message || 'Gambar QRIS berhasil diperbarui', 'success');
                 closeEditQrisModal();
                 loadQrisImages();
@@ -1029,18 +1036,25 @@
                     }
                 });
                 
-                let errorMessage = 'Upload gagal';
-                if (!response.ok) {
+                const responseText = await response.text();
+                let result = {};
+                
+                // Parse JSON only if response has content
+                if (responseText && responseText.trim()) {
                     try {
-                        const errorData = await response.json();
-                        errorMessage = errorData.detail || errorMessage;
+                        result = JSON.parse(responseText);
                     } catch (e) {
-                        errorMessage = `Upload gagal (${response.status})`;
+                        if (!response.ok) {
+                            throw new Error(`Upload gagal (${response.status})`);
+                        }
+                        // Success but not JSON - that's okay
                     }
-                    throw new Error(errorMessage);
+                }
+                
+                if (!response.ok) {
+                    throw new Error(result.detail || 'Upload gagal');
                 }
 
-                const result = await response.json();
                 AdminPanel.showToast(result.message || 'Gambar QRIS berhasil diupload', 'success');
                 amountInput.value = '';
                 document.getElementById('selected-file-name').textContent = 'Belum ada file';
