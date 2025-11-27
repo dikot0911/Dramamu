@@ -794,6 +794,12 @@
             }
         }
 
+        let pollingStartTime = null;
+        let pollErrorCount = 0;
+        const FAST_POLL_INTERVAL = 3000;  // 3 detik untuk 60 detik pertama
+        const NORMAL_POLL_INTERVAL = 5000; // 5 detik setelahnya
+        const FAST_POLL_DURATION = 60000;  // Durasi polling cepat: 60 detik
+
         function startPaymentStatusChecker(transactionId) {
             // Clear existing checker
             if (paymentStatusChecker) {
@@ -801,18 +807,22 @@
             }
 
             console.log(`🔍 Starting payment status checker for: ${transactionId}`);
+            pollingStartTime = Date.now();
+            pollErrorCount = 0;
 
-            // Check status setiap 5 detik
-            paymentStatusChecker = setInterval(async () => {
+            // Fungsi untuk cek status sekali
+            async function checkOnce() {
                 try {
                     const apiUrl = window.API_BASE_URL + `/api/v1/check_payment_status?transaction_id=${transactionId}`;
                     const response = await fetch(apiUrl);
 
                     if (!response.ok) {
                         console.error('Failed to check payment status');
+                        pollErrorCount++;
                         return;
                     }
 
+                    pollErrorCount = 0; // Reset error count on success
                     const result = await response.json();
                     console.log('Payment status:', result.status);
 
@@ -837,6 +847,7 @@
                         setTimeout(() => {
                             tutupQRIS();
                         }, 2000);
+                        return true; // Signal success
                     } else if (result.status === 'expired') {
                         clearInterval(paymentStatusChecker);
                         paymentStatusChecker = null;
@@ -849,11 +860,40 @@
                         setTimeout(() => {
                             tutupQRIS();
                         }, 4000);
+                        return true; // Signal done (expired)
                     }
+                    return false;
                 } catch (error) {
                     console.error('Error checking payment status:', error);
+                    pollErrorCount++;
+                    return false;
                 }
-            }, 5000);
+            }
+
+            // Start dengan polling cepat (3 detik)
+            function startPolling() {
+                const elapsed = Date.now() - pollingStartTime;
+                const interval = elapsed < FAST_POLL_DURATION ? FAST_POLL_INTERVAL : NORMAL_POLL_INTERVAL;
+                
+                console.log(`⏱️ Polling interval: ${interval}ms (elapsed: ${elapsed}ms)`);
+                
+                paymentStatusChecker = setInterval(async () => {
+                    const done = await checkOnce();
+                    if (done) return;
+                    
+                    // Jika sudah lebih dari 60 detik dan masih pakai fast polling, switch ke normal
+                    const currentElapsed = Date.now() - pollingStartTime;
+                    if (currentElapsed >= FAST_POLL_DURATION && interval === FAST_POLL_INTERVAL) {
+                        console.log('⏱️ Switching to normal polling interval (5s)');
+                        clearInterval(paymentStatusChecker);
+                        startPolling(); // Restart dengan interval baru
+                    }
+                }, interval);
+            }
+            
+            // Langsung cek sekali pertama kali
+            checkOnce();
+            startPolling();
         }
 
         async function checkPaymentStatus() {
