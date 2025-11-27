@@ -598,10 +598,19 @@
             
             <div class="qris-header">
                 <h2>📋 Riwayat Transaksi</h2>
-                <p>Pembayaran Pending/Failed</p>
             </div>
 
-            <div id="historyList" style="margin-top: 1rem; max-height: 60vh; overflow-y: auto;">
+            <!-- Tabs -->
+            <div id="historyTabs" style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
+                <button onclick="switchHistoryTab('ongoing')" id="tabOngoing" class="history-tab active" style="flex: 1; padding: 0.6rem 0.75rem; background: linear-gradient(135deg, rgba(212, 175, 55, 0.3), rgba(139, 92, 246, 0.2)); border: 2px solid rgba(212, 175, 55, 0.5); border-radius: 8px; color: #d4af37; font-size: 0.75rem; font-weight: 700; cursor: pointer; transition: all 0.3s ease;">
+                    ⏳ Berlangsung <span id="ongoingCount" style="background: rgba(255, 217, 61, 0.3); padding: 1px 6px; border-radius: 10px; margin-left: 4px; font-size: 0.65rem;">0</span>
+                </button>
+                <button onclick="switchHistoryTab('completed')" id="tabCompleted" class="history-tab" style="flex: 1; padding: 0.6rem 0.75rem; background: linear-gradient(135deg, rgba(30, 41, 59, 0.6), rgba(15, 23, 42, 0.6)); border: 1px solid rgba(100, 100, 100, 0.3); border-radius: 8px; color: rgba(255, 255, 255, 0.6); font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease;">
+                    ✓ Selesai <span id="completedCount" style="background: rgba(100, 100, 100, 0.3); padding: 1px 6px; border-radius: 10px; margin-left: 4px; font-size: 0.65rem;">0</span>
+                </button>
+            </div>
+
+            <div id="historyList" style="margin-top: 0.75rem; max-height: 55vh; overflow-y: auto;">
                 <!-- Will be populated by JavaScript -->
             </div>
         </div>
@@ -1180,9 +1189,11 @@
         });
         
         // History Modal Functions
-        let pendingPayments = [];
+        let ongoingPayments = [];
+        let completedPayments = [];
+        let currentHistoryTab = 'ongoing';
 
-        async function loadPendingPayments() {
+        async function loadPaymentHistory() {
             try {
                 const initData = tg?.initData;
                 if (!initData) {
@@ -1190,7 +1201,7 @@
                     return;
                 }
 
-                const apiUrl = window.API_BASE_URL + '/api/v1/pending_payments';
+                const apiUrl = window.API_BASE_URL + '/api/v1/payment_history';
                 const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1198,28 +1209,67 @@
                 });
 
                 if (!response.ok) {
-                    throw new Error('Failed to load pending payments');
+                    throw new Error('Failed to load payment history');
                 }
 
                 const result = await response.json();
-                pendingPayments = result.payments || [];
+                ongoingPayments = result.ongoing || [];
+                completedPayments = result.completed || [];
                 
-                // Update history button count
+                // Update history button count (show total)
                 const historyBtn = document.getElementById('historyCount');
-                if (pendingPayments.length > 0) {
-                    historyBtn.textContent = `(${pendingPayments.length})`;
+                const totalCount = ongoingPayments.length + completedPayments.length;
+                if (totalCount > 0) {
+                    historyBtn.textContent = `(${totalCount})`;
                     historyBtn.style.display = 'inline';
                 } else {
                     historyBtn.textContent = '';
                 }
 
-                console.log(`✅ Loaded ${pendingPayments.length} pending payments`);
+                // Update tab counts
+                document.getElementById('ongoingCount').textContent = ongoingPayments.length;
+                document.getElementById('completedCount').textContent = completedPayments.length;
+
+                console.log(`✅ Loaded ${ongoingPayments.length} ongoing, ${completedPayments.length} completed payments`);
             } catch (error) {
-                console.error('Error loading pending payments:', error);
+                console.error('Error loading payment history:', error);
             }
         }
 
+        function switchHistoryTab(tab) {
+            currentHistoryTab = tab;
+            
+            const tabOngoing = document.getElementById('tabOngoing');
+            const tabCompleted = document.getElementById('tabCompleted');
+            
+            if (tab === 'ongoing') {
+                tabOngoing.style.background = 'linear-gradient(135deg, rgba(212, 175, 55, 0.3), rgba(139, 92, 246, 0.2))';
+                tabOngoing.style.border = '2px solid rgba(212, 175, 55, 0.5)';
+                tabOngoing.style.color = '#d4af37';
+                tabOngoing.style.fontWeight = '700';
+                
+                tabCompleted.style.background = 'linear-gradient(135deg, rgba(30, 41, 59, 0.6), rgba(15, 23, 42, 0.6))';
+                tabCompleted.style.border = '1px solid rgba(100, 100, 100, 0.3)';
+                tabCompleted.style.color = 'rgba(255, 255, 255, 0.6)';
+                tabCompleted.style.fontWeight = '600';
+            } else {
+                tabCompleted.style.background = 'linear-gradient(135deg, rgba(34, 197, 94, 0.25), rgba(16, 185, 129, 0.2))';
+                tabCompleted.style.border = '2px solid rgba(34, 197, 94, 0.5)';
+                tabCompleted.style.color = '#22c55e';
+                tabCompleted.style.fontWeight = '700';
+                
+                tabOngoing.style.background = 'linear-gradient(135deg, rgba(30, 41, 59, 0.6), rgba(15, 23, 42, 0.6))';
+                tabOngoing.style.border = '1px solid rgba(100, 100, 100, 0.3)';
+                tabOngoing.style.color = 'rgba(255, 255, 255, 0.6)';
+                tabOngoing.style.fontWeight = '600';
+            }
+            
+            displayHistoryList();
+        }
+
         function openHistoryModal() {
+            currentHistoryTab = 'ongoing';
+            switchHistoryTab('ongoing');
             displayHistoryList();
             const modal = document.getElementById('historyModal');
             modal.style.display = 'flex';
@@ -1240,20 +1290,26 @@
 
         function displayHistoryList() {
             const listContainer = document.getElementById('historyList');
+            const payments = currentHistoryTab === 'ongoing' ? ongoingPayments : completedPayments;
+            const emptyMessage = currentHistoryTab === 'ongoing' 
+                ? 'Tidak ada transaksi berlangsung'
+                : 'Tidak ada transaksi selesai';
+            const emptyIcon = currentHistoryTab === 'ongoing' ? '⏳' : '📭';
             
-            if (!pendingPayments || pendingPayments.length === 0) {
+            if (!payments || payments.length === 0) {
                 listContainer.innerHTML = `
                     <div style="text-align: center; padding: 2rem; color: rgba(255, 255, 255, 0.5);">
-                        <p style="font-size: 2rem; margin-bottom: 0.5rem;">📭</p>
-                        <p style="font-size: 0.85rem;">Tidak ada transaksi pending</p>
+                        <p style="font-size: 2rem; margin-bottom: 0.5rem;">${emptyIcon}</p>
+                        <p style="font-size: 0.85rem;">${emptyMessage}</p>
                     </div>
                 `;
                 return;
             }
 
-            listContainer.innerHTML = pendingPayments.map(payment => {
+            listContainer.innerHTML = payments.map(payment => {
                 const statusColor = {
                     'pending': '#ffd93d',
+                    'success': '#22c55e',
                     'failed': '#ff4444',
                     'expired': '#ff9f40',
                     'cancelled': '#999'
@@ -1261,13 +1317,15 @@
 
                 const statusText = {
                     'pending': 'Pending',
+                    'success': 'Sukses',
                     'failed': 'Gagal',
                     'expired': 'Expired',
                     'cancelled': 'Dibatalkan'
                 }[payment.status] || payment.status;
 
-                const createdDate = new Date(payment.created_at);
-                const formattedDate = createdDate.toLocaleDateString('id-ID', {
+                const dateToShow = payment.paid_at || payment.created_at;
+                const displayDate = new Date(dateToShow);
+                const formattedDate = displayDate.toLocaleDateString('id-ID', {
                     day: '2-digit',
                     month: 'short',
                     year: 'numeric',
@@ -1275,16 +1333,23 @@
                     minute: '2-digit'
                 });
 
+                const isClickable = currentHistoryTab === 'ongoing' && payment.status === 'pending';
+                const clickHandler = isClickable ? `onclick="reopenTransaction('${payment.transaction_id}')"` : '';
+                const cursorStyle = isClickable ? 'cursor: pointer;' : 'cursor: default;';
+                const hoverEffect = isClickable 
+                    ? `onmouseover="this.style.borderColor='rgba(212, 175, 55, 0.6)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='rgba(212, 175, 55, 0.3)'; this.style.transform='translateY(0)'"` 
+                    : '';
+
                 return `
-                    <div onclick="reopenTransaction('${payment.transaction_id}')" style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95)); border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 10px; padding: 0.75rem; margin-bottom: 0.75rem; cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.borderColor='rgba(212, 175, 55, 0.6)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='rgba(212, 175, 55, 0.3)'; this.style.transform='translateY(0)'">
-                        <div style="display: flex; justify-between; align-items: start; margin-bottom: 0.4rem;">
+                    <div ${clickHandler} style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95)); border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 10px; padding: 0.75rem; margin-bottom: 0.75rem; ${cursorStyle} transition: all 0.3s ease;" ${hoverEffect}>
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.4rem;">
                             <div>
                                 <p style="font-size: 0.8rem; font-weight: 700; color: #d4af37; margin-bottom: 0.2rem;">${payment.package_name}</p>
                                 <p style="font-size: 0.65rem; color: rgba(255, 255, 255, 0.5); font-family: 'Courier New', monospace;">${payment.transaction_id}</p>
                             </div>
-                            <span style="background: ${statusColor}; color: #0f0f1e; padding: 2px 8px; border-radius: 4px; font-size: 0.65rem; font-weight: 700;">${statusText}</span>
+                            <span style="background: ${statusColor}; color: ${payment.status === 'success' ? '#fff' : '#0f0f1e'}; padding: 2px 8px; border-radius: 4px; font-size: 0.65rem; font-weight: 700;">${statusText}</span>
                         </div>
-                        <div style="display: flex; justify-between; align-items: center;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
                             <p style="font-size: 0.85rem; font-weight: 700; color: #fff;">${formatRupiah(payment.amount)}</p>
                             <p style="font-size: 0.65rem; color: rgba(255, 255, 255, 0.5);">${formattedDate}</p>
                         </div>
@@ -1294,7 +1359,7 @@
         }
 
         async function reopenTransaction(transactionId) {
-            const payment = pendingPayments.find(p => p.transaction_id === transactionId);
+            const payment = ongoingPayments.find(p => p.transaction_id === transactionId);
             if (!payment) {
                 console.error('Payment not found:', transactionId);
                 return;
@@ -1339,11 +1404,11 @@
             });
         }
 
-        // Load pending payments on page load
+        // Load payment history on page load
         window.addEventListener('load', () => {
-            loadPendingPayments();
+            loadPaymentHistory();
             // Refresh every 30 seconds
-            setInterval(loadPendingPayments, 30000);
+            setInterval(loadPaymentHistory, 30000);
         });
 
         // Close history modal when clicking backdrop
