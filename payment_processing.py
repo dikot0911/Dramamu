@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 def extend_vip_atomic(
     db: Session,
     user: User,
-    days_to_add: float
+    days_to_add: int
 ) -> Tuple[bool, Optional[str]]:
     """
     Atomically extend VIP expiry using database-level operations.
@@ -105,7 +105,7 @@ def process_payment_success(
     db: Session,
     payment: Payment,
     user: User,
-    vip_days: float
+    vip_days: int
 ) -> Tuple[bool, Optional[str]]:
     """
     Process successful payment with proper transaction boundaries.
