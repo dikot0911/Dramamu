@@ -2493,18 +2493,13 @@ async def payment_callback(callback: PaymentCallback):
                 ).first()
                 if user:
                     days_map = {
-                        "VIP 1 Jam": 1/24,  # 1 hour
                         "VIP 1 Hari": 1,
                         "VIP 3 Hari": 3,
                         "VIP 7 Hari": 7,
                         "VIP 15 Hari": 15,
                         "VIP 30 Hari": 30
                     }
-                    package_name_str = str(payment.package_name)
-                    if package_name_str not in days_map:
-                        logger.error(f"❌ UNKNOWN PACKAGE: '{package_name_str}' - rejecting to prevent wrong VIP duration")
-                        raise HTTPException(status_code=400, detail=f"Package tidak dikenal: {package_name_str}")
-                    days = days_map[package_name_str]
+                    days = days_map.get(str(payment.package_name), 1)
                     
                     user.is_vip = True  # type: ignore
                     current_expiry_col = user.vip_expires_at
