@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse, RedirectResponse, Response
 from pydantic import BaseModel
 from sqlalchemy import text
 from database import SessionLocal, User, Movie, Favorite, Like, WatchHistory, DramaRequest, Withdrawal, Payment, PaymentCommission, Broadcast, init_db, check_and_update_vip_expiry, serialize_movie
+from schema_migrations import run_migrations, validate_critical_schema
 from config import DOKU_CLIENT_ID, DOKU_SECRET_KEY, QRIS_PW_API_KEY, QRIS_PW_API_SECRET, QRIS_PW_API_URL, TELEGRAM_BOT_TOKEN, TELEGRAM_BOT_USERNAME, URL_CARI_JUDUL, URL_BELI_VIP, ALLOWED_ORIGINS, BASE_URL, FRONTEND_URL, now_utc, is_production
 from telebot import types
 from admin_api import router as admin_router
@@ -207,6 +208,19 @@ if os.path.exists("frontend/assets/qris"):
 async def startup_event():
     """Setup database waktu app startup"""
     init_db()
+    
+    # Run pending migrations otomatis saat startup
+    logger.info("🔄 Running database migrations...")
+    migration_success = run_migrations()
+    if migration_success:
+        logger.info("✅ Database migrations completed")
+    else:
+        logger.error("❌ Database migrations failed - check logs for details")
+    
+    # Validate schema setelah migrations
+    schema_valid = validate_critical_schema()
+    if not schema_valid:
+        logger.error("❌ Schema validation failed - some columns may be missing")
     
     # Setup Telegram webhook untuk production
     if is_production() and TELEGRAM_BOT_TOKEN:

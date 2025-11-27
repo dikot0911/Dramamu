@@ -291,6 +291,7 @@ class Part(Base):
     views = Column(Integer, default=0)
     created_at = Column(DateTime, default=now_utc)
     updated_at = Column(DateTime, default=now_utc, onupdate=now_utc)
+    deleted_at = Column(DateTime, nullable=True)  # BUG FIX: Sync with migration 011
     
     __table_args__ = (
         UniqueConstraint('movie_id', 'part_number', name='uq_part_movie_number'),
