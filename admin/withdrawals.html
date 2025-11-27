@@ -21,55 +21,61 @@
 <body data-page="withdrawals">
     <div class="admin-layout">
         <!-- Desktop Sidebar - Static (tidak reload) -->
+        <!-- DESKTOP_SIDEBAR_START -->
         <aside class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <div class="logo">
-                    <img src="assets/logo-dramamu.jpg" alt="Dramamu Logo">
-                </div>
-                <h2>Dramamu Admin</h2>
-                <p class="admin-subtitle">Panel Kontrol</p>
-            </div>
-            <nav class="sidebar-nav">
-                <a href="dashboard.html" class="nav-item" data-page="dashboard">
-                    <span class="nav-icon" data-icon="dashboard" data-icon-size="md"></span>
-                    <span>Dashboard</span>
-                </a>
-                <a href="analytics.html" class="nav-item" data-page="analytics">
-                    <span class="nav-icon" data-icon="barChart" data-icon-size="md"></span>
-                    <span>Analytics</span>
-                </a>
-                <a href="users.html" class="nav-item" data-page="users">
-                    <span class="nav-icon" data-icon="users" data-icon-size="md"></span>
-                    <span>Pengguna</span>
-                </a>
-                <a href="movies.html" class="nav-item" data-page="movies">
-                    <span class="nav-icon" data-icon="movie" data-icon-size="md"></span>
-                    <span>Drama</span>
-                </a>
-                <a href="requests.html" class="nav-item" data-page="requests">
-                    <span class="nav-icon" data-icon="fileText" data-icon-size="md"></span>
-                    <span>Permintaan</span>
-                    <span class="request-notification-badge notification-badge"></span>
-                </a>
-                <a href="withdrawals.html" class="nav-item" data-page="withdrawals">
-                    <span class="nav-icon" data-icon="dollarSign" data-icon-size="md"></span>
-                    <span>Penarikan</span>
-                    <span class="withdrawal-notification-badge notification-badge"></span>
-                </a>
-                <a href="payments.html" class="nav-item" data-page="payments">
-                    <span class="nav-icon" data-icon="creditCard" data-icon-size="md"></span>
-                    <span>Pembayaran</span>
-                </a>
-                <a href="settings.html" class="nav-item" data-page="settings">
-                    <span class="nav-icon" data-icon="settings" data-icon-size="md"></span>
-                    <span>Pengaturan</span>
-                </a>
-                <a href="admin-users.html" class="nav-item" data-page="admin-users" style="display: none;">
-                    <span class="nav-icon" data-icon="shield" data-icon-size="md"></span>
-                    <span>Admin Users</span>
-                </a>
-            </nav>
-        </aside>
+    <div class="sidebar-header">
+        <div class="logo">
+            <img src="assets/logo-dramamu.jpg" alt="Dramamu Logo">
+        </div>
+        <h2>Dramamu Admin</h2>
+        <p class="admin-subtitle">Panel Kontrol</p>
+    </div>
+    <nav class="sidebar-nav">
+        <a href="dashboard.html" class="nav-item" data-page="dashboard">
+            <span class="nav-icon" data-icon="dashboard" data-icon-size="md"></span>
+            <span>Dashboard</span>
+        </a>
+        <a href="analytics.html" class="nav-item" data-page="analytics">
+            <span class="nav-icon" data-icon="barChart" data-icon-size="md"></span>
+            <span>Analytics</span>
+        </a>
+        <a href="users.html" class="nav-item" data-page="users">
+            <span class="nav-icon" data-icon="users" data-icon-size="md"></span>
+            <span>Pengguna</span>
+        </a>
+        <a href="movies.html" class="nav-item" data-page="movies">
+            <span class="nav-icon" data-icon="movie" data-icon-size="md"></span>
+            <span>Drama</span>
+        </a>
+        <a href="requests.html" class="nav-item" data-page="requests">
+            <span class="nav-icon" data-icon="fileText" data-icon-size="md"></span>
+            <span>Permintaan</span>
+            <span class="request-notification-badge notification-badge"></span>
+        </a>
+        <a href="withdrawals.html" class="nav-item" data-page="withdrawals">
+            <span class="nav-icon" data-icon="dollarSign" data-icon-size="md"></span>
+            <span>Penarikan</span>
+            <span class="withdrawal-notification-badge notification-badge"></span>
+        </a>
+        <a href="payments.html" class="nav-item" data-page="payments">
+            <span class="nav-icon" data-icon="creditCard" data-icon-size="md"></span>
+            <span>Pembayaran</span>
+        </a>
+        <a href="payment-settings.html" class="nav-item" data-page="payment-settings">
+            <span class="nav-icon" data-icon="wallet" data-icon-size="md"></span>
+            <span>Pengaturan Pembayaran</span>
+        </a>
+        <a href="settings.html" class="nav-item" data-page="settings">
+            <span class="nav-icon" data-icon="settings" data-icon-size="md"></span>
+            <span>Pengaturan</span>
+        </a>
+        <a href="admin-users.html" class="nav-item" data-page="admin-users" style="display: none;">
+            <span class="nav-icon" data-icon="shield" data-icon-size="md"></span>
+            <span>Admin Users</span>
+        </a>
+    </nav>
+</aside>
+        <!-- DESKTOP_SIDEBAR_END -->
 
         <main class="main-content">
             <header class="header">
@@ -769,7 +775,7 @@
     </script>
 </html>
 
-<!-- MOBILE SIDEBAR -->
+<!-- MOBILE_SIDEBAR_START -->
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
 <aside class="sidebar-mobile" id="sidebarMobile">
     <div class="sidebar-header">
@@ -783,16 +789,52 @@
         </button>
     </div>
     <nav class="sidebar-nav">
-        <a href="dashboard.html" class="nav-item" data-page="dashboard"><span class="nav-icon" data-icon="dashboard" data-icon-size="md"></span><span>Dashboard</span></a>
-        <a href="analytics.html" class="nav-item" data-page="analytics"><span class="nav-icon" data-icon="barChart" data-icon-size="md"></span><span>Analytics</span></a>
-        <a href="users.html" class="nav-item" data-page="users"><span class="nav-icon" data-icon="users" data-icon-size="md"></span><span>Pengguna</span></a>
-        <a href="movies.html" class="nav-item" data-page="movies"><span class="nav-icon" data-icon="movie" data-icon-size="md"></span><span>Drama</span></a>
-        <a href="requests.html" class="nav-item" data-page="requests"><span class="nav-icon" data-icon="fileText" data-icon-size="md"></span><span>Permintaan</span></a>
-        <a href="withdrawals.html" class="nav-item" data-page="withdrawals"><span class="nav-icon" data-icon="dollarSign" data-icon-size="md"></span><span>Penarikan</span></a>
-        <a href="payments.html" class="nav-item" data-page="payments"><span class="nav-icon" data-icon="creditCard" data-icon-size="md"></span><span>Pembayaran</span></a>
-        <a href="settings.html" class="nav-item" data-page="settings"><span class="nav-icon" data-icon="settings" data-icon-size="md"></span><span>Pengaturan</span></a>
-        <a href="admin-users.html" class="nav-item" data-page="admin-users" style="display: none;"><span class="nav-icon" data-icon="shield" data-icon-size="md"></span><span>Admin Users</span></a>
+        <a href="dashboard.html" class="nav-item" data-page="dashboard">
+            <span class="nav-icon" data-icon="dashboard" data-icon-size="md"></span>
+            <span>Dashboard</span>
+        </a>
+        <a href="analytics.html" class="nav-item" data-page="analytics">
+            <span class="nav-icon" data-icon="barChart" data-icon-size="md"></span>
+            <span>Analytics</span>
+        </a>
+        <a href="users.html" class="nav-item" data-page="users">
+            <span class="nav-icon" data-icon="users" data-icon-size="md"></span>
+            <span>Pengguna</span>
+        </a>
+        <a href="movies.html" class="nav-item" data-page="movies">
+            <span class="nav-icon" data-icon="movie" data-icon-size="md"></span>
+            <span>Drama</span>
+        </a>
+        <a href="requests.html" class="nav-item" data-page="requests">
+            <span class="nav-icon" data-icon="fileText" data-icon-size="md"></span>
+            <span>Permintaan</span>
+            <span class="request-notification-badge notification-badge"></span>
+        </a>
+        <a href="withdrawals.html" class="nav-item" data-page="withdrawals">
+            <span class="nav-icon" data-icon="dollarSign" data-icon-size="md"></span>
+            <span>Penarikan</span>
+            <span class="withdrawal-notification-badge notification-badge"></span>
+        </a>
+        <a href="payments.html" class="nav-item" data-page="payments">
+            <span class="nav-icon" data-icon="creditCard" data-icon-size="md"></span>
+            <span>Pembayaran</span>
+        </a>
+        <a href="payment-settings.html" class="nav-item" data-page="payment-settings">
+            <span class="nav-icon" data-icon="wallet" data-icon-size="md"></span>
+            <span>Pengaturan Pembayaran</span>
+        </a>
+        <a href="settings.html" class="nav-item" data-page="settings">
+            <span class="nav-icon" data-icon="settings" data-icon-size="md"></span>
+            <span>Pengaturan</span>
+        </a>
+        <a href="admin-users.html" class="nav-item" data-page="admin-users" style="display: none;">
+            <span class="nav-icon" data-icon="shield" data-icon-size="md"></span>
+            <span>Admin Users</span>
+        </a>
     </nav>
-    <div id="sidebarMobileAdminUsers" class="sidebar-mobile-content"><div class="loading-message">Memuat...</div></div>
+    <div id="sidebarMobileAdminUsers" class="sidebar-mobile-content">
+        <div class="loading-message">Memuat...</div>
+    </div>
 </aside>
+<!-- MOBILE_SIDEBAR_END -->
 </body>

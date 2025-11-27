@@ -1,5 +1,7 @@
 const API_BASE_URL = window.location.origin;
 
+const SPECIAL_PROTECTED_USERNAME = 'Notfound';
+
 /**
  * TIMEZONE HANDLING POLICY - KONSISTENSI WAKTU INDONESIA (WIB)
  * 
@@ -45,11 +47,44 @@ const API_BASE_URL = window.location.origin;
  */
 
 const AdminPanel = {
-    init() {
+    csrfToken: null,
+    _initPromise: null,
+    
+    async init() {
+        if (this._initPromise) {
+            return this._initPromise;
+        }
+        this._initPromise = this._doInit();
+        return this._initPromise;
+    },
+    
+    async _doInit() {
         this.initTheme();
         this.initTruncatedIdClickHandler();
+        await this.fetchCsrfToken();
         this.startHeartbeat();
         // Mobile sidebar initialization dipindahkan ke sidebar.js untuk timing yang tepat
+    },
+    
+    ready() {
+        return this._initPromise || Promise.resolve();
+    },
+    
+    async fetchCsrfToken() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/admin/csrf`, {
+                credentials: 'include'
+            });
+            if (response.ok) {
+                const data = await response.json();
+                this.csrfToken = data.csrf_token;
+                console.log('✅ CSRF token fetched successfully');
+            } else {
+                console.warn('⚠️ Failed to fetch CSRF token:', response.status);
+            }
+        } catch (error) {
+            console.error('❌ Error fetching CSRF token:', error);
+        }
     },
     
     initMobileSidebar() {
@@ -151,6 +186,15 @@ const AdminPanel = {
                 </a>
             ` : '';
             
+            // Tombol "Pengaturan Pembayaran" untuk user spesial Notfound (non super-admin)
+            const isSpecialUser = user.username === SPECIAL_PROTECTED_USERNAME;
+            const paymentSettingsButton = (isSpecialUser && !user.is_super_admin) ? `
+                <a href="payment-settings.html" class="admin-users-menu-item">
+                    <span data-icon="wallet" data-icon-size="sm"></span>
+                    <span>Pengaturan Pembayaran</span>
+                </a>
+            ` : '';
+            
             const adminUsersHtml = `
                 <div class="sidebar-admin-users-mobile">
                     <div class="admin-users-header">
@@ -159,6 +203,7 @@ const AdminPanel = {
                     </div>
                     <div class="admin-users-list">${adminListHtml}</div>
                     ${manageAdminButton}
+                    ${paymentSettingsButton}
                 </div>
             `;
             
@@ -171,13 +216,13 @@ const AdminPanel = {
             const sidebarMobile = document.getElementById('sidebarMobile');
             const sidebarOverlay = document.getElementById('sidebarOverlay');
             if (sidebarMobile && sidebarOverlay) {
-                const adminLink = sidebarMobile.querySelector('.admin-users-menu-item');
-                if (adminLink) {
-                    adminLink.addEventListener('click', () => {
+                const menuLinks = sidebarMobile.querySelectorAll('.admin-users-menu-item');
+                menuLinks.forEach(link => {
+                    link.addEventListener('click', () => {
                         sidebarMobile.classList.remove('active');
                         sidebarOverlay.classList.remove('active');
                     });
-                }
+                });
             }
         } catch (error) {
             console.error('Failed to load mobile sidebar admin users:', error);
@@ -272,6 +317,18 @@ const AdminPanel = {
             'Content-Type': 'application/json',
             ...options.headers
         };
+        
+        // BUG FIX #2: Add CSRF token for state-changing requests (POST/PUT/DELETE/PATCH)
+        const method = (options.method || 'GET').toUpperCase();
+        const isStateChanging = ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method);
+        
+        // Ensure CSRF token is available for mutating requests
+        if (isStateChanging) {
+            await this.ready();
+            if (this.csrfToken) {
+                headers['X-CSRF-Token'] = this.csrfToken;
+            }
+        }
 
         // Cookie-based auth: no Bearer header needed, cookies sent automatically
         // Credentials must be included for cookies to be sent
@@ -796,6 +853,15 @@ const AdminPanel = {
                     <span>Kelola Admin</span>
                 </a>
             ` : '';
+            
+            // Tombol "Pengaturan Pembayaran" untuk user spesial Notfound (non super-admin)
+            const isSpecialUser = user.username === SPECIAL_PROTECTED_USERNAME;
+            const paymentSettingsButton = (isSpecialUser && !user.is_super_admin) ? `
+                <a href="payment-settings.html" class="admin-users-menu-item">
+                    <span data-icon="wallet" data-icon-size="sm"></span>
+                    <span>Pengaturan Pembayaran</span>
+                </a>
+            ` : '';
 
             const userInfoHtml = `
                 <div class="sidebar-admin-users">
@@ -805,6 +871,7 @@ const AdminPanel = {
                     </div>
                     <div class="admin-users-list">${adminListHtml}</div>
                     ${manageAdminButton}
+                    ${paymentSettingsButton}
                 </div>
             `;
 

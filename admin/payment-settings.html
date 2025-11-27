@@ -1,0 +1,1344 @@
+<!DOCTYPE html>
+<html lang="id" translate="no">
+<head>
+    <base href="/panel/">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv=1764179231"Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv=1764179231"Pragma" content="no-cache">
+    <meta http-equiv=1764179231"Expires" content="0">
+    <meta name="google" content="notranslate">
+    <title>Payment Settings - Admin Panel</title>
+    <link rel="stylesheet" href="styles.css?v=1764179231">
+    <link rel="stylesheet" href="styles-mobile.css?v=1764179231">
+    <script src="icons.js?v=1764179231"></script>
+    <script src="themeToggle.js?v=1764179231"></script>
+    <script src="sidebar.js?v=1764179231"></script>
+    <script src="expand.js?v=1764179231"></script>
+    <script src="confirm-modal.js?v=1764179231"></script>
+</head>
+<body data-page="payment-settings">
+    <div class="admin-layout">
+        <!-- DESKTOP_SIDEBAR_START -->
+        <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <div class="logo">
+            <img src="assets/logo-dramamu.jpg" alt="Dramamu Logo">
+        </div>
+        <h2>Dramamu Admin</h2>
+        <p class="admin-subtitle">Panel Kontrol</p>
+    </div>
+    <nav class="sidebar-nav">
+        <a href="dashboard.html" class="nav-item" data-page="dashboard">
+            <span class="nav-icon" data-icon="dashboard" data-icon-size="md"></span>
+            <span>Dashboard</span>
+        </a>
+        <a href="analytics.html" class="nav-item" data-page="analytics">
+            <span class="nav-icon" data-icon="barChart" data-icon-size="md"></span>
+            <span>Analytics</span>
+        </a>
+        <a href="users.html" class="nav-item" data-page="users">
+            <span class="nav-icon" data-icon="users" data-icon-size="md"></span>
+            <span>Pengguna</span>
+        </a>
+        <a href="movies.html" class="nav-item" data-page="movies">
+            <span class="nav-icon" data-icon="movie" data-icon-size="md"></span>
+            <span>Drama</span>
+        </a>
+        <a href="requests.html" class="nav-item" data-page="requests">
+            <span class="nav-icon" data-icon="fileText" data-icon-size="md"></span>
+            <span>Permintaan</span>
+            <span class="request-notification-badge notification-badge"></span>
+        </a>
+        <a href="withdrawals.html" class="nav-item" data-page="withdrawals">
+            <span class="nav-icon" data-icon="dollarSign" data-icon-size="md"></span>
+            <span>Penarikan</span>
+            <span class="withdrawal-notification-badge notification-badge"></span>
+        </a>
+        <a href="payments.html" class="nav-item" data-page="payments">
+            <span class="nav-icon" data-icon="creditCard" data-icon-size="md"></span>
+            <span>Pembayaran</span>
+        </a>
+        <a href="payment-settings.html" class="nav-item" data-page="payment-settings">
+            <span class="nav-icon" data-icon="wallet" data-icon-size="md"></span>
+            <span>Pengaturan Pembayaran</span>
+        </a>
+        <a href="settings.html" class="nav-item" data-page="settings">
+            <span class="nav-icon" data-icon="settings" data-icon-size="md"></span>
+            <span>Pengaturan</span>
+        </a>
+        <a href="admin-users.html" class="nav-item" data-page="admin-users" style="display: none;">
+            <span class="nav-icon" data-icon="shield" data-icon-size="md"></span>
+            <span>Admin Users</span>
+        </a>
+    </nav>
+</aside>
+        <!-- DESKTOP_SIDEBAR_END -->
+
+        <main class="main-content">
+            <header class="header">
+                <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Toggle Menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <div class="breadcrumb">
+                    <span>Payment Gateway</span>
+                </div>
+                <div class="header-actions">
+                    <div id="themeToggleContainer"></div>
+                    <div class="user-info">
+                        <span data-icon="user" data-icon-size="sm" style="margin-right: 6px;"></span>
+                        <span id="adminUsername">Admin</span>
+                    </div>
+                    <button class="btn btn-secondary" onclick="AdminPanel.logout()">
+                        <span data-icon="logOut" data-icon-size="sm"></span>
+                        <span>Logout</span>
+                    </button>
+                </div>
+            </header>
+
+            <div class="content">
+                <div class="page-header">
+                    <h1 class="page-title">Konfigurasi Payment Gateway</h1>
+                    <div class="page-actions">
+                        <button class="btn btn-primary" onclick="saveAllSettings()">
+                            <span data-icon="save" data-icon-size="sm"></span>
+                            <span>Simpan Pengaturan</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="activeGatewayBanner" class="gateway-status-banner">
+                    <div class="gateway-status-icon">
+                        <span data-icon="creditCard" data-icon-size="md"></span>
+                    </div>
+                    <div class="gateway-status-info">
+                        <h4 id="activeGatewayName">Loading...</h4>
+                        <p id="activeGatewayDesc">Sedang memuat konfigurasi...</p>
+                    </div>
+                </div>
+
+                <div class="payment-tabs">
+                    <button class="payment-tab active" onclick="switchTab('gateways')">
+                        <span data-icon="creditCard" data-icon-size="sm"></span>
+                        Payment Gateways
+                    </button>
+                    <button class="payment-tab" onclick="switchTab('qris-manual')">
+                        <span data-icon="image" data-icon-size="sm"></span>
+                        QRIS Manual
+                    </button>
+                </div>
+
+                <div id="gateways-tab" class="payment-tab-content active">
+                    <!-- QRIS.PW Gateway -->
+                    <div class="gateway-card" id="qrispw-card">
+                        <div class="gateway-card-header">
+                            <div class="gateway-card-title">
+                                <h3>QRIS.PW</h3>
+                                <span class="gateway-badge inactive" id="qrispw-status">Tidak Aktif</span>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="qrispw-enabled" onchange="toggleGateway('qrispw')">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="gateway-card-body">
+                            <p class="gateway-description">
+                                Gateway QRIS otomatis dengan integrasi API. Pembayaran akan diproses secara realtime.
+                            </p>
+                            <div class="gateway-form">
+                                <div class="gateway-form-row">
+                                    <div class="form-group">
+                                        <label>API Key</label>
+                                        <input type="text" id="qrispw-api-key" class="form-control" placeholder="Masukkan API Key">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>API Secret</label>
+                                        <input type="password" id="qrispw-api-secret" class="form-control" placeholder="Masukkan API Secret">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>API URL</label>
+                                    <input type="text" id="qrispw-api-url" class="form-control" value="https://qris.pw/api" readonly>
+                                </div>
+                            </div>
+                            <div class="credentials-info">
+                                <p class="credentials-helper-text">
+                                    Masukkan API Key dan Secret di form di atas, lalu klik <strong>Simpan Pengaturan</strong>. Kredensial akan tersimpan dan langsung aktif.
+                                </p>
+                            </div>
+                            <div class="credentials-status">
+                                <h4>Status Kredensial</h4>
+                                <div id="qrispw-env-status" class="status-text">Memuat...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- QRIS Interactive (Manual) -->
+                    <div class="gateway-card" id="qris-interactive-card">
+                        <div class="gateway-card-header">
+                            <div class="gateway-card-title">
+                                <h3>QRIS Interactive (Manual)</h3>
+                                <span class="gateway-badge inactive" id="qris-interactive-status">Tidak Aktif</span>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="qris-interactive-enabled" onchange="toggleGateway('qris-interactive')">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="gateway-card-body">
+                            <p class="gateway-description">
+                                Pembayaran manual menggunakan gambar QRIS statis. Admin perlu memverifikasi pembayaran secara manual.
+                            </p>
+                            <div class="alert-warning">
+                                <div class="alert-warning-header">
+                                    <span data-icon="alertTriangle" data-icon-size="sm"></span>
+                                    <span>Perhatian</span>
+                                </div>
+                                <div class="alert-warning-text">
+                                    Mode ini memerlukan verifikasi manual oleh admin. Pastikan gambar QRIS sudah disiapkan untuk setiap nominal yang tersedia.
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Nominal QRIS yang Tersedia</label>
+                                <div id="qris-amounts-list" class="qris-grid">
+                                    <div class="loading">Memuat...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- DOKU Gateway -->
+                    <div class="gateway-card" id="doku-card">
+                        <div class="gateway-card-header">
+                            <div class="gateway-card-title">
+                                <h3>DOKU</h3>
+                                <span class="gateway-badge inactive" id="doku-status">Tidak Aktif</span>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="doku-enabled" onchange="toggleGateway('doku')">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="gateway-card-body">
+                            <p class="gateway-description">
+                                Payment gateway DOKU untuk berbagai metode pembayaran termasuk Virtual Account, E-Wallet, dan QRIS.
+                            </p>
+                            <div class="gateway-form">
+                                <div class="gateway-form-row">
+                                    <div class="form-group">
+                                        <label>Client ID</label>
+                                        <input type="text" id="doku-client-id" class="form-control" placeholder="Masukkan Client ID">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Secret Key</label>
+                                        <input type="password" id="doku-secret-key" class="form-control" placeholder="Masukkan Secret Key">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Environment</label>
+                                    <select id="doku-environment" class="form-control">
+                                        <option value="sandbox">Sandbox (Testing)</option>
+                                        <option value="production">Production (Live)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="credentials-info">
+                                <p class="credentials-helper-text">
+                                    Masukkan Client ID dan Secret Key di form di atas, lalu klik <strong>Simpan Pengaturan</strong>. Kredensial akan tersimpan dan langsung aktif.
+                                </p>
+                            </div>
+                            <div class="credentials-status">
+                                <h4>Status Kredensial</h4>
+                                <div id="doku-env-status" class="status-text">Memuat...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Midtrans Gateway -->
+                    <div class="gateway-card" id="midtrans-card">
+                        <div class="gateway-card-header">
+                            <div class="gateway-card-title">
+                                <h3>Midtrans</h3>
+                                <span class="gateway-badge inactive" id="midtrans-status">Tidak Aktif</span>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="midtrans-enabled" onchange="toggleGateway('midtrans')">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="gateway-card-body">
+                            <p class="gateway-description">
+                                Payment gateway Midtrans mendukung berbagai metode pembayaran populer di Indonesia.
+                            </p>
+                            <div class="gateway-form">
+                                <div class="gateway-form-row">
+                                    <div class="form-group">
+                                        <label>Server Key</label>
+                                        <input type="password" id="midtrans-server-key" class="form-control" placeholder="Masukkan Server Key">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Client Key</label>
+                                        <input type="text" id="midtrans-client-key" class="form-control" placeholder="Masukkan Client Key">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Merchant ID</label>
+                                    <input type="text" id="midtrans-merchant-id" class="form-control" placeholder="Masukkan Merchant ID">
+                                </div>
+                                <div class="form-group">
+                                    <label>Environment</label>
+                                    <select id="midtrans-environment" class="form-control">
+                                        <option value="sandbox">Sandbox (Testing)</option>
+                                        <option value="production">Production (Live)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="credentials-info">
+                                <p class="credentials-helper-text">
+                                    Masukkan Server Key, Client Key dan Merchant ID di form di atas, lalu klik <strong>Simpan Pengaturan</strong>. Kredensial akan tersimpan dan langsung aktif.
+                                </p>
+                            </div>
+                            <div class="credentials-status">
+                                <h4>Status Kredensial</h4>
+                                <div id="midtrans-env-status" class="status-text">Memuat...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="qris-manual-tab" class="payment-tab-content">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2>Kelola Gambar QRIS Manual</h2>
+                        </div>
+                        <div class="card-body">
+                            <p class="gateway-description">
+                                Upload gambar QRIS untuk setiap nominal pembayaran. Format file: PNG atau JPG.
+                                Nama file harus sesuai dengan nominal (contoh: 2000.png, 5000.png, dll).
+                            </p>
+                            
+                            <div class="upload-form-row">
+                                <div class="form-group">
+                                    <label>Nominal</label>
+                                    <input type="number" id="new-qris-amount" class="form-control" placeholder="Contoh: 50000">
+                                </div>
+                                <div class="form-group">
+                                    <label>Gambar QRIS</label>
+                                    <input type="file" id="new-qris-image" accept="image/png,image/jpeg" style="display: none;">
+                                    <button class="btn btn-secondary" onclick="document.getElementById('new-qris-image').click()">
+                                        <span data-icon="upload" data-icon-size="sm"></span>
+                                        <span>Pilih Gambar</span>
+                                    </button>
+                                    <div id="selected-file-name" class="file-name-display">Belum ada file</div>
+                                </div>
+                                <div class="form-group">
+                                    <label>&nbsp;</label>
+                                    <button class="btn btn-primary" onclick="uploadQrisImage()">
+                                        <span data-icon="plus" data-icon-size="sm"></span>
+                                        <span>Tambah</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <hr style="margin: var(--space-xl) 0; border: 1px solid var(--border-color);">
+
+                            <h3 style="margin-bottom: var(--space-md); font-size: var(--font-heading-md);">Gambar QRIS yang Tersedia</h3>
+                            <div id="qris-images-list" class="qris-grid">
+                                <div class="loading">Memuat...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div class="qris-dropdown-backdrop" id="qrisDropdownBackdrop" onclick="closeAllQrisMenus()"></div>
+
+    <div class="edit-qris-modal-overlay" id="editQrisModal">
+        <div class="edit-qris-modal">
+            <div class="edit-qris-modal-header">
+                <h3>Edit Gambar QRIS</h3>
+                <button class="edit-qris-modal-close" onclick="closeEditQrisModal()">
+                    <span data-icon="x" data-icon-size="sm"></span>
+                </button>
+            </div>
+            <div class="edit-qris-modal-body">
+                <div class="edit-qris-preview">
+                    <img id="editQrisPreview" src="/panel/assets/placeholder.png" alt="QRIS Preview">
+                </div>
+                <div class="form-group">
+                    <label>Nominal</label>
+                    <input type="number" id="editQrisAmount" class="form-control" readonly>
+                </div>
+                <div class="form-group">
+                    <label>Gambar Baru</label>
+                    <input type="file" id="editQrisFile" accept="image/png,image/jpeg" style="display: none;" onchange="document.getElementById('editQrisFileName').textContent = this.files[0]?.name || 'Belum ada file dipilih'; if(this.files[0]) { document.getElementById('editQrisPreview').src = URL.createObjectURL(this.files[0]); }">
+                    <button class="btn btn-secondary" onclick="document.getElementById('editQrisFile').click()">
+                        <span data-icon="upload" data-icon-size="sm"></span>
+                        <span>Pilih Gambar</span>
+                    </button>
+                    <div id="editQrisFileName" class="file-name-display">Belum ada file baru dipilih</div>
+                </div>
+            </div>
+            <div class="edit-qris-modal-footer">
+                <button class="btn btn-secondary" onclick="closeEditQrisModal()">Batal</button>
+                <button class="btn btn-primary" onclick="saveEditQris()">
+                    <span data-icon="save" data-icon-size="sm"></span>
+                    <span>Simpan</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="confirm-modal.js?v=1764179231"></script>
+    <script src="admin.js?v=1764179231"></script>
+    <script>
+        let paymentConfig = {
+            active_gateway: 'qrispw',
+            gateways: {
+                qrispw: { enabled: false, api_key: '', api_secret: '', api_url: 'https://qris.pw/api' },
+                'qris-interactive': { enabled: false, amounts: [] },
+                doku: { enabled: false, client_id: '', secret_key: '', environment: 'sandbox' },
+                midtrans: { enabled: false, server_key: '', client_key: '', merchant_id: '', environment: 'sandbox' }
+            }
+        };
+
+        const GATEWAY_NAMES = {
+            'qrispw': 'QRIS.PW',
+            'qris-interactive': 'QRIS Interactive (Manual)',
+            'doku': 'DOKU',
+            'midtrans': 'Midtrans'
+        };
+
+        const GATEWAY_DESCRIPTIONS = {
+            'qrispw': 'Pembayaran QRIS otomatis dengan API',
+            'qris-interactive': 'Pembayaran QRIS manual dengan verifikasi admin',
+            'doku': 'Payment gateway dengan berbagai metode pembayaran',
+            'midtrans': 'Payment gateway populer Indonesia'
+        };
+
+        let qrisStatusMap = {};
+        let activeQrisMenu = null;
+
+        function toggleQrisMenu(event, amount) {
+            event.stopPropagation();
+            const dropdown = document.getElementById(`dropdown-${amount}`);
+            
+            if (activeQrisMenu && activeQrisMenu !== dropdown) {
+                activeQrisMenu.classList.remove('show');
+            }
+            
+            if (dropdown) {
+                dropdown.classList.toggle('show');
+                activeQrisMenu = dropdown.classList.contains('show') ? dropdown : null;
+            }
+        }
+
+        function closeAllQrisMenus() {
+            if (activeQrisMenu) {
+                activeQrisMenu.classList.remove('show');
+                activeQrisMenu = null;
+            }
+        }
+
+        async function toggleQrisStatus(amount) {
+            const currentStatus = qrisStatusMap[amount] !== false;
+            const newStatus = !currentStatus;
+            qrisStatusMap[amount] = newStatus;
+            
+            const statusEl = document.getElementById(`status-${amount}`);
+            const toggleTextEl = document.getElementById(`toggle-text-${amount}`);
+            const toggleBtnEl = document.getElementById(`toggle-btn-${amount}`);
+            
+            if (statusEl) {
+                statusEl.textContent = newStatus ? 'Tersedia' : 'Tidak Tersedia';
+                statusEl.className = `qris-status ${newStatus ? 'status-available' : 'status-unavailable'}`;
+            }
+            
+            if (toggleTextEl) {
+                toggleTextEl.textContent = newStatus ? 'Nonaktifkan' : 'Aktifkan';
+            }
+            
+            if (toggleBtnEl) {
+                if (newStatus) {
+                    toggleBtnEl.classList.remove('inactive');
+                } else {
+                    toggleBtnEl.classList.add('inactive');
+                }
+            }
+            
+            try {
+                const config = {
+                    active_gateway: paymentConfig.active_gateway,
+                    qris_status: qrisStatusMap,
+                    gateways: paymentConfig.gateways || {}
+                };
+                
+                await AdminPanel.apiCall('/admin/payment-config', {
+                    method: 'PUT',
+                    body: JSON.stringify(config)
+                });
+                
+                paymentConfig.qris_status = qrisStatusMap;
+                AdminPanel.showToast(`Status QRIS ${formatCurrency(amount)}: ${newStatus ? 'Tersedia' : 'Tidak Tersedia'}`, 'success');
+            } catch (error) {
+                console.error('Error saving QRIS status:', error);
+                qrisStatusMap[amount] = currentStatus;
+                
+                if (statusEl) {
+                    statusEl.textContent = currentStatus ? 'Tersedia' : 'Tidak Tersedia';
+                    statusEl.className = `qris-status ${currentStatus ? 'status-available' : 'status-unavailable'}`;
+                }
+                if (toggleTextEl) {
+                    toggleTextEl.textContent = currentStatus ? 'Nonaktifkan' : 'Aktifkan';
+                }
+                if (toggleBtnEl) {
+                    toggleBtnEl.classList.toggle('inactive', !currentStatus);
+                }
+                
+                AdminPanel.showToast('Gagal menyimpan status QRIS', 'error');
+            }
+        }
+
+        function openEditQrisModal(amount, currentUrl) {
+            closeAllQrisMenus();
+            
+            const modal = document.getElementById('editQrisModal');
+            const previewImg = document.getElementById('editQrisPreview');
+            const amountInput = document.getElementById('editQrisAmount');
+            const fileInput = document.getElementById('editQrisFile');
+            const fileName = document.getElementById('editQrisFileName');
+            
+            if (modal && previewImg && amountInput) {
+                previewImg.src = currentUrl;
+                previewImg.onerror = function() { this.src = '/panel/assets/placeholder.png'; };
+                amountInput.value = amount;
+                amountInput.dataset.originalAmount = amount;
+                if (fileInput) fileInput.value = '';
+                if (fileName) fileName.textContent = 'Belum ada file baru dipilih';
+                
+                modal.classList.add('show');
+            }
+        }
+
+        function closeEditQrisModal() {
+            const modal = document.getElementById('editQrisModal');
+            if (modal) {
+                modal.classList.remove('show');
+            }
+        }
+
+        async function saveEditQris() {
+            const amountInput = document.getElementById('editQrisAmount');
+            const fileInput = document.getElementById('editQrisFile');
+            const saveBtn = document.querySelector('.edit-qris-modal-footer .btn-primary');
+            const originalAmount = amountInput.dataset.originalAmount;
+            const newAmount = amountInput.value;
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                AdminPanel.showToast('Pilih gambar baru untuk mengganti QRIS', 'warning');
+                return;
+            }
+            
+            const maxSize = 5 * 1024 * 1024;
+            if (file.size > maxSize) {
+                AdminPanel.showToast('Ukuran file terlalu besar. Maksimal 5 MB', 'error');
+                return;
+            }
+            
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+            if (!allowedTypes.includes(file.type)) {
+                AdminPanel.showToast('Format file tidak didukung. Gunakan JPEG, PNG, atau WebP', 'error');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('amount', newAmount);
+            formData.append('image', file);
+            
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = '<span class="spinner"></span> Menyimpan...';
+            }
+            
+            try {
+                if (originalAmount !== newAmount) {
+                    await AdminPanel.apiCall(`/admin/qris-images/${originalAmount}`, {
+                        method: 'DELETE'
+                    });
+                }
+                
+                const response = await fetch('/admin/qris-images/upload', {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'include',
+                    headers: {
+                        'X-CSRF-Token': AdminPanel.csrfToken
+                    }
+                });
+                
+                let errorMessage = 'Gagal mengupload gambar';
+                if (!response.ok) {
+                    try {
+                        const errorData = await response.json();
+                        errorMessage = errorData.detail || errorMessage;
+                    } catch (e) {
+                        errorMessage = `Upload gagal (${response.status})`;
+                    }
+                    throw new Error(errorMessage);
+                }
+                
+                const result = await response.json();
+                AdminPanel.showToast(result.message || 'Gambar QRIS berhasil diperbarui', 'success');
+                closeEditQrisModal();
+                loadQrisImages();
+            } catch (error) {
+                console.error('Error updating QRIS image:', error);
+                AdminPanel.showToast(error.message, 'error');
+            } finally {
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = '<span data-icon="save" data-icon-size="sm"></span><span>Simpan</span>';
+                    if (window.initIcons) initIcons();
+                }
+            }
+        }
+
+        document.addEventListener('click', function(event) {
+            if (!event.target.closest('.qris-menu-container')) {
+                closeAllQrisMenus();
+            }
+        });
+
+        async function loadPaymentConfig() {
+            console.log('[loadPaymentConfig] Starting...');
+            let configLoaded = false;
+            
+            try {
+                console.log('[loadPaymentConfig] Calling API...');
+                const response = await AdminPanel.apiCall('/admin/payment-config');
+                console.log('[loadPaymentConfig] Got response:', response);
+                
+                if (response && response.config) {
+                    paymentConfig = response.config;
+                    if (paymentConfig.qris_status && typeof paymentConfig.qris_status === 'object') {
+                        qrisStatusMap = {};
+                        for (const [key, value] of Object.entries(paymentConfig.qris_status)) {
+                            qrisStatusMap[parseInt(key)] = value;
+                        }
+                    }
+                    configLoaded = true;
+                }
+                updateUI();
+                console.log('[loadPaymentConfig] UI updated successfully');
+            } catch (error) {
+                console.error('[loadPaymentConfig] Error:', error);
+                AdminPanel.showToast('Gagal memuat konfigurasi payment: ' + error.message, 'error');
+                
+                const banner = document.getElementById('activeGatewayBanner');
+                const nameEl = document.getElementById('activeGatewayName');
+                const descEl = document.getElementById('activeGatewayDesc');
+                
+                if (nameEl) nameEl.textContent = 'Error';
+                if (descEl) descEl.textContent = 'Gagal memuat konfigurasi. Silakan refresh halaman.';
+                if (banner) banner.classList.add('error-state');
+                
+                updateUI();
+            }
+            
+            console.log('[loadPaymentConfig] Loading secondary data...');
+            try {
+                await Promise.allSettled([
+                    loadQrisImages().catch(e => {
+                        console.error('[loadPaymentConfig] loadQrisImages failed:', e);
+                        clearQrisLoadingState();
+                    }),
+                    loadEnvStatus().catch(e => {
+                        console.error('[loadPaymentConfig] loadEnvStatus failed:', e);
+                        clearEnvStatusLoadingState();
+                    })
+                ]);
+            } catch (e) {
+                console.error('[loadPaymentConfig] Secondary data loading failed:', e);
+                clearQrisLoadingState();
+                clearEnvStatusLoadingState();
+            }
+            
+            console.log('[loadPaymentConfig] Complete');
+        }
+        
+        function clearQrisLoadingState() {
+            const container = document.getElementById('qris-images-list');
+            const amountsContainer = document.getElementById('qris-amounts-list');
+            if (container && container.innerHTML.includes('Memuat')) {
+                container.innerHTML = '<div class="empty-state error-state">Gagal memuat gambar QRIS. <button class="btn btn-secondary btn-sm" onclick="loadQrisImages()">Coba Lagi</button></div>';
+            }
+            if (amountsContainer && amountsContainer.innerHTML.includes('Memuat')) {
+                amountsContainer.innerHTML = '<div class="empty-state error-state">Gagal memuat data QRIS.</div>';
+            }
+        }
+        
+        function clearEnvStatusLoadingState() {
+            const qrispwStatus = document.getElementById('qrispw-env-status');
+            const dokuStatus = document.getElementById('doku-env-status');
+            const midtransStatus = document.getElementById('midtrans-env-status');
+            
+            if (qrispwStatus && qrispwStatus.textContent === 'Memuat...') {
+                qrispwStatus.innerHTML = '<span class="status-text warning">Gagal memuat status</span>';
+            }
+            if (dokuStatus && dokuStatus.textContent === 'Memuat...') {
+                dokuStatus.innerHTML = '<span class="status-text warning">Gagal memuat status</span>';
+            }
+            if (midtransStatus && midtransStatus.textContent === 'Memuat...') {
+                midtransStatus.innerHTML = '<span class="status-text warning">Gagal memuat status</span>';
+            }
+        }
+
+        function updateUI() {
+            const activeGateway = paymentConfig.active_gateway || 'qrispw';
+            
+            document.getElementById('activeGatewayName').textContent = GATEWAY_NAMES[activeGateway] || activeGateway;
+            document.getElementById('activeGatewayDesc').textContent = GATEWAY_DESCRIPTIONS[activeGateway] || 'Gateway aktif';
+
+            ['qrispw', 'qris-interactive', 'doku', 'midtrans'].forEach(gateway => {
+                const config = paymentConfig.gateways?.[gateway] || {};
+                const isEnabled = config.enabled || false;
+                const isActive = activeGateway === gateway;
+                
+                const card = document.getElementById(`${gateway}-card`);
+                const statusBadge = document.getElementById(`${gateway}-status`);
+                const toggle = document.getElementById(`${gateway}-enabled`);
+                
+                if (card) {
+                    card.classList.toggle('active', isActive);
+                }
+                
+                if (statusBadge) {
+                    if (isActive) {
+                        statusBadge.textContent = 'Aktif';
+                        statusBadge.className = 'gateway-badge active';
+                    } else if (isEnabled) {
+                        statusBadge.textContent = 'Siap';
+                        statusBadge.className = 'gateway-badge ready';
+                    } else {
+                        statusBadge.textContent = 'Tidak Aktif';
+                        statusBadge.className = 'gateway-badge inactive';
+                    }
+                }
+                
+                if (toggle) {
+                    toggle.checked = isActive;
+                }
+            });
+
+            const qrispwConfig = paymentConfig.gateways?.qrispw || {};
+            document.getElementById('qrispw-api-key').value = qrispwConfig.api_key || '';
+            document.getElementById('qrispw-api-secret').value = qrispwConfig.api_secret || '';
+
+            const dokuConfig = paymentConfig.gateways?.doku || {};
+            document.getElementById('doku-client-id').value = dokuConfig.client_id || '';
+            document.getElementById('doku-secret-key').value = dokuConfig.secret_key || '';
+            document.getElementById('doku-environment').value = dokuConfig.environment || 'sandbox';
+
+            const midtransConfig = paymentConfig.gateways?.midtrans || {};
+            document.getElementById('midtrans-server-key').value = midtransConfig.server_key || '';
+            document.getElementById('midtrans-client-key').value = midtransConfig.client_key || '';
+            document.getElementById('midtrans-merchant-id').value = midtransConfig.merchant_id || '';
+            document.getElementById('midtrans-environment').value = midtransConfig.environment || 'sandbox';
+        }
+
+        async function loadEnvStatus() {
+            try {
+                const response = await AdminPanel.apiCall('/admin/payment-env-status');
+                
+                const qrispw = response.qrispw || {};
+                let qrispwHtml = '';
+                if (qrispw.configured) {
+                    const sourceLabel = qrispw.source === 'env' ? 'dari Environment Variables' : 
+                                       (qrispw.source === 'db' ? 'tersimpan di pengaturan' : 'tersedia');
+                    qrispwHtml = `<span class="status-text success"><span data-icon="checkCircle" data-icon-size="sm"></span> Siap digunakan (${sourceLabel})</span>`;
+                } else {
+                    qrispwHtml = '<span class="status-text warning"><span data-icon="alertCircle" data-icon-size="sm"></span> Belum dikonfigurasi - Isi form di atas lalu klik Simpan</span>';
+                }
+                document.getElementById('qrispw-env-status').innerHTML = qrispwHtml;
+                
+                const doku = response.doku || {};
+                let dokuHtml = '';
+                if (doku.configured) {
+                    const sourceLabel = doku.source === 'env' ? 'dari Environment Variables' : 
+                                       (doku.source === 'db' ? 'tersimpan di pengaturan' : 'tersedia');
+                    dokuHtml = `<span class="status-text success"><span data-icon="checkCircle" data-icon-size="sm"></span> Siap digunakan (${sourceLabel})</span>`;
+                } else {
+                    dokuHtml = '<span class="status-text warning"><span data-icon="alertCircle" data-icon-size="sm"></span> Belum dikonfigurasi - Isi form di atas lalu klik Simpan</span>';
+                }
+                document.getElementById('doku-env-status').innerHTML = dokuHtml;
+                
+                const midtrans = response.midtrans || {};
+                let midtransHtml = '';
+                if (midtrans.configured) {
+                    const sourceLabel = midtrans.source === 'env' ? 'dari Environment Variables' : 
+                                       (midtrans.source === 'db' ? 'tersimpan di pengaturan' : 'tersedia');
+                    midtransHtml = `<span class="status-text success"><span data-icon="checkCircle" data-icon-size="sm"></span> Siap digunakan (${sourceLabel})</span>`;
+                } else {
+                    midtransHtml = '<span class="status-text warning"><span data-icon="alertCircle" data-icon-size="sm"></span> Belum dikonfigurasi - Isi form di atas lalu klik Simpan</span>';
+                }
+                document.getElementById('midtrans-env-status').innerHTML = midtransHtml;
+                
+                if (window.initIcons) {
+                    initIcons();
+                }
+            } catch (error) {
+                console.error('Error loading env status:', error);
+                document.getElementById('qrispw-env-status').innerHTML = '<span class="status-text warning">Gagal memuat status</span>';
+                document.getElementById('doku-env-status').innerHTML = '<span class="status-text warning">Gagal memuat status</span>';
+                document.getElementById('midtrans-env-status').innerHTML = '<span class="status-text warning">Gagal memuat status</span>';
+            }
+        }
+
+        async function loadQrisImages() {
+            const container = document.getElementById('qris-images-list');
+            const amountsContainer = document.getElementById('qris-amounts-list');
+            
+            try {
+                const response = await AdminPanel.apiCall('/admin/qris-images');
+                const images = response.images || [];
+                
+                if (images.length === 0) {
+                    container.innerHTML = '<div class="empty-state">Belum ada gambar QRIS. Upload gambar QRIS untuk setiap nominal.</div>';
+                    amountsContainer.innerHTML = '<div class="empty-state">Belum ada nominal QRIS tersedia.</div>';
+                    container.classList.remove('single-item');
+                    amountsContainer.classList.remove('single-item');
+                    return;
+                }
+
+                if (images.length === 1) {
+                    container.classList.add('single-item');
+                    amountsContainer.classList.add('single-item');
+                } else {
+                    container.classList.remove('single-item');
+                    amountsContainer.classList.remove('single-item');
+                }
+
+                const mainHtml = images.map(img => {
+                    const status = qrisStatusMap[img.amount] !== false;
+                    const statusClass = status ? 'status-available' : 'status-unavailable';
+                    const statusText = status ? 'Tersedia' : 'Tidak Tersedia';
+                    const toggleText = status ? 'Nonaktifkan' : 'Aktifkan';
+                    const toggleBtnClass = status ? 'toggle-btn' : 'toggle-btn inactive';
+                    
+                    return `
+                    <div class="qris-item" data-amount="${img.amount}">
+                        <img src="${img.url}" alt="QRIS ${formatCurrency(img.amount)}" onerror="this.src='/panel/assets/placeholder.png'">
+                        <div class="qris-amount">${formatCurrency(img.amount)}</div>
+                        <div class="qris-status-row">
+                            <span class="qris-status ${statusClass}" id="status-${img.amount}">${statusText}</span>
+                        </div>
+                        <div class="qris-action-buttons">
+                            <button class="qris-action-btn ${toggleBtnClass}" id="toggle-btn-${img.amount}" onclick="event.stopPropagation(); toggleQrisStatus(${img.amount})">
+                                <span id="toggle-text-${img.amount}">${toggleText}</span>
+                            </button>
+                            <button class="qris-action-btn edit-btn" onclick="event.stopPropagation(); openEditQrisModal(${img.amount}, '${img.url}')">
+                                Edit
+                            </button>
+                            <button class="qris-action-btn delete-btn" onclick="event.stopPropagation(); deleteQrisImage(${img.amount})">
+                                Hapus
+                            </button>
+                        </div>
+                    </div>
+                `}).join('');
+
+                const previewHtml = images.map(img => {
+                    const status = qrisStatusMap[img.amount] !== false;
+                    const statusClass = status ? 'status-available' : 'status-unavailable';
+                    const statusText = status ? 'Tersedia' : 'Tidak Tersedia';
+                    
+                    return `
+                    <div class="qris-item">
+                        <img src="${img.url}" alt="QRIS ${formatCurrency(img.amount)}" onerror="this.src='/panel/assets/placeholder.png'">
+                        <div class="qris-amount">${formatCurrency(img.amount)}</div>
+                        <div class="qris-status-row">
+                            <span class="qris-status ${statusClass}">${statusText}</span>
+                        </div>
+                    </div>
+                `}).join('');
+                
+                container.innerHTML = mainHtml;
+                amountsContainer.innerHTML = previewHtml;
+                
+                if (window.initIcons) {
+                    initIcons();
+                }
+            } catch (error) {
+                console.error('Error loading QRIS images:', error);
+                if (container) {
+                    container.innerHTML = '<div class="empty-state error-state">Gagal memuat gambar QRIS. <button class="btn btn-secondary btn-sm" onclick="loadQrisImages()">Coba Lagi</button></div>';
+                    container.classList.remove('single-item');
+                }
+                if (amountsContainer) {
+                    amountsContainer.innerHTML = '<div class="empty-state error-state">Gagal memuat data QRIS.</div>';
+                    amountsContainer.classList.remove('single-item');
+                }
+            }
+        }
+
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0
+            }).format(amount);
+        }
+
+        function toggleGateway(gateway) {
+            paymentConfig.active_gateway = gateway;
+            
+            ['qrispw', 'qris-interactive', 'doku', 'midtrans'].forEach(g => {
+                const toggle = document.getElementById(`${g}-enabled`);
+                if (toggle) {
+                    toggle.checked = (g === gateway);
+                }
+            });
+            
+            updateUI();
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.payment-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.payment-tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            event.target.closest('.payment-tab').classList.add('active');
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+        }
+
+        async function saveAllSettings() {
+            const saveBtn = document.querySelector('.page-actions .btn-primary');
+            const config = {
+                active_gateway: paymentConfig.active_gateway,
+                qris_status: qrisStatusMap,
+                gateways: {
+                    qrispw: {
+                        enabled: document.getElementById('qrispw-enabled').checked,
+                        api_key: document.getElementById('qrispw-api-key').value,
+                        api_secret: document.getElementById('qrispw-api-secret').value,
+                        api_url: document.getElementById('qrispw-api-url').value
+                    },
+                    'qris-interactive': {
+                        enabled: document.getElementById('qris-interactive-enabled').checked
+                    },
+                    doku: {
+                        enabled: document.getElementById('doku-enabled').checked,
+                        client_id: document.getElementById('doku-client-id').value,
+                        secret_key: document.getElementById('doku-secret-key').value,
+                        environment: document.getElementById('doku-environment').value
+                    },
+                    midtrans: {
+                        enabled: document.getElementById('midtrans-enabled').checked,
+                        server_key: document.getElementById('midtrans-server-key').value,
+                        client_key: document.getElementById('midtrans-client-key').value,
+                        merchant_id: document.getElementById('midtrans-merchant-id').value,
+                        environment: document.getElementById('midtrans-environment').value
+                    }
+                }
+            };
+            
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = '<span class="spinner"></span> Menyimpan...';
+            }
+
+            try {
+                await AdminPanel.apiCall('/admin/payment-config', {
+                    method: 'PUT',
+                    body: JSON.stringify(config)
+                });
+                
+                paymentConfig = config;
+                AdminPanel.showToast('Pengaturan payment berhasil disimpan', 'success');
+                updateUI();
+                await loadEnvStatus();
+            } catch (error) {
+                console.error('Error saving payment config:', error);
+                AdminPanel.showToast('Gagal menyimpan pengaturan: ' + error.message, 'error');
+            } finally {
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = '<span data-icon="save" data-icon-size="sm"></span><span>Simpan Pengaturan</span>';
+                    if (window.initIcons) initIcons();
+                }
+            }
+        }
+
+        document.getElementById('new-qris-image').addEventListener('change', function(e) {
+            const fileName = e.target.files[0]?.name || 'Belum ada file';
+            document.getElementById('selected-file-name').textContent = fileName;
+        });
+
+        async function uploadQrisImage() {
+            const amountInput = document.getElementById('new-qris-amount');
+            const fileInput = document.getElementById('new-qris-image');
+            const uploadBtn = document.querySelector('.upload-form-row .btn-primary');
+            const amount = amountInput.value;
+            const file = fileInput.files[0];
+            
+            if (!amount || parseInt(amount) <= 0) {
+                AdminPanel.showToast('Harap isi nominal yang valid (lebih dari 0)', 'error');
+                return;
+            }
+            
+            if (!file) {
+                AdminPanel.showToast('Harap pilih gambar QRIS', 'error');
+                return;
+            }
+            
+            const maxSize = 5 * 1024 * 1024;
+            if (file.size > maxSize) {
+                AdminPanel.showToast('Ukuran file terlalu besar. Maksimal 5 MB', 'error');
+                return;
+            }
+            
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+            if (!allowedTypes.includes(file.type)) {
+                AdminPanel.showToast('Format file tidak didukung. Gunakan JPEG, PNG, atau WebP', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('amount', amount);
+            formData.append('image', file);
+            
+            if (uploadBtn) {
+                uploadBtn.disabled = true;
+                uploadBtn.innerHTML = '<span class="spinner"></span> Mengupload...';
+            }
+
+            try {
+                const response = await fetch('/admin/qris-images/upload', {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'include',
+                    headers: {
+                        'X-CSRF-Token': AdminPanel.csrfToken
+                    }
+                });
+                
+                let errorMessage = 'Upload gagal';
+                if (!response.ok) {
+                    try {
+                        const errorData = await response.json();
+                        errorMessage = errorData.detail || errorMessage;
+                    } catch (e) {
+                        errorMessage = `Upload gagal (${response.status})`;
+                    }
+                    throw new Error(errorMessage);
+                }
+
+                const result = await response.json();
+                AdminPanel.showToast(result.message || 'Gambar QRIS berhasil diupload', 'success');
+                amountInput.value = '';
+                document.getElementById('selected-file-name').textContent = 'Belum ada file';
+                fileInput.value = '';
+                loadQrisImages();
+            } catch (error) {
+                console.error('Error uploading QRIS image:', error);
+                AdminPanel.showToast(error.message, 'error');
+            } finally {
+                if (uploadBtn) {
+                    uploadBtn.disabled = false;
+                    uploadBtn.innerHTML = '<span data-icon="plus" data-icon-size="sm"></span><span>Tambah</span>';
+                    if (window.initIcons) initIcons();
+                }
+            }
+        }
+
+        async function deleteQrisImage(amount) {
+            showConfirmModal({
+                title: 'Hapus Gambar QRIS',
+                message: `Apakah Anda yakin ingin menghapus gambar QRIS untuk nominal ${formatCurrency(amount)}?`,
+                confirmText: 'Ya, Hapus',
+                cancelText: 'Batal',
+                type: 'danger',
+                onConfirm: async () => {
+                    try {
+                        await AdminPanel.apiCall(`/admin/qris-images/${amount}`, {
+                            method: 'DELETE'
+                        });
+                        AdminPanel.showToast('Gambar QRIS berhasil dihapus', 'success');
+                        loadQrisImages();
+                    } catch (error) {
+                        console.error('Error deleting QRIS image:', error);
+                        AdminPanel.showToast('Gagal menghapus gambar: ' + error.message, 'error');
+                    }
+                }
+            });
+        }
+
+        const LOADING_TIMEOUT_MS = 15000;
+        
+        function showTimeoutError() {
+            const container = document.getElementById('qris-images-list');
+            const amountsContainer = document.getElementById('qris-amounts-list');
+            const activeGatewayName = document.getElementById('activeGatewayName');
+            const activeGatewayDesc = document.getElementById('activeGatewayDesc');
+            const qrispwStatus = document.getElementById('qrispw-env-status');
+            const dokuStatus = document.getElementById('doku-env-status');
+            const midtransStatus = document.getElementById('midtrans-env-status');
+            
+            if (container && container.innerHTML.includes('Memuat')) {
+                container.innerHTML = '<div class="empty-state error-state">Koneksi timeout. <button class="btn btn-secondary btn-sm" onclick="loadQrisImages()">Coba Lagi</button></div>';
+            }
+            if (amountsContainer && amountsContainer.innerHTML.includes('Memuat')) {
+                amountsContainer.innerHTML = '<div class="empty-state error-state">Koneksi timeout.</div>';
+            }
+            if (activeGatewayName && activeGatewayName.textContent === 'Loading...') {
+                activeGatewayName.textContent = 'Error';
+                if (activeGatewayDesc) {
+                    activeGatewayDesc.textContent = 'Koneksi timeout. Silakan refresh halaman.';
+                }
+            }
+            if (qrispwStatus && qrispwStatus.textContent === 'Memuat...') {
+                qrispwStatus.innerHTML = '<span class="status-text warning">Gagal memuat status</span>';
+            }
+            if (dokuStatus && dokuStatus.textContent === 'Memuat...') {
+                dokuStatus.innerHTML = '<span class="status-text warning">Gagal memuat status</span>';
+            }
+            if (midtransStatus && midtransStatus.textContent === 'Memuat...') {
+                midtransStatus.innerHTML = '<span class="status-text warning">Gagal memuat status</span>';
+            }
+        }
+        
+        function withTimeout(promise, timeoutMs, errorMessage) {
+            return Promise.race([
+                promise,
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error(errorMessage || 'Timeout')), timeoutMs)
+                )
+            ]);
+        }
+        
+        async function initPaymentSettingsPage() {
+            console.log('[PaymentSettings] Initialization started');
+            const desc = document.getElementById('activeGatewayDesc');
+            if (desc) desc.textContent = 'Memulai inisialisasi...';
+            
+            const timeoutId = setTimeout(() => {
+                console.log('[PaymentSettings] Global timeout triggered');
+                showTimeoutError();
+            }, LOADING_TIMEOUT_MS);
+            
+            try {
+                console.log('[PaymentSettings] Step 1: Init theme and icons');
+                AdminPanel.initTheme();
+                if (window.initIcons) {
+                    initIcons();
+                }
+                
+                console.log('[PaymentSettings] Step 2: Ensuring AdminPanel is initialized');
+                if (desc) desc.textContent = 'Menghubungkan ke server...';
+                
+                if (!AdminPanel._initPromise) {
+                    console.log('[PaymentSettings] AdminPanel not initialized, calling init()');
+                    await AdminPanel.init();
+                }
+                
+                await withTimeout(AdminPanel.ready(), 5000, 'AdminPanel init timeout');
+                console.log('[PaymentSettings] AdminPanel ready, CSRF token:', AdminPanel.csrfToken ? 'present' : 'missing');
+                
+                console.log('[PaymentSettings] Step 3: Checking auth');
+                if (desc) desc.textContent = 'Memeriksa autentikasi...';
+                
+                const user = await withTimeout(AdminPanel.checkAuth(), 10000, 'Auth timeout');
+                console.log('[PaymentSettings] Got user:', user ? user.username : 'null');
+                
+                if (!user) {
+                    console.log('[PaymentSettings] No user, redirecting to login');
+                    clearTimeout(timeoutId);
+                    return;
+                }
+                
+                const hasAccess = user.is_super_admin || user.username === SPECIAL_PROTECTED_USERNAME;
+                
+                if (!hasAccess) {
+                    console.log('[PaymentSettings] Access denied for user:', user.username);
+                    AdminPanel.showToast('Akses ditolak: Hanya super admin yang bisa mengakses halaman ini', 'error');
+                    clearTimeout(timeoutId);
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.html';
+                    }, 2000);
+                    return;
+                }
+                
+                const adminUsernameEl = document.getElementById('adminUsername');
+                if (adminUsernameEl) {
+                    adminUsernameEl.textContent = user.display_name || user.username;
+                }
+                
+                if (desc) desc.textContent = 'Memuat konfigurasi...';
+                console.log('[PaymentSettings] Step 4: Starting parallel initialization...');
+                
+                const results = await Promise.allSettled([
+                    withTimeout(AdminPanel.initSidebarUserInfo(), 8000, 'Sidebar info timeout')
+                        .catch(e => {
+                            console.error('[PaymentSettings] initSidebarUserInfo failed:', e);
+                        }),
+                    withTimeout(AdminPanel.initMobileSidebarAdminUsers(), 8000, 'Mobile sidebar timeout')
+                        .catch(e => {
+                            console.error('[PaymentSettings] initMobileSidebarAdminUsers failed:', e);
+                        }),
+                    withTimeout(loadPaymentConfig(), 15000, 'Payment config timeout')
+                        .catch(e => {
+                            console.error('[PaymentSettings] loadPaymentConfig failed:', e);
+                            const nameEl = document.getElementById('activeGatewayName');
+                            const descEl = document.getElementById('activeGatewayDesc');
+                            const banner = document.getElementById('activeGatewayBanner');
+                            
+                            if (nameEl) nameEl.textContent = 'Error';
+                            if (descEl) descEl.textContent = 'Gagal memuat: ' + (e.message || 'Timeout');
+                            if (banner) banner.classList.add('error-state');
+                            
+                            clearQrisLoadingState();
+                            clearEnvStatusLoadingState();
+                        })
+                ]);
+                
+                console.log('[PaymentSettings] Initialization results:', results.map((r, i) => 
+                    `[${i}] ${r.status}${r.reason ? ': ' + r.reason : ''}`
+                ).join(', '));
+                
+                clearTimeout(timeoutId);
+                console.log('[PaymentSettings] Initialization complete!');
+                
+            } catch (error) {
+                console.error('[PaymentSettings] Critical error during initialization:', error);
+                clearTimeout(timeoutId);
+                showTimeoutError();
+                
+                const descEl = document.getElementById('activeGatewayDesc');
+                if (descEl) {
+                    descEl.textContent = 'Error: ' + (error.message || 'Initialization failed');
+                }
+            }
+        }
+        
+        function debugLog(message) {
+            console.log('[PaymentSettings] ' + message);
+            const desc = document.getElementById('activeGatewayDesc');
+            if (desc && desc.textContent.includes('memuat')) {
+                desc.textContent = 'Debug: ' + message;
+            }
+        }
+        
+        console.log('[PaymentSettings] Script loaded, readyState:', document.readyState);
+        debugLog('Script loaded, readyState: ' + document.readyState);
+        
+        if (document.readyState === 'loading') {
+            console.log('[PaymentSettings] Adding DOMContentLoaded listener');
+            document.addEventListener('DOMContentLoaded', () => {
+                debugLog('DOMContentLoaded fired');
+                initPaymentSettingsPage();
+            });
+        } else {
+            console.log('[PaymentSettings] DOM ready, calling initPaymentSettingsPage directly');
+            debugLog('DOM ready, starting init...');
+            initPaymentSettingsPage();
+        }
+    </script>
+
+    <!-- Bottom Navigation for Mobile -->
+    <nav class="bottom-nav">
+        <div class="bottom-nav-items">
+            <a href="dashboard.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="dashboard" data-icon-size="md"></span>
+            </a>
+            <a href="users.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="users" data-icon-size="md"></span>
+            </a>
+            <a href="movies.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="movie" data-icon-size="md"></span>
+            </a>
+            <a href="requests.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="fileText" data-icon-size="md"></span>
+            </a>
+            <a href="withdrawals.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="dollarSign" data-icon-size="md"></span>
+            </a>
+            <a href="payments.html" class="bottom-nav-item">
+                <span class="nav-icon" data-icon="creditCard" data-icon-size="md"></span>
+            </a>
+        </div>
+    </nav>
+    <script>
+        AdminPanel.startAutoRefresh();
+    </script>
+
+<!-- MOBILE_SIDEBAR_START -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<aside class="sidebar-mobile" id="sidebarMobile">
+    <div class="sidebar-header">
+        <div class="logo">
+            <img src="assets/logo-dramamu.jpg" alt="Dramamu Logo">
+        </div>
+        <h2>Dramamu Admin</h2>
+        <p class="admin-subtitle">Panel Kontrol</p>
+        <button class="sidebar-close" id="sidebarMobileClose" aria-label="Close Menu">
+            <span data-icon="x" data-icon-size="md"></span>
+        </button>
+    </div>
+    <nav class="sidebar-nav">
+        <a href="dashboard.html" class="nav-item" data-page="dashboard">
+            <span class="nav-icon" data-icon="dashboard" data-icon-size="md"></span>
+            <span>Dashboard</span>
+        </a>
+        <a href="analytics.html" class="nav-item" data-page="analytics">
+            <span class="nav-icon" data-icon="barChart" data-icon-size="md"></span>
+            <span>Analytics</span>
+        </a>
+        <a href="users.html" class="nav-item" data-page="users">
+            <span class="nav-icon" data-icon="users" data-icon-size="md"></span>
+            <span>Pengguna</span>
+        </a>
+        <a href="movies.html" class="nav-item" data-page="movies">
+            <span class="nav-icon" data-icon="movie" data-icon-size="md"></span>
+            <span>Drama</span>
+        </a>
+        <a href="requests.html" class="nav-item" data-page="requests">
+            <span class="nav-icon" data-icon="fileText" data-icon-size="md"></span>
+            <span>Permintaan</span>
+            <span class="request-notification-badge notification-badge"></span>
+        </a>
+        <a href="withdrawals.html" class="nav-item" data-page="withdrawals">
+            <span class="nav-icon" data-icon="dollarSign" data-icon-size="md"></span>
+            <span>Penarikan</span>
+            <span class="withdrawal-notification-badge notification-badge"></span>
+        </a>
+        <a href="payments.html" class="nav-item" data-page="payments">
+            <span class="nav-icon" data-icon="creditCard" data-icon-size="md"></span>
+            <span>Pembayaran</span>
+        </a>
+        <a href="payment-settings.html" class="nav-item" data-page="payment-settings">
+            <span class="nav-icon" data-icon="wallet" data-icon-size="md"></span>
+            <span>Pengaturan Pembayaran</span>
+        </a>
+        <a href="settings.html" class="nav-item" data-page="settings">
+            <span class="nav-icon" data-icon="settings" data-icon-size="md"></span>
+            <span>Pengaturan</span>
+        </a>
+        <a href="admin-users.html" class="nav-item" data-page="admin-users" style="display: none;">
+            <span class="nav-icon" data-icon="shield" data-icon-size="md"></span>
+            <span>Admin Users</span>
+        </a>
+    </nav>
+    <div id="sidebarMobileAdminUsers" class="sidebar-mobile-content">
+        <div class="loading-message">Memuat...</div>
+    </div>
+</aside>
+<!-- MOBILE_SIDEBAR_END -->
+</body>
+</html>
