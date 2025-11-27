@@ -1051,15 +1051,25 @@ def run_migration_017_add_series_columns_to_movies():
 
 def run_migration_018_fix_missing_columns():
     """
-    Migration 018: Fix missing columns that were not created properly
+    Migration 018: Fix ALL missing columns in production database
     
-    CRITICAL FIX: Some migrations were recorded but columns not actually created.
+    CRITICAL FIX: Comprehensive check for ALL columns that may be missing.
     This migration ensures ALL required columns exist:
-    - users.deleted_at: Soft delete support for users
-    - payments.transaction_id: QRIS.PW transaction ID storage
-    - payments.qris_url: QRIS QR code URL
-    - payments.qris_string: QRIS string for dynamic QR
     
+    Table: users
+    - deleted_at: Soft delete support
+    
+    Table: payments
+    - transaction_id: QRIS.PW transaction ID storage
+    - qris_url: QRIS QR code URL
+    - qris_string: QRIS string for dynamic QR
+    - expires_at: Payment expiration timestamp
+    - paid_at: Payment completion timestamp
+    
+    Table: drama_requests
+    - apk_source: Source APK for drama request
+    
+    Total: 7 kolom yang diperbaiki
     Migration ini idempotent - cek dulu sebelum create.
     """
     logger.info("🔧 Running migration 018: Fix missing columns (users.deleted_at, payments.transaction_id)")
@@ -1130,8 +1140,53 @@ def run_migration_018_fix_missing_columns():
         else:
             logger.info("  ✓ Column payments.qris_string already exists")
         
+        # Fix 5: payments.expires_at
+        if not column_exists(db, 'payments', 'expires_at'):
+            logger.info("  → Adding expires_at to payments...")
+            if is_postgresql:
+                db.execute(text("""
+                    ALTER TABLE payments 
+                    ADD COLUMN expires_at TIMESTAMP WITH TIME ZONE
+                """))
+            else:
+                db.execute(text("""
+                    ALTER TABLE payments 
+                    ADD COLUMN expires_at DATETIME
+                """))
+            logger.info("  ✓ Added payments.expires_at")
+        else:
+            logger.info("  ✓ Column payments.expires_at already exists")
+        
+        # Fix 6: payments.paid_at
+        if not column_exists(db, 'payments', 'paid_at'):
+            logger.info("  → Adding paid_at to payments...")
+            if is_postgresql:
+                db.execute(text("""
+                    ALTER TABLE payments 
+                    ADD COLUMN paid_at TIMESTAMP WITH TIME ZONE
+                """))
+            else:
+                db.execute(text("""
+                    ALTER TABLE payments 
+                    ADD COLUMN paid_at DATETIME
+                """))
+            logger.info("  ✓ Added payments.paid_at")
+        else:
+            logger.info("  ✓ Column payments.paid_at already exists")
+        
+        # Fix 7: drama_requests.apk_source
+        if not column_exists(db, 'drama_requests', 'apk_source'):
+            logger.info("  → Adding apk_source to drama_requests...")
+            db.execute(text("""
+                ALTER TABLE drama_requests 
+                ADD COLUMN apk_source VARCHAR
+            """))
+            logger.info("  ✓ Added drama_requests.apk_source")
+        else:
+            logger.info("  ✓ Column drama_requests.apk_source already exists")
+        
         db.commit()
-        logger.info("  ✅ Migration 018 complete! Missing columns fixed.")
+        logger.info("  ✅ Migration 018 complete! All missing columns fixed.")
         return True
         
     except Exception as e:
