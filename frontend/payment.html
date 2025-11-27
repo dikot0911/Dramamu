@@ -549,7 +549,7 @@
                 </div>
                 
                 <!-- Kolom Kanan: Timer -->
-                <div style="flex: 1; background: rgba(255, 107, 107, 0.1); border: 1px solid rgba(255, 107, 107, 0.3); border-radius: 8px; padding: 0.4rem; text-align: center;">
+                <div id="qrisCountdown" style="flex: 1; background: rgba(255, 107, 107, 0.1); border: 1px solid rgba(255, 107, 107, 0.3); border-radius: 8px; padding: 0.4rem; text-align: center;">
                     <p style="font-size: 0.55rem; color: rgba(255, 255, 255, 0.7); margin-bottom: 0.1rem;">⏱️ Waktu</p>
                     <h3 id="qrisTimer" style="font-size: 0.75rem; font-weight: 700; color: #ff6b6b; font-family: 'Courier New', monospace; letter-spacing: 0.5px;">--:--:--</h3>
                     <p id="qrisExpiredWarning" style="font-size: 0.5rem; color: rgba(255, 107, 107, 0.9); margin-top: 0.1rem; display: none; font-weight: 600;">Expired!</p>
@@ -570,7 +570,7 @@
 
             <div class="qris-instructions">
                 <h3>📱 Cara Pembayaran</h3>
-                <ol>
+                <ol id="qrisInstructions">
                     <li>Buka aplikasi e-wallet atau mobile banking Anda</li>
                     <li>Pilih menu Scan QRIS</li>
                     <li>Scan kode QR di atas</li>
@@ -634,12 +634,27 @@
         let currentOrderData = null;
         let paymentStatusChecker = null;
         let countdownInterval = null;
+        let paymentConfig = null;
+
+        async function loadPaymentConfig() {
+            try {
+                const apiUrl = window.API_BASE_URL + '/api/v1/payment-config';
+                const response = await fetch(apiUrl);
+                if (response.ok) {
+                    paymentConfig = await response.json();
+                    console.log('💳 Payment config loaded:', paymentConfig);
+                }
+            } catch (error) {
+                console.error('Error loading payment config:', error);
+            }
+        }
+
+        loadPaymentConfig();
 
         async function tampilkanQRIS(harga, namaPaket) {
             console.log(`Menampilkan QRIS untuk: ${namaPaket} (${formatRupiah(harga)})`);
             
             try {
-                // Show loading - don't auto-hide (very long duration)
                 notification.info('⏳ Loading QRIS...', 'info', {
                     duration: 60000
                 });
@@ -667,6 +682,8 @@
                 
                 console.log(`✅ QRIS payment created:`, data);
 
+                const isManualVerification = paymentConfig?.active_gateway === 'qris-interactive';
+
                 // Save order data
                 currentOrderData = {
                     orderId: data.order_id,
@@ -679,8 +696,40 @@
                 // Update modal content
                 document.getElementById('qrisSubtitle').textContent = namaPaket;
                 document.getElementById('qrisAmount').textContent = formatRupiah(harga);
-                document.getElementById('qrisImage').src = data.qris_url;
-                document.getElementById('qrisOrderId').textContent = data.transaction_id;
+                document.getElementById('qrisOrderId').textContent = data.transaction_id || data.order_id;
+
+                const checkPaymentBtn = document.querySelector('.submit-payment-btn');
+                const screenshotSection = document.querySelector('.screenshot-upload-section');
+                const instructionList = document.getElementById('qrisInstructions');
+                
+                if (isManualVerification) {
+                    if (checkPaymentBtn) checkPaymentBtn.style.display = 'none';
+                    if (screenshotSection) screenshotSection.style.display = 'block';
+                    if (instructionList) {
+                        instructionList.innerHTML = `
+                            <li>Buka aplikasi E-Wallet (DANA, GoPay, OVO, ShopeePay, dll)</li>
+                            <li>Pilih menu Scan QRIS</li>
+                            <li>Scan kode QR di atas</li>
+                            <li>Konfirmasi pembayaran sesuai nominal</li>
+                            <li><b>WAJIB</b>: Screenshot bukti pembayaran</li>
+                            <li>Upload screenshot di form di atas</li>
+                            <li>Tunggu verifikasi admin (maks 1x24 jam)</li>
+                        `;
+                    }
+                } else {
+                    if (checkPaymentBtn) checkPaymentBtn.style.display = 'flex';
+                    if (screenshotSection) screenshotSection.style.display = 'block';
+                    if (instructionList) {
+                        instructionList.innerHTML = `
+                            <li>Buka aplikasi E-Wallet (DANA, GoPay, OVO, ShopeePay, dll)</li>
+                            <li>Pilih menu Scan QRIS</li>
+                            <li>Scan kode QR di atas</li>
+                            <li>Konfirmasi pembayaran sesuai nominal</li>
+                            <li>Screenshot bukti pembayaran bersama Order ID di atas</li>
+                            <li>Klik tombol "Cek Pembayaran" di bawah untuk verifikasi status</li>
+                        `;
+                    }
+                }
 
                 // Show modal dengan animasi
                 const modal = document.getElementById('qrisModal');
@@ -689,21 +738,51 @@
                 // Prevent body scroll
                 document.body.style.overflow = 'hidden';
 
-                // Start payment status checker (polling setiap 5 detik)
-                startPaymentStatusChecker(data.transaction_id);
+                // Only start auto status checker for auto gateways (not for qris-interactive)
+                if (!isManualVerification && data.transaction_id) {
+                    startPaymentStatusChecker(data.transaction_id);
+                }
 
                 // Start countdown timer
                 if (data.expires_at) {
                     startCountdownTimer(data.expires_at);
                 }
 
-                // Hide "Loading QRIS" notification manually
-                notification.close();
-                
-                // Show success notification after popup opened
-                notification.success('✅ Kode Pembayaran Siap!\n\nSilakan scan untuk melakukan pembayaran.', 'success', {
-                    duration: 3000
-                });
+                // Track when modal animation completes (350ms transition)
+                const modalAnimationTime = Date.now();
+                const MODAL_ANIMATION_DURATION = 400;
+
+                // Set image src and wait for BOTH modal animation AND image load before showing success
+                const qrisImg = document.getElementById('qrisImage');
+                qrisImg.onload = function() {
+                    const elapsed = Date.now() - modalAnimationTime;
+                    const remainingDelay = Math.max(0, MODAL_ANIMATION_DURATION - elapsed);
+                    
+                    setTimeout(() => {
+                        notification.close();
+                        if (isManualVerification) {
+                            notification.success('✅ Kode Pembayaran Siap!\n\nSetelah bayar, upload screenshot untuk verifikasi admin.', 'success', {
+                                duration: 4000
+                            });
+                        } else {
+                            notification.success('✅ Kode Pembayaran Siap!\n\nSilakan scan untuk melakukan pembayaran.', 'success', {
+                                duration: 3000
+                            });
+                        }
+                    }, remainingDelay);
+                };
+                qrisImg.onerror = function() {
+                    const elapsed = Date.now() - modalAnimationTime;
+                    const remainingDelay = Math.max(0, MODAL_ANIMATION_DURATION - elapsed);
+                    
+                    setTimeout(() => {
+                        notification.close();
+                        notification.error('❌ Gagal memuat gambar QRIS\n\nSilakan coba lagi.', 'error', {
+                            duration: 3000
+                        });
+                    }, remainingDelay);
+                };
+                qrisImg.src = data.qris_url;
 
             } catch (error) {
                 console.error('Error creating QRIS payment:', error);
@@ -737,22 +816,27 @@
                     const result = await response.json();
                     console.log('Payment status:', result.status);
 
-                    if (result.status === 'paid') {
+                    if (result.status === 'paid' || result.status === 'success') {
                         // Payment success!
                         clearInterval(paymentStatusChecker);
                         paymentStatusChecker = null;
 
                         notification.success('🎉 Pembayaran Berhasil!\n\nAkses VIP Anda sudah aktif!\nSelamat menikmati semua konten premium kami 🎬', 'success', {
-                            duration: 5000,
+                            duration: 4000,
                             sound: true,
                             vibrate: true,
                             soundType: 'payment'
                         });
 
-                        // Close modal after 3 seconds
+                        // Auto-dismiss success notification after 4 seconds
+                        setTimeout(() => {
+                            notification.close();
+                        }, 4000);
+
+                        // Close modal after 2 seconds
                         setTimeout(() => {
                             tutupQRIS();
-                        }, 3000);
+                        }, 2000);
                     } else if (result.status === 'expired') {
                         clearInterval(paymentStatusChecker);
                         paymentStatusChecker = null;
@@ -801,9 +885,9 @@
                 const status = paymentData.status || result.status;
 
                 if (status === 'paid' || status === 'success') {
-                    // Payment successful
+                    // Payment successful - show notification with sound
                     notification.success('🎉 Pembayaran Berhasil!\n\nAkses VIP Anda sudah aktif!\nSelamat menikmati semua konten premium kami 🎬', 'success', {
-                        duration: 5000,
+                        duration: 4000,
                         sound: true,
                         vibrate: true,
                         soundType: 'payment'
@@ -815,10 +899,15 @@
                         paymentStatusChecker = null;
                     }
 
-                    // Close modal after 3 seconds
+                    // Auto-dismiss success notification after 4 seconds (override manual-only behavior)
+                    setTimeout(() => {
+                        notification.close();
+                    }, 4000);
+
+                    // Close modal after 2 seconds (before notification auto-dismiss)
                     setTimeout(() => {
                         tutupQRIS();
-                    }, 3000);
+                    }, 2000);
                 } else if (status === 'pending') {
                     // Still pending - manual dismiss required
                     notification.pending('⏳ Pembayaran Sedang Diproses\n\nMohon tunggu sebentar.\nAnda bisa cek kembali dalam beberapa saat.');
@@ -869,6 +958,11 @@
             const timerElement = document.getElementById('qrisTimer');
             const warningElement = document.getElementById('qrisExpiredWarning');
             const countdownBox = document.getElementById('qrisCountdown');
+            
+            if (!timerElement || !warningElement || !countdownBox) {
+                console.warn('⚠️ Countdown elements not found, skipping timer');
+                return;
+            }
             
             // Hide warning initially
             warningElement.style.display = 'none';

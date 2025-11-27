@@ -151,19 +151,19 @@
         }
         
         const tg = window.Telegram?.WebApp;
-        if (!tg) {
-            console.warn('⚠️ Telegram WebApp not available');
-            return;
-        }
-        
-        tg.ready();
-        tg.enableClosingConfirmation();
-        
-        tg.disableVerticalSwipes();
-        console.log("🔒 Vertical swipes disabled - mini app tidak akan close saat scroll");
-
-        const user = tg.initDataUnsafe?.user;
         let bot_username = "dramamu_bot";
+        
+        // Initialize Telegram WebApp if available
+        if (tg) {
+            tg.ready();
+            tg.enableClosingConfirmation();
+            tg.disableVerticalSwipes();
+            console.log("🔒 Vertical swipes disabled - mini app tidak akan close saat scroll");
+        } else {
+            console.warn('⚠️ Telegram WebApp not available');
+        }
+
+        const user = tg?.initDataUnsafe?.user;
 
         async function loadConfig() {
             try {

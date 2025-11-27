@@ -10,14 +10,17 @@ class BroadcastBannerV2 {
     }
 
     loadDismissed() {
-        const dismissed = localStorage.getItem('broadcast_v2_dismissed');
+        // Use sessionStorage instead of localStorage so broadcast appears again
+        // when mini app is closed and reopened
+        const dismissed = sessionStorage.getItem('broadcast_v2_dismissed');
         if (dismissed) {
             this.dismissedIds = new Set(JSON.parse(dismissed));
         }
     }
 
     saveDismissed() {
-        localStorage.setItem('broadcast_v2_dismissed', JSON.stringify(Array.from(this.dismissedIds)));
+        // Use sessionStorage - data cleared when mini app is closed
+        sessionStorage.setItem('broadcast_v2_dismissed', JSON.stringify(Array.from(this.dismissedIds)));
     }
 
     async load() {

@@ -49,6 +49,7 @@ class NotificationSystem {
                         bottom: 100px;
                         left: 50%;
                         z-index: 99999;
+                        pointer-events: none;
                     }
 
                     .notification-toast {
@@ -64,6 +65,7 @@ class NotificationSystem {
                         visibility: hidden;
                         transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
                         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+                        pointer-events: auto;
                     }
 
                     .notification-toast.show {

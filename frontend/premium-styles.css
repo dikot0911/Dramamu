@@ -291,52 +291,103 @@ body::before {
 
 /* ===== SHIMMER LOADING (only for loading states) ===== */
 .shimmer-card {
-    background: rgba(30, 41, 59, 0.7);
+    background: rgba(30, 41, 59, 0.8);
     border-radius: 12px;
     overflow: hidden;
     position: relative;
     height: 280px;
+    border: 1px solid rgba(212, 175, 55, 0.15);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 
+                inset 0 0 20px rgba(212, 175, 55, 0.03);
 }
 
 .shimmer-card::before {
     content: '';
     position: absolute;
     top: 0;
-    left: 0;
-    width: 100%;
+    left: -100%;
+    width: 50%;
     height: 100%;
     background: linear-gradient(
         90deg,
         transparent 0%,
-        rgba(212, 175, 55, 0.3) 50%,
+        rgba(212, 175, 55, 0.08) 20%,
+        rgba(240, 210, 102, 0.15) 50%,
+        rgba(212, 175, 55, 0.08) 80%,
         transparent 100%
     );
-    animation: shimmer-animation 2s infinite;
-    animation-play-state: running;
+    animation: shimmer-golden 1.8s ease-in-out infinite;
+    will-change: transform;
+}
+
+.shimmer-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, rgba(212, 175, 55, 0.4) 50%, transparent 100%);
+    opacity: 0.6;
 }
 
 .shimmer-card.shimmer-visible::before {
     animation-play-state: running;
 }
 
-@keyframes shimmer-animation {
+@keyframes shimmer-golden {
     0% { transform: translateX(0); }
-    100% { transform: translateX(200%); }
+    100% { transform: translateX(400%); }
 }
 
 .shimmer-poster {
     width: 100%;
     height: 200px;
-    background: rgba(30, 41, 59, 0.9);
+    background: linear-gradient(
+        135deg,
+        rgba(30, 41, 59, 0.95) 0%,
+        rgba(45, 55, 72, 0.8) 50%,
+        rgba(30, 41, 59, 0.95) 100%
+    );
     border-radius: 8px 8px 0 0;
+    position: relative;
+}
+
+.shimmer-poster::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+        ellipse at center,
+        rgba(212, 175, 55, 0.05) 0%,
+        transparent 70%
+    );
 }
 
 .shimmer-title {
     width: 80%;
-    height: 16px;
-    background: rgba(45, 55, 72, 0.8);
+    height: 14px;
+    background: linear-gradient(
+        90deg,
+        rgba(45, 55, 72, 0.9) 0%,
+        rgba(55, 65, 81, 0.7) 50%,
+        rgba(45, 55, 72, 0.9) 100%
+    );
     border-radius: 4px;
     margin: 12px auto 8px;
+}
+
+.shimmer-meta {
+    width: 50%;
+    height: 10px;
+    background: linear-gradient(
+        90deg,
+        rgba(45, 55, 72, 0.7) 0%,
+        rgba(55, 65, 81, 0.5) 50%,
+        rgba(45, 55, 72, 0.7) 100%
+    );
+    border-radius: 3px;
+    margin: 0 auto;
 }
 
 /* ===== PREMIUM NAVIGATION - OPTIMIZED ===== */
