@@ -22,6 +22,7 @@ import bot as bot_module
 from referral_utils import process_referral_commission, send_referrer_notification, get_referral_stats as get_referral_stats_util, get_referral_program_analytics
 from payment_processing import extend_vip_atomic, process_payment_success
 import payment_config_service
+from payment_sync import init_payment_sync, get_payment_sync_worker, stop_payment_sync
 
 from security.config import SecurityConfig
 from security.rate_limiter import RateLimitMiddleware
@@ -238,6 +239,18 @@ async def startup_event():
             logger.error("   Bot akan tetap jalan tapi mungkin tidak terima pesan")
     elif TELEGRAM_BOT_TOKEN:
         logger.info("🔧 Development mode - bot pakai polling")
+    
+    # Start Payment Sync Worker - background task untuk sync pending payments
+    # Ini memastikan VIP otomatis aktif meskipun webhook gagal
+    if QRIS_PW_API_KEY and QRIS_PW_API_SECRET:
+        try:
+            sync_worker = init_payment_sync(bot=bot)
+            if sync_worker:
+                logger.info("✅ Payment Sync Worker started - akan sync pending payments setiap 30 detik")
+        except Exception as e:
+            logger.error(f"❌ Failed to start Payment Sync Worker: {e}")
+    else:
+        logger.info("ℹ️ Payment Sync Worker not started - QRIS.PW not configured")
 
 if QRIS_PW_API_KEY and QRIS_PW_API_SECRET:
     logger.info("✅ QRIS.PW payment gateway initialized")

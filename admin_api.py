@@ -2465,6 +2465,157 @@ async def manual_vip_activation(request: ManualVIPActivationRequest, admin = Dep
     finally:
         db.close()
 
+
+# ==================== PAYMENT SYNC ENDPOINTS ====================
+# Background sync worker untuk memastikan VIP otomatis aktif
+# Meskipun webhook QRIS.PW gagal (misal karena cold start Render)
+
+@router.get("/payment-sync/stats")
+async def get_payment_sync_stats(admin = Depends(get_current_admin)):
+    """
+    Get statistics dari Payment Sync Worker.
+    
+    Menampilkan:
+    - Status worker (running/stopped)
+    - Jumlah sync yang sudah dilakukan
+    - Jumlah payments yang berhasil diaktifkan via sync
+    - Waktu sync terakhir
+    """
+    try:
+        from payment_sync import get_payment_sync_worker
+        
+        worker = get_payment_sync_worker()
+        if not worker:
+            return {
+                "status": "not_initialized",
+                "message": "Payment Sync Worker belum diinisialisasi. Pastikan QRIS.PW credentials sudah di-set."
+            }
+        
+        stats = worker.get_stats()
+        return {
+            "status": "ok",
+            "worker": stats,
+            "message": "Payment Sync Worker aktif dan berjalan"
+        }
+    except Exception as e:
+        logger.error(f"Error getting payment sync stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/payment-sync/sync-single", dependencies=[Depends(require_csrf_token)])
+async def sync_single_payment(
+    request: Request,
+    admin = Depends(get_current_admin)
+):
+    """
+    Manual sync untuk satu payment berdasarkan transaction_id.
+    
+    Ini berguna untuk:
+    - Memaksa re-check payment ke QRIS.PW
+    - Mengaktifkan VIP jika pembayaran sudah masuk tapi webhook gagal
+    
+    Request body:
+    {
+        "transaction_id": "TRX-xxxxx"
+    }
+    """
+    try:
+        from payment_sync import get_payment_sync_worker
+        
+        body = await request.json()
+        transaction_id = body.get("transaction_id")
+        
+        if not transaction_id:
+            raise HTTPException(status_code=400, detail="transaction_id wajib diisi")
+        
+        worker = get_payment_sync_worker()
+        if not worker:
+            raise HTTPException(
+                status_code=503, 
+                detail="Payment Sync Worker belum aktif. Pastikan QRIS.PW credentials sudah di-set."
+            )
+        
+        logger.info(f"👤 Admin {admin.username} manual sync payment: {transaction_id}")
+        
+        success, message = worker.sync_single_payment(transaction_id)
+        
+        if success:
+            logger.info(f"✅ Manual sync berhasil untuk {transaction_id}: {message}")
+            return {
+                "success": True,
+                "message": message,
+                "transaction_id": transaction_id,
+                "synced_by": admin.username
+            }
+        else:
+            logger.warning(f"⚠️ Manual sync tidak berhasil untuk {transaction_id}: {message}")
+            return {
+                "success": False,
+                "message": message,
+                "transaction_id": transaction_id
+            }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in sync_single_payment: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/payment-sync/force-sync-all", dependencies=[Depends(require_csrf_token)])
+async def force_sync_all_pending(admin = Depends(get_current_admin)):
+    """
+    Force sync semua pending payments dengan QRIS.PW.
+    
+    PERINGATAN: Ini akan mengecek SEMUA pending payments (max 50)
+    ke QRIS.PW API. Gunakan dengan bijak!
+    
+    Returns:
+    - Jumlah payments yang di-sync
+    - Jumlah VIP yang diaktifkan
+    """
+    try:
+        from payment_sync import get_payment_sync_worker
+        
+        worker = get_payment_sync_worker()
+        if not worker:
+            raise HTTPException(
+                status_code=503,
+                detail="Payment Sync Worker belum aktif"
+            )
+        
+        logger.info(f"👤 Admin {admin.username} memulai force sync all pending payments")
+        
+        # Ambil stats sebelum sync
+        stats_before = worker.get_stats()
+        activated_before = stats_before.get("payments_activated", 0)
+        
+        # Trigger sync manually
+        worker._sync_pending_payments()
+        
+        # Ambil stats sesudah sync
+        stats_after = worker.get_stats()
+        activated_after = stats_after.get("payments_activated", 0)
+        
+        newly_activated = activated_after - activated_before
+        
+        logger.info(f"✅ Force sync selesai: {newly_activated} VIP baru diaktifkan")
+        
+        return {
+            "success": True,
+            "message": f"Force sync selesai. {newly_activated} VIP berhasil diaktifkan.",
+            "newly_activated": newly_activated,
+            "total_activated": activated_after,
+            "triggered_by": admin.username
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in force_sync_all_pending: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/pending-uploads")
 async def get_pending_uploads_endpoint(page: int = 1, limit: int = 20, content_type: Optional[str] = None, admin = Depends(get_current_admin)):
     """
