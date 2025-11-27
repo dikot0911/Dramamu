@@ -6,25 +6,32 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+INSECURE_USERNAMES = ['admin']
+
 def delete_insecure_admin():
     """Hapus admin user dengan username 'admin' yang pake kredensial default"""
     db = SessionLocal()
     try:
-        # Hapus semua admin user (buat clean slate)
-        admins = db.query(Admin).all()
+        from config import now_utc
+        insecure_admins = db.query(Admin).filter(
+            Admin.deleted_at == None,
+            Admin.username.in_(INSECURE_USERNAMES)
+        ).all()
         
-        if not admins:
-            logger.info("✅ Ga ada admin user di database")
+        if not insecure_admins:
+            logger.info("✅ Ga ada admin user dengan username insecure (admin) di database")
             return
         
-        for admin in admins:
-            logger.info(f"🗑️ Hapus admin user: {admin.username} (ID: {admin.id})")
-            db.delete(admin)
+        deleted_count = 0
+        for admin in insecure_admins:
+            logger.info(f"🗑️ Soft-delete insecure admin user: {admin.username} (ID: {admin.id})")
+            admin.deleted_at = now_utc()  # type: ignore
+            deleted_count += 1
         
         db.commit()
         
         logger.info("=" * 80)
-        logger.info("✅ Semua admin user yang ga aman berhasil dihapus!")
+        logger.info(f"✅ {deleted_count} admin user dengan username insecure berhasil dihapus!")
         logger.info("=" * 80)
         logger.info("")
         logger.info("LANGKAH SELANJUTNYA:")

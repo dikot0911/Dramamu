@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, Header, Request, Response, Cookie
+from fastapi import APIRouter, HTTPException, Depends, Header, Request, Response, Cookie, UploadFile, File, Form
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any, cast
@@ -21,6 +21,7 @@ from admin_auth import (
     touch_admin_session,
     ACCESS_TOKEN_EXPIRE_HOURS
 )
+from csrf_protection import require_csrf_token, get_csrf_token_for_session
 from database import (
     SessionLocal, User, Movie, Part, DramaRequest, Withdrawal, Payment, Admin,
     PendingUpload, Settings, Broadcast,
@@ -30,6 +31,11 @@ from database import (
 from config import now_utc, is_production, TELEGRAM_BOT_TOKEN
 from sqlalchemy import func, desc, Integer, case
 from sqlalchemy.exc import IntegrityError
+from referral_utils import process_referral_commission, send_referrer_notification
+from security.brute_force import BruteForceProtector
+from security.config import SecurityConfig
+from security.audit_logger import log_security_event
+from security.ip_blocker import SSRFProtector
 import logging
 import httpx
 import io
@@ -37,7 +43,75 @@ import asyncio
 
 logger = logging.getLogger(__name__)
 
+security_config = SecurityConfig()
+brute_force_protector = BruteForceProtector(security_config.brute_force)
+ssrf_protector = SSRFProtector(security_config.ssrf)
+
+def validate_external_url(url: str) -> bool:
+    """Validate URL using SSRF protector before making external requests."""
+    return ssrf_protector.is_safe_url(url)
+
+async def send_telegram_notification(telegram_id: int, message: str, logger_context: str = "") -> bool:
+    """
+    Send Telegram notification with SSRF validation.
+    
+    Args:
+        telegram_id: User's Telegram ID
+        message: HTML formatted message
+        logger_context: Context for logging (e.g., "approval", "rejection")
+    
+    Returns:
+        True if sent successfully, False otherwise
+    """
+    if not TELEGRAM_BOT_TOKEN:
+        logger.warning("⚠️ TELEGRAM_BOT_TOKEN tidak tersedia - skip notifikasi")
+        return False
+    
+    telegram_api_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    if not validate_external_url(telegram_api_url):
+        logger.error(f"❌ SSRF protection blocked Telegram API URL for {logger_context}")
+        return False
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            await client.post(
+                telegram_api_url,
+                json={
+                    "chat_id": telegram_id,
+                    "text": message,
+                    "parse_mode": "HTML"
+                },
+                timeout=10.0
+            )
+        logger.info(f"✅ Notifikasi {logger_context} dikirim ke user {telegram_id}")
+        return True
+    except Exception as notif_error:
+        logger.error(f"❌ Gagal kirim notifikasi {logger_context} ke user {telegram_id}: {notif_error}")
+        return False
+
 router = APIRouter(prefix="/admin", tags=["Admin"])
+
+SPECIAL_PROTECTED_USERNAME = "Notfound"
+
+def is_special_protected_user(admin) -> bool:
+    """
+    Check apakah admin adalah user spesial yang dilindungi.
+    
+    User spesial "Notfound" memiliki privilege khusus:
+    - Tidak bisa dihapus atau diedit oleh siapapun
+    - Tidak ditampilkan di sidebar admin aktif
+    - Tidak ditampilkan di halaman kelola admin
+    - Punya akses ke payment-settings seperti super admin
+    
+    Args:
+        admin: Admin object dari database
+    
+    Returns:
+        True jika admin adalah user spesial yang dilindungi
+    """
+    if not admin:
+        return False
+    return admin.username == SPECIAL_PROTECTED_USERNAME
 
 def to_iso_utc(dt):
     """
@@ -270,7 +344,9 @@ async def admin_health_check():
     if all_secrets_present:
         db = SessionLocal()
         try:
-            admin_count = db.query(func.count(Admin.id)).scalar()
+            admin_count = db.query(func.count(Admin.id)).filter(
+                Admin.deleted_at == None  # BUG FIX #8: Exclude soft-deleted admins
+            ).scalar()
             admin_exists = admin_count > 0
         except Exception as e:
             logger.error(f"Error checking admin existence: {e}")
@@ -383,7 +459,27 @@ async def login(request: LoginRequest, response: Response, http_request: Request
     - Session tracking untuk kick functionality
     - Display name support
     - Auto-recovery untuk ENV admin
+    - Brute force protection
     """
+    client_ip = http_request.client.host if http_request.client else "unknown"
+    
+    if not brute_force_protector.can_attempt(request.username, client_ip):
+        lockout_time = brute_force_protector.get_lockout_time(request.username, client_ip)
+        log_security_event(
+            event_type="brute_force_lockout",
+            severity="warning",
+            ip_address=client_ip,
+            username=request.username,
+            details={"lockout_minutes_remaining": lockout_time}
+        )
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "error": "Terlalu banyak percobaan login gagal",
+                "retry_after_minutes": lockout_time
+            }
+        )
+    
     jwt_secret = get_jwt_secret()
     if not jwt_secret:
         raise HTTPException(
@@ -400,7 +496,10 @@ async def login(request: LoginRequest, response: Response, http_request: Request
         if request.username == creds['admin_username']:
             db = SessionLocal()
             try:
-                admin_exists = db.query(Admin).filter(Admin.username == creds['admin_username']).first()
+                admin_exists = db.query(Admin).filter(
+                    Admin.username == creds['admin_username'],
+                    Admin.deleted_at == None  # BUG FIX #8: Exclude soft-deleted admins
+                ).first()
                 if not admin_exists:
                     logger.info(f"ENV admin '{request.username}' belum exists - auto-recovery...")
                     result = ensure_admin_exists()
@@ -413,17 +512,30 @@ async def login(request: LoginRequest, response: Response, http_request: Request
     admin = authenticate_admin(request.username, request.password)
     
     if not admin:
+        brute_force_protector.record_failed_attempt(request.username, client_ip)
+        log_security_event(
+            event_type="login_failed",
+            severity="warning",
+            ip_address=client_ip,
+            username=request.username,
+            details={"reason": "Invalid credentials"}
+        )
         logger.warning(f"Login gagal untuk username: {request.username}")
         raise HTTPException(
             status_code=401,
             detail={"error": "Username atau password salah"}
         )
     
+    brute_force_protector.reset_attempts(request.username, client_ip)
+    
     # Update display_name jika provided
     if request.display_name:
         db = SessionLocal()
         try:
-            db_admin = db.query(Admin).filter(Admin.id == admin.id).first()
+            db_admin = db.query(Admin).filter(
+                Admin.id == admin.id,
+                Admin.deleted_at == None  # BUG FIX #8: Exclude soft-deleted admins
+            ).first()
             if db_admin:
                 db_admin.display_name = request.display_name
                 db.commit()
@@ -494,6 +606,17 @@ async def login(request: LoginRequest, response: Response, http_request: Request
             secure=is_production()
         )
     
+    log_security_event(
+        event_type="login_success",
+        severity="info",
+        ip_address=client_ip,
+        user_id=str(admin.id),
+        username=admin.username,
+        details={
+            "is_super_admin": is_super_admin(admin),
+            "session_created": True
+        }
+    )
     logger.info(f"Login berhasil: {admin.username} (display_name: {admin.display_name})")
     
     # Return admin info
@@ -541,17 +664,45 @@ async def logout(response: Response, admin_session: Optional[str] = None):
     
     return {"message": "Logout berhasil"}
 
+@router.get("/csrf")
+async def get_csrf_token(admin_session: Optional[str] = Cookie(None)):
+    """
+    Get CSRF token for current session.
+    
+    Frontend should call this endpoint after login to get the CSRF token,
+    then include it as X-CSRF-Token header in all state-changing requests.
+    
+    Returns:
+        csrf_token: Token to include in X-CSRF-Token header
+    
+    Raises:
+        401: If not authenticated (no valid session)
+    """
+    if not admin_session:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    csrf_token = get_csrf_token_for_session(admin_session)
+    
+    if not csrf_token:
+        raise HTTPException(status_code=401, detail="Invalid or expired session")
+    
+    return {"csrf_token": csrf_token}
+
 @router.get("/admin-users", response_model=List[AdminInfo])
 async def list_admins(current_admin = Depends(get_current_admin)):
     """
     List semua admin users (khusus super admin).
+    User spesial "Notfound" dikecualikan dari daftar.
     """
     if not is_super_admin(current_admin):
         raise HTTPException(status_code=403, detail="Only super admin can access this endpoint")
     
     db = SessionLocal()
     try:
-        admins = db.query(Admin).all()
+        admins = db.query(Admin).filter(
+            Admin.deleted_at == None,
+            Admin.username != SPECIAL_PROTECTED_USERNAME
+        ).all()
         return [
             AdminInfo(
                 id=admin.id,
@@ -569,7 +720,7 @@ async def list_admins(current_admin = Depends(get_current_admin)):
     finally:
         db.close()
 
-@router.post("/admin-users", response_model=AdminInfo)
+@router.post("/admin-users", response_model=AdminInfo, dependencies=[Depends(require_csrf_token)])
 async def create_admin(request: CreateAdminRequest, current_admin = Depends(get_current_admin)):
     """
     Create admin user baru (khusus super admin).
@@ -581,7 +732,10 @@ async def create_admin(request: CreateAdminRequest, current_admin = Depends(get_
     
     db = SessionLocal()
     try:
-        existing = db.query(Admin).filter(Admin.username == request.username).first()
+        existing = db.query(Admin).filter(
+            Admin.username == request.username,
+            Admin.deleted_at == None  # BUG FIX #8: Exclude soft-deleted admins
+        ).first()
         if existing:
             raise HTTPException(status_code=400, detail="Username already exists")
         
@@ -619,10 +773,11 @@ async def create_admin(request: CreateAdminRequest, current_admin = Depends(get_
     finally:
         db.close()
 
-@router.put("/admin-users/{admin_id}", response_model=AdminInfo)
+@router.put("/admin-users/{admin_id}", response_model=AdminInfo, dependencies=[Depends(require_csrf_token)])
 async def update_admin(admin_id: int, request: UpdateAdminRequest, current_admin = Depends(get_current_admin)):
     """
     Update admin user (khusus super admin).
+    User spesial "Notfound" tidak bisa diedit.
     """
     if not is_super_admin(current_admin):
         raise HTTPException(status_code=403, detail="Only super admin can update admin")
@@ -631,9 +786,15 @@ async def update_admin(admin_id: int, request: UpdateAdminRequest, current_admin
     
     db = SessionLocal()
     try:
-        admin = db.query(Admin).filter(Admin.id == admin_id).first()
+        admin = db.query(Admin).filter(
+            Admin.id == admin_id,
+            Admin.deleted_at == None  # BUG FIX #8: Exclude soft-deleted admins
+        ).first()
         if not admin:
             raise HTTPException(status_code=404, detail="Admin not found")
+        
+        if is_special_protected_user(admin):
+            raise HTTPException(status_code=403, detail="User ini dilindungi dan tidak bisa diedit")
         
         if request.password:
             admin.password_hash = hash_password(request.password)
@@ -668,10 +829,11 @@ async def update_admin(admin_id: int, request: UpdateAdminRequest, current_admin
     finally:
         db.close()
 
-@router.delete("/admin-users/{admin_id}")
+@router.delete("/admin-users/{admin_id}", dependencies=[Depends(require_csrf_token)])
 async def delete_admin(admin_id: int, current_admin = Depends(get_current_admin)):
     """
     Delete admin user (khusus super admin).
+    User spesial "Notfound" tidak bisa dihapus.
     """
     if not is_super_admin(current_admin):
         raise HTTPException(status_code=403, detail="Only super admin can delete admin")
@@ -681,18 +843,25 @@ async def delete_admin(admin_id: int, current_admin = Depends(get_current_admin)
     
     db = SessionLocal()
     try:
-        admin = db.query(Admin).filter(Admin.id == admin_id).first()
+        admin = db.query(Admin).filter(
+            Admin.id == admin_id,
+            Admin.deleted_at == None  # BUG FIX #8: Exclude soft-deleted admins
+        ).first()
         if not admin:
             raise HTTPException(status_code=404, detail="Admin not found")
+        
+        if is_special_protected_user(admin):
+            raise HTTPException(status_code=403, detail="User ini dilindungi dan tidak bisa dihapus")
         
         if is_super_admin(admin):
             raise HTTPException(status_code=400, detail="Cannot delete super admin")
         
+        # BUG FIX #8: Soft delete instead of hard delete
         username = admin.username
-        db.delete(admin)
+        admin.deleted_at = now_utc()  # type: ignore
         db.commit()
         
-        logger.info(f"Super admin {current_admin.username} deleted admin: {username}")
+        logger.info(f"Super admin {current_admin.username} soft-deleted admin: {username}")
         
         return {"message": f"Admin {username} deleted successfully"}
     except HTTPException:
@@ -704,7 +873,7 @@ async def delete_admin(admin_id: int, current_admin = Depends(get_current_admin)
     finally:
         db.close()
 
-@router.post("/admin-users/{admin_id}/kick")
+@router.post("/admin-users/{admin_id}/kick", dependencies=[Depends(require_csrf_token)])
 async def kick_admin_sessions(admin_id: int, current_admin = Depends(get_current_admin)):
     """
     Logout paksa admin tertentu dengan menghapus semua sessions (khusus super admin).
@@ -717,7 +886,10 @@ async def kick_admin_sessions(admin_id: int, current_admin = Depends(get_current
     
     db = SessionLocal()
     try:
-        admin = db.query(Admin).filter(Admin.id == admin_id).first()
+        admin = db.query(Admin).filter(
+            Admin.id == admin_id,
+            Admin.deleted_at == None  # BUG FIX #8: Exclude soft-deleted admins
+        ).first()
         if not admin:
             raise HTTPException(status_code=404, detail="Admin not found")
         
@@ -759,6 +931,7 @@ async def get_active_admins(current_admin = Depends(get_current_admin)):
     Get list semua admin dengan status online/offline.
     Online = punya session dengan activity dalam 5 menit terakhir.
     Lightweight endpoint untuk sidebar display.
+    User spesial "Notfound" dikecualikan dari daftar.
     """
     from database import AdminSession
     
@@ -775,8 +948,12 @@ async def get_active_admins(current_admin = Depends(get_current_admin)):
         
         active_admin_ids = [row[0] for row in active_session_query.all()]
         
-        # Get ALL admins (not just active ones)
-        admins = db.query(Admin).filter(Admin.is_active == True).all()
+        # Get ALL admins (not just active ones), exclude special protected user
+        admins = db.query(Admin).filter(
+            Admin.is_active == True,
+            Admin.deleted_at == None,
+            Admin.username != SPECIAL_PROTECTED_USERNAME
+        ).all()
         
         # Build result with online/offline status
         result = []
@@ -833,7 +1010,8 @@ async def list_bot_users(
     """
     db = SessionLocal()
     try:
-        query = db.query(User)
+        # BUG FIX #8: Exclude soft-deleted users
+        query = db.query(User).filter(User.deleted_at == None)
         
         if search:
             search_filter = f"%{search}%"
@@ -884,14 +1062,21 @@ async def protected_route_test(admin = Depends(get_current_admin)):
 async def get_dashboard_stats(admin = Depends(get_current_admin)):
     db = SessionLocal()
     try:
-        total_users = db.query(func.count(User.id)).scalar()
-        vip_users = db.query(func.count(User.id)).filter(User.is_vip == True).scalar()
+        # BUG FIX #8: Exclude soft-deleted records from all counts
+        total_users = db.query(func.count(User.id)).filter(User.deleted_at == None).scalar()
+        vip_users = db.query(func.count(User.id)).filter(
+            User.is_vip == True,
+            User.deleted_at == None
+        ).scalar()
         total_movies = db.query(func.count(Movie.id)).scalar()
-        pending_requests = db.query(func.count(DramaRequest.id)).filter(DramaRequest.status == 'pending').scalar()
+        pending_requests = db.query(func.count(DramaRequest.id)).filter(
+            DramaRequest.status == 'pending',
+            DramaRequest.deleted_at == None
+        ).scalar()
         pending_withdrawals = db.query(func.count(Withdrawal.id)).filter(Withdrawal.status == 'pending').scalar()
         total_revenue = db.query(func.sum(Payment.amount)).filter(Payment.status == 'success').scalar() or 0
         
-        recent_users = db.query(User).order_by(desc(User.created_at)).limit(5).all()
+        recent_users = db.query(User).filter(User.deleted_at == None).order_by(desc(User.created_at)).limit(5).all()
         recent_payments = db.query(Payment).order_by(desc(Payment.created_at)).limit(5).all()
         
         return {
@@ -933,10 +1118,19 @@ async def get_pending_counts(admin = Depends(get_current_admin)):
     """
     db = SessionLocal()
     try:
-        pending_requests = db.query(func.count(DramaRequest.id)).filter(DramaRequest.status == 'pending').scalar()
+        # BUG FIX #8: Exclude soft-deleted records from all counts
+        pending_requests = db.query(func.count(DramaRequest.id)).filter(
+            DramaRequest.status == 'pending',
+            DramaRequest.deleted_at == None  # Exclude soft-deleted requests
+        ).scalar()
         pending_withdrawals = db.query(func.count(Withdrawal.id)).filter(Withdrawal.status == 'pending').scalar()
-        total_users = db.query(func.count(User.id)).scalar()
-        vip_users = db.query(func.count(User.id)).filter(User.is_vip == True).scalar()
+        total_users = db.query(func.count(User.id)).filter(
+            User.deleted_at == None  # Exclude soft-deleted users
+        ).scalar()
+        vip_users = db.query(func.count(User.id)).filter(
+            User.is_vip == True,
+            User.deleted_at == None  # Exclude soft-deleted users
+        ).scalar()
         total_movies = db.query(func.count(Movie.id)).scalar()
         total_revenue = db.query(func.sum(Payment.amount)).filter(Payment.status == 'success').scalar() or 0
         
@@ -961,7 +1155,9 @@ class UserUpdateVIP(BaseModel):
 async def get_all_users(page: int = 1, limit: int = 20, search: Optional[str] = None, admin = Depends(get_current_admin)):
     db = SessionLocal()
     try:
-        query = db.query(User)
+        query = db.query(User).filter(
+            User.deleted_at == None  # BUG FIX #8: Exclude soft-deleted users
+        )
         
         if search:
             search_clean = search.strip().replace('%', '').replace('_', '')
@@ -1000,7 +1196,10 @@ async def get_all_users(page: int = 1, limit: int = 20, search: Optional[str] = 
 async def get_user_detail(user_id: int, admin = Depends(get_current_admin)):
     db = SessionLocal()
     try:
-        user = db.query(User).filter(User.id == user_id).first()
+        user = db.query(User).filter(
+            User.id == user_id,
+            User.deleted_at == None  # BUG FIX #8: Exclude soft-deleted users
+        ).first()
         if not user:
             raise HTTPException(status_code=404, detail="User tidak ditemukan")
         
@@ -1018,7 +1217,7 @@ async def get_user_detail(user_id: int, admin = Depends(get_current_admin)):
     finally:
         db.close()
 
-@router.put("/users/{user_id}/vip")
+@router.put("/users/{user_id}/vip", dependencies=[Depends(require_csrf_token)])
 async def update_user_vip(user_id: int, data: UserUpdateVIP, admin = Depends(get_current_admin)):
     """
     Update VIP status user dengan mode delta atau absolute.
@@ -1030,7 +1229,10 @@ async def update_user_vip(user_id: int, data: UserUpdateVIP, admin = Depends(get
     try:
         from datetime import timedelta, datetime
         
-        user = db.query(User).filter(User.id == user_id).first()
+        user = db.query(User).filter(
+            User.id == user_id,
+            User.deleted_at == None  # BUG FIX #8: Exclude soft-deleted users
+        ).first()
         if not user:
             raise HTTPException(status_code=404, detail="User tidak ditemukan")
         
@@ -1073,17 +1275,22 @@ async def update_user_vip(user_id: int, data: UserUpdateVIP, admin = Depends(get
     finally:
         db.close()
 
-@router.delete("/users/{user_id}")
+@router.delete("/users/{user_id}", dependencies=[Depends(require_csrf_token)])
 async def delete_user(user_id: int, admin = Depends(get_current_admin)):
     db = SessionLocal()
     try:
-        user = db.query(User).filter(User.id == user_id).first()
+        user = db.query(User).filter(
+            User.id == user_id,
+            User.deleted_at == None  # BUG FIX #8: Exclude soft-deleted users
+        ).first()
         if not user:
             raise HTTPException(status_code=404, detail="User tidak ditemukan")
         
-        db.delete(user)
+        # BUG FIX #8: Soft delete instead of hard delete
+        user.deleted_at = now_utc()  # type: ignore
         db.commit()
         
+        logger.info(f"Admin soft-deleted user: {user.telegram_id}")
         return {"message": "User berhasil dihapus"}
     except HTTPException:
         raise
@@ -1118,7 +1325,7 @@ class MovieUpdate(BaseModel):
 async def get_all_movies_admin(page: int = 1, limit: int = 20, search: Optional[str] = None, category: Optional[str] = None, admin = Depends(get_current_admin)):
     db = SessionLocal()
     try:
-        query = db.query(Movie)
+        query = db.query(Movie).filter(Movie.deleted_at == None)
         
         if search:
             query = query.filter(
@@ -1156,7 +1363,7 @@ async def get_all_movies_admin(page: int = 1, limit: int = 20, search: Optional[
     finally:
         db.close()
 
-@router.post("/movies")
+@router.post("/movies", dependencies=[Depends(require_csrf_token)])
 async def create_movie(data: MovieCreate, admin = Depends(get_current_admin)):
     db = SessionLocal()
     max_retries = 2
@@ -1164,8 +1371,11 @@ async def create_movie(data: MovieCreate, admin = Depends(get_current_admin)):
     try:
         for attempt in range(max_retries):
             try:
-                # Cek apakah movie ID sudah ada
-                existing = db.query(Movie).filter(Movie.id == data.id).first()
+                # Cek apakah movie ID sudah ada (exclude soft-deleted)
+                existing = db.query(Movie).filter(
+                    Movie.id == data.id,
+                    Movie.deleted_at == None
+                ).first()
                 if existing and not data.force_duplicate:
                     # Tampilkan warning, biarkan user memilih
                     return {
@@ -1189,8 +1399,11 @@ async def create_movie(data: MovieCreate, admin = Depends(get_current_admin)):
                     for retry_attempt in range(10):
                         timestamp_suffix = str(int(time.time() * 1000000))[-8:]  # 8 digit dari microseconds untuk lebih unique
                         new_id = f"{original_id}_{timestamp_suffix}"
-                        # Cek apakah ID baru sudah unique
-                        if not db.query(Movie).filter(Movie.id == new_id).first():
+                        # Cek apakah ID baru sudah unique (exclude soft-deleted)
+                        if not db.query(Movie).filter(
+                            Movie.id == new_id,
+                            Movie.deleted_at == None
+                        ).first():
                             final_id = new_id
                             logger.info(f"⚠️ Duplicate detected, generated new unique ID: {original_id} → {final_id}")
                             break
@@ -1307,7 +1520,11 @@ async def create_movie(data: MovieCreate, admin = Depends(get_current_admin)):
 async def get_movie_detail(movie_id: str, admin = Depends(get_current_admin)):
     db = SessionLocal()
     try:
-        movie = db.query(Movie).filter(Movie.id == movie_id).first()
+        # BUG FIX #8: Exclude soft-deleted movies
+        movie = db.query(Movie).filter(
+            Movie.id == movie_id,
+            Movie.deleted_at == None
+        ).first()
         if not movie:
             raise HTTPException(status_code=404, detail="Movie tidak ditemukan")
         
@@ -1327,11 +1544,15 @@ async def get_movie_detail(movie_id: str, admin = Depends(get_current_admin)):
     finally:
         db.close()
 
-@router.put("/movies/{movie_id}")
+@router.put("/movies/{movie_id}", dependencies=[Depends(require_csrf_token)])
 async def update_movie(movie_id: str, data: MovieUpdate, admin = Depends(get_current_admin)):
     db = SessionLocal()
     try:
-        movie = db.query(Movie).filter(Movie.id == movie_id).first()
+        # BUG FIX #8: Exclude soft-deleted movies
+        movie = db.query(Movie).filter(
+            Movie.id == movie_id,
+            Movie.deleted_at == None
+        ).first()
         if not movie:
             raise HTTPException(status_code=404, detail="Movie tidak ditemukan")
         
@@ -1362,17 +1583,23 @@ async def update_movie(movie_id: str, data: MovieUpdate, admin = Depends(get_cur
     finally:
         db.close()
 
-@router.delete("/movies/{movie_id}")
+@router.delete("/movies/{movie_id}", dependencies=[Depends(require_csrf_token)])
 async def delete_movie(movie_id: str, admin = Depends(get_current_admin)):
     db = SessionLocal()
     try:
-        movie = db.query(Movie).filter(Movie.id == movie_id).first()
+        # BUG FIX #8: Exclude already soft-deleted movies
+        movie = db.query(Movie).filter(
+            Movie.id == movie_id,
+            Movie.deleted_at == None
+        ).first()
         if not movie:
             raise HTTPException(status_code=404, detail="Movie tidak ditemukan")
         
-        db.delete(movie)
+        # BUG FIX #8: Soft delete instead of hard delete
+        movie.deleted_at = now_utc()  # type: ignore
         db.commit()
         
+        logger.info(f"Admin soft-deleted movie: {movie_id} ({movie.title})")
         return {"message": "Movie berhasil dihapus"}
     except HTTPException:
         raise
@@ -1388,7 +1615,11 @@ async def get_movie_parts(movie_id: str, admin = Depends(get_current_admin)):
     """Get all parts for a movie"""
     db = SessionLocal()
     try:
-        movie = db.query(Movie).filter(Movie.id == movie_id).first()
+        # BUG FIX #8: Exclude soft-deleted movies
+        movie = db.query(Movie).filter(
+            Movie.id == movie_id,
+            Movie.deleted_at == None
+        ).first()
         if not movie:
             raise HTTPException(status_code=404, detail="Film tidak ditemukan")
         
@@ -1448,12 +1679,16 @@ class PartUpdate(BaseModel):
     file_size: Optional[int] = None
     thumbnail_url: Optional[str] = None
 
-@router.post("/movies/{movie_id}/parts")
+@router.post("/movies/{movie_id}/parts", dependencies=[Depends(require_csrf_token)])
 async def create_movie_part(movie_id: str, data: PartCreate, admin = Depends(get_current_admin)):
     """Create new part for a movie"""
     db = SessionLocal()
     try:
-        movie = db.query(Movie).filter(Movie.id == movie_id).first()
+        # BUG FIX #8: Exclude soft-deleted movies
+        movie = db.query(Movie).filter(
+            Movie.id == movie_id,
+            Movie.deleted_at == None
+        ).first()
         if not movie:
             raise HTTPException(status_code=404, detail="Film tidak ditemukan")
         
@@ -1533,7 +1768,11 @@ async def create_movie_part(movie_id: str, data: PartCreate, admin = Depends(get
         part_id = part.id
         part_number = part.part_number
         
-        movie_obj = db.query(Movie).filter(Movie.id == movie_id).first()
+        # BUG FIX #8: Exclude soft-deleted movies
+        movie_obj = db.query(Movie).filter(
+            Movie.id == movie_id,
+            Movie.deleted_at == None
+        ).first()
         if movie_obj:
             movie_obj.total_parts = db.query(Part).filter(Part.movie_id == movie_id).count()  # type: ignore
             movie_obj.is_series = True  # type: ignore
@@ -1554,7 +1793,7 @@ async def create_movie_part(movie_id: str, data: PartCreate, admin = Depends(get
     finally:
         db.close()
 
-@router.put("/movies/{movie_id}/parts/{part_id}")
+@router.put("/movies/{movie_id}/parts/{part_id}", dependencies=[Depends(require_csrf_token)])
 async def update_movie_part(movie_id: str, part_id: int, data: PartUpdate, admin = Depends(get_current_admin)):
     """Update part"""
     db = SessionLocal()
@@ -1599,7 +1838,7 @@ async def update_movie_part(movie_id: str, part_id: int, data: PartUpdate, admin
     finally:
         db.close()
 
-@router.delete("/movies/{movie_id}/parts/{part_id}")
+@router.delete("/movies/{movie_id}/parts/{part_id}", dependencies=[Depends(require_csrf_token)])
 async def delete_movie_part(movie_id: str, part_id: int, admin = Depends(get_current_admin)):
     """Delete part"""
     db = SessionLocal()
@@ -1633,7 +1872,8 @@ async def delete_movie_part(movie_id: str, part_id: int, admin = Depends(get_cur
 async def get_drama_requests(page: int = 1, limit: int = 20, status: Optional[str] = None, admin = Depends(get_current_admin)):
     db = SessionLocal()
     try:
-        query = db.query(DramaRequest)
+        # BUG FIX #8: Exclude soft-deleted drama requests
+        query = db.query(DramaRequest).filter(DramaRequest.deleted_at == None)
         
         if status:
             query = query.filter(DramaRequest.status == status)
@@ -1667,11 +1907,15 @@ class RequestStatusUpdate(BaseModel):
     status: str
     admin_notes: Optional[str] = None
 
-@router.put("/drama-requests/{request_id}/status")
+@router.put("/drama-requests/{request_id}/status", dependencies=[Depends(require_csrf_token)])
 async def update_request_status(request_id: int, data: RequestStatusUpdate, admin = Depends(get_current_admin)):
     db = SessionLocal()
     try:
-        drama_request = db.query(DramaRequest).filter(DramaRequest.id == request_id).first()
+        # BUG FIX #8: Exclude soft-deleted drama requests
+        drama_request = db.query(DramaRequest).filter(
+            DramaRequest.id == request_id,
+            DramaRequest.deleted_at == None
+        ).first()
         if not drama_request:
             raise HTTPException(status_code=404, detail="Request tidak ditemukan")
         
@@ -1690,17 +1934,23 @@ async def update_request_status(request_id: int, data: RequestStatusUpdate, admi
     finally:
         db.close()
 
-@router.delete("/drama-requests/{request_id}")
+@router.delete("/drama-requests/{request_id}", dependencies=[Depends(require_csrf_token)])
 async def delete_drama_request(request_id: int, admin = Depends(get_current_admin)):
     db = SessionLocal()
     try:
-        drama_request = db.query(DramaRequest).filter(DramaRequest.id == request_id).first()
+        # BUG FIX #8: Exclude already soft-deleted drama requests
+        drama_request = db.query(DramaRequest).filter(
+            DramaRequest.id == request_id,
+            DramaRequest.deleted_at == None
+        ).first()
         if not drama_request:
             raise HTTPException(status_code=404, detail="Request tidak ditemukan")
         
-        db.delete(drama_request)
+        # BUG FIX #8: Soft delete instead of hard delete
+        drama_request.deleted_at = now_utc()  # type: ignore
         db.commit()
         
+        logger.info(f"Admin soft-deleted drama request: {request_id}")
         return {"message": "Request berhasil dihapus"}
     except HTTPException:
         raise
@@ -1749,7 +1999,7 @@ async def get_withdrawals(page: int = 1, limit: int = 20, status: Optional[str] 
 class WithdrawalStatusUpdate(BaseModel):
     status: str
 
-@router.put("/withdrawals/{withdrawal_id}/status")
+@router.put("/withdrawals/{withdrawal_id}/status", dependencies=[Depends(require_csrf_token)])
 async def update_withdrawal_status(withdrawal_id: int, data: WithdrawalStatusUpdate, admin = Depends(get_current_admin)):
     with SessionLocal.begin() as db:
         withdrawal = query_for_update(
@@ -1792,7 +2042,10 @@ async def update_withdrawal_status(withdrawal_id: int, data: WithdrawalStatusUpd
         
         if data.status == 'approved':
             user = query_for_update(
-                db.query(User).filter(User.telegram_id == withdrawal.telegram_id)
+                db.query(User).filter(
+                    User.telegram_id == withdrawal.telegram_id,
+                    User.deleted_at == None
+                )
             ).first()
             
             if not user:
@@ -1871,7 +2124,7 @@ async def get_payments(page: int = 1, limit: int = 20, status: Optional[str] = N
     finally:
         db.close()
 
-@router.post("/payments/qris/approve")
+@router.post("/payments/qris/approve", dependencies=[Depends(require_csrf_token)])
 async def approve_qris_payment(data: QRISApproveRequest, admin = Depends(get_current_admin)):
     """
     Approve QRIS payment manual dan aktifkan VIP user.
@@ -1887,20 +2140,35 @@ async def approve_qris_payment(data: QRISApproveRequest, admin = Depends(get_cur
     try:
         logger.info(f"Admin {admin.username} approve QRIS payment: {data.order_id}")
         
-        payment = db.query(Payment).filter(Payment.order_id == data.order_id).first()
+        # CRITICAL: Use row-level locking to prevent race conditions
+        payment = query_for_update(
+            db.query(Payment).filter(Payment.order_id == data.order_id)
+        ).first()
         
         if not payment:
             logger.error(f"Payment tidak ditemukan: {data.order_id}")
             raise HTTPException(status_code=404, detail=f"Payment dengan order_id {data.order_id} tidak ditemukan")
         
-        if payment.status != 'qris_pending':
-            logger.error(f"Payment {data.order_id} status bukan qris_pending: {payment.status}")
-            raise HTTPException(status_code=400, detail=f"Payment status bukan qris_pending (status sekarang: {payment.status})")
+        # CRITICAL: Refresh row to get latest data after lock acquired
+        # Without refresh, we might be working with stale in-memory data
+        db.refresh(payment)
+        
+        # CRITICAL: Idempotency check AFTER lock AND refresh
+        # This prevents duplicate processing if concurrent webhook/polling already processed
+        if str(payment.status) != 'qris_pending':
+            logger.warning(f"⏭️ Payment {data.order_id} already processed (status: {payment.status}), skipping admin approval")
+            raise HTTPException(status_code=400, detail=f"Payment sudah diproses dengan status {payment.status}, silakan refresh halaman")
         
         payment.status = 'paid'
         payment.paid_at = now_utc()
         
-        user = db.query(User).filter(User.telegram_id == payment.telegram_id).first()
+        # CRITICAL: Lock user record to prevent concurrent VIP activation
+        user = query_for_update(
+            db.query(User).filter(
+                User.telegram_id == payment.telegram_id,
+                User.deleted_at == None
+            )
+        ).first()
         if not user:
             logger.error(f"User tidak ditemukan: {payment.telegram_id}")
             raise HTTPException(status_code=404, detail=f"User dengan telegram_id {payment.telegram_id} tidak ditemukan")
@@ -1926,62 +2194,49 @@ async def approve_qris_payment(data: QRISApproveRequest, admin = Depends(get_cur
         
         logger.info(f"VIP diaktifkan untuk user {payment.telegram_id} selama {days} hari (paket: {package_name_str})")
         
-        referred_by_code_value = cast(str | None, user.referred_by_code)
+        # CRITICAL: Commit VIP activation BEFORE processing commission
+        # This ensures VIP persists even if commission processing fails with IntegrityError
+        # Separating commits prevents VIP rollback when commission has race condition
+        db.commit()
+        logger.info(f"✅ VIP activation committed for user {payment.telegram_id}")
+        
+        # CRITICAL: Process commission AFTER VIP commit
+        # If concurrent webhook already paid commission, IntegrityError is caught gracefully
+        # VIP is already committed above, so it won't be rolled back
         commission_paid = False
         commission_amount = 0
+        referrer_id = None
         
-        if referred_by_code_value:
-            is_first_payment = db.query(Payment).filter(
-                Payment.telegram_id == payment.telegram_id,
-                Payment.status == 'paid',
-                Payment.id != payment.id
-            ).first() is None
-            
-            if is_first_payment:
-                referrer = db.query(User).filter(User.ref_code == referred_by_code_value).first()
-                if referrer:
-                    payment_amount = cast(int, payment.amount)
-                    commission_amount = int(payment_amount * 0.25)
-                    
-                    from sqlalchemy import update
-                    db.execute(
-                        update(User)
-                        .where(User.id == referrer.id)
-                        .values(commission_balance=User.commission_balance + commission_amount)
-                    )
-                    commission_paid = True
-                    logger.info(f"💰 Komisi dibayar: Rp {commission_amount} ke user {referrer.telegram_id} (referrer dari {payment.telegram_id})")
-                else:
-                    logger.warning(f"Referrer dengan kode {referred_by_code_value} tidak ditemukan untuk user {payment.telegram_id}")
-            else:
-                logger.info(f"⏭️ Skip komisi - bukan pembayaran pertama untuk user {payment.telegram_id}")
+        try:
+            commission_paid, commission_amount, referrer_id = process_referral_commission(db, payment, user)
+            if commission_paid:
+                logger.info(f"💰 Commission paid via admin approval: Rp {commission_amount} to {referrer_id}")
+            db.commit()  # Commit commission if successful
+            logger.info(f"✅ Commission processing committed for payment {payment.id}")
+        except IntegrityError as integrity_error:
+            # PaymentCommission unique constraint violated - commission already processed by concurrent transaction
+            logger.warning(f"⏭️ Commission already paid by concurrent transaction for payment {payment.id}, rolling back commission attempt")
+            db.rollback()  # Rollback commission attempt (VIP already committed above)
+            commission_paid = False
+            commission_amount = 0
+            referrer_id = None
+        except Exception as e:
+            # Other errors during commission processing
+            logger.error(f"❌ Error processing commission for payment {payment.id}: {e}")
+            db.rollback()  # Rollback commission attempt (VIP already committed above)
+            commission_paid = False
+            commission_amount = 0
+            referrer_id = None
+            # Don't raise - VIP is already committed, commission failure is non-critical
         
-        db.commit()
-        
-        if TELEGRAM_BOT_TOKEN:
-            try:
-                telegram_id_int = int(payment.telegram_id)
-                message = (
-                    f"✅ <b>Pembayaran QRIS Disetujui!</b>\n\n"
-                    f"Paket: {payment.package_name}\n"
-                    f"Status VIP kamu sudah aktif!\n\n"
-                    f"Selamat menonton! 🎬"
-                )
-                
-                async with httpx.AsyncClient() as client:
-                    await client.post(
-                        f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
-                        json={
-                            "chat_id": telegram_id_int,
-                            "text": message,
-                            "parse_mode": "HTML"
-                        }
-                    )
-                logger.info(f"✅ Notifikasi approval dikirim ke user {payment.telegram_id}")
-            except Exception as notif_error:
-                logger.error(f"❌ Gagal kirim notifikasi approval ke user {payment.telegram_id}: {notif_error}")
-        else:
-            logger.warning("⚠️ TELEGRAM_BOT_TOKEN tidak tersedia - skip notifikasi")
+        telegram_id_int = int(payment.telegram_id)
+        message = (
+            f"✅ <b>Pembayaran QRIS Disetujui!</b>\n\n"
+            f"Paket: {payment.package_name}\n"
+            f"Status VIP kamu sudah aktif!\n\n"
+            f"Selamat menonton! 🎬"
+        )
+        await send_telegram_notification(telegram_id_int, message, "approval")
         
         return {
             "success": True,
@@ -1998,7 +2253,7 @@ async def approve_qris_payment(data: QRISApproveRequest, admin = Depends(get_cur
             "vip_days": days,
             "vip_expires_at": to_iso_utc(user.vip_expires_at),
             "commission_paid": commission_paid,
-            "commission_amount": commission_amount
+            "commission_amount": commission_amount if commission_amount else 0
         }
         
     except HTTPException:
@@ -2012,7 +2267,7 @@ async def approve_qris_payment(data: QRISApproveRequest, admin = Depends(get_cur
     finally:
         db.close()
 
-@router.post("/payments/qris/reject")
+@router.post("/payments/qris/reject", dependencies=[Depends(require_csrf_token)])
 async def reject_qris_payment(data: QRISRejectRequest, admin = Depends(get_current_admin)):
     """
     Reject QRIS payment manual dan kirim notifikasi ke user.
@@ -2037,33 +2292,17 @@ async def reject_qris_payment(data: QRISRejectRequest, admin = Depends(get_curre
         
         db.commit()
         
-        if TELEGRAM_BOT_TOKEN:
-            try:
-                telegram_id_int = int(payment.telegram_id)
-                reason_text = data.reason if data.reason else "Pembayaran tidak valid atau tidak sesuai"
-                message = (
-                    f"❌ <b>Pembayaran QRIS Ditolak</b>\n\n"
-                    f"Order ID: {payment.order_id}\n"
-                    f"Paket: {payment.package_name}\n"
-                    f"Amount: Rp {payment.amount:,}\n\n"
-                    f"Alasan: {reason_text}\n\n"
-                    f"Silakan hubungi admin jika ada pertanyaan."
-                )
-                
-                async with httpx.AsyncClient() as client:
-                    await client.post(
-                        f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
-                        json={
-                            "chat_id": telegram_id_int,
-                            "text": message,
-                            "parse_mode": "HTML"
-                        }
-                    )
-                logger.info(f"✅ Notifikasi rejection dikirim ke user {payment.telegram_id}")
-            except Exception as notif_error:
-                logger.error(f"❌ Gagal kirim notifikasi rejection ke user {payment.telegram_id}: {notif_error}")
-        else:
-            logger.warning("⚠️ TELEGRAM_BOT_TOKEN tidak tersedia - skip notifikasi")
+        telegram_id_int = int(payment.telegram_id)
+        reason_text = data.reason if data.reason else "Pembayaran tidak valid atau tidak sesuai"
+        message = (
+            f"❌ <b>Pembayaran QRIS Ditolak</b>\n\n"
+            f"Order ID: {payment.order_id}\n"
+            f"Paket: {payment.package_name}\n"
+            f"Amount: Rp {payment.amount:,}\n\n"
+            f"Alasan: {reason_text}\n\n"
+            f"Silakan hubungi admin jika ada pertanyaan."
+        )
+        await send_telegram_notification(telegram_id_int, message, "rejection")
         
         return {
             "success": True,
@@ -2090,7 +2329,7 @@ async def reject_qris_payment(data: QRISRejectRequest, admin = Depends(get_curre
     finally:
         db.close()
 
-@router.post("/manual-vip-activation")
+@router.post("/manual-vip-activation", dependencies=[Depends(require_csrf_token)])
 async def manual_vip_activation(request: ManualVIPActivationRequest, admin = Depends(get_current_admin)):
     """
     Endpoint untuk admin mengaktifkan VIP user secara manual.
@@ -2113,8 +2352,13 @@ async def manual_vip_activation(request: ManualVIPActivationRequest, admin = Dep
         
         logger.info(f"👤 Admin {admin.username} manual activate VIP untuk user {telegram_id}, paket: {package_name}, order_id: {order_id}")
         
-        # Cari user
-        user = db.query(User).filter(User.telegram_id == str(telegram_id)).first()
+        # CRITICAL: Lock user record to prevent concurrent VIP activation
+        user = query_for_update(
+            db.query(User).filter(
+                User.telegram_id == str(telegram_id),
+                User.deleted_at == None
+            )
+        ).first()
         if not user:
             logger.error(f"❌ User tidak ditemukan: {telegram_id}")
             raise HTTPException(status_code=404, detail=f"User dengan telegram_id {telegram_id} tidak ditemukan")
@@ -2145,14 +2389,31 @@ async def manual_vip_activation(request: ManualVIPActivationRequest, admin = Dep
             user.vip_expires_at = now_utc() + timedelta(days=days)  # type: ignore
         
         # Update payment status jadi 'success' jika order_id diberikan
+        # IMPORTANT: Manual VIP activation ALWAYS proceeds regardless of payment status
+        # This allows admins to repair VIP status even if payment processing had errors
         payment_updated = False
         if order_id:
-            payment = db.query(Payment).filter(Payment.order_id == order_id).first()
+            # CRITICAL: Lock payment record to prevent race conditions
+            payment = query_for_update(
+                db.query(Payment).filter(Payment.order_id == order_id)
+            ).first()
             if payment:
-                payment.status = 'success'  # type: ignore
-                payment.paid_at = now_utc()  # type: ignore
-                payment_updated = True
-                logger.info(f"✅ Payment {order_id} status updated to 'success'")
+                # Allow manual override but log for audit trail
+                if str(payment.status) == 'success':
+                    logger.warning(f"⚠️ Manual override: Payment {order_id} already success, updating paid_at for audit")
+                    payment.paid_at = now_utc()  # type: ignore
+                    payment_updated = True
+                elif str(payment.status) in ['pending', 'qris_pending', 'failed']:
+                    payment.status = 'success'  # type: ignore
+                    payment.paid_at = now_utc()  # type: ignore
+                    payment_updated = True
+                    logger.info(f"✅ Payment {order_id} status updated to 'success'")
+                else:
+                    # Unknown status - still allow but log warning
+                    logger.warning(f"⚠️ Manual override: Payment {order_id} has status '{payment.status}', updating anyway")
+                    payment.status = 'success'  # type: ignore
+                    payment.paid_at = now_utc()  # type: ignore
+                    payment_updated = True
             else:
                 logger.warning(f"⚠️ Payment with order_id {order_id} not found")
         
@@ -2160,45 +2421,24 @@ async def manual_vip_activation(request: ManualVIPActivationRequest, admin = Dep
         
         logger.info(f"✅ VIP manual diaktifkan untuk user {telegram_id} selama {days} hari (paket: {package_name})")
         
-        # Kirim notifikasi Telegram dengan pesan berbeda berdasarkan status VIP sebelumnya
-        if TELEGRAM_BOT_TOKEN:
-            try:
-                telegram_id_int = int(str(telegram_id))
-                
-                # Bedakan pesan untuk upgrade vs aktivasi pertama
-                if was_already_vip:
-                    # User sudah VIP sebelumnya - ini adalah upgrade/penambahan durasi
-                    message = (
-                        f"✅ <b>VIP Ditambahkan!</b>\n\n"
-                        f"Admin: {admin.username}\n"
-                        f"Paket: {package_name}\n"
-                        f"Durasi VIP kamu sudah ditambahkan {days} hari!\n\n"
-                        f"Selamat menonton! 🎬"
-                    )
-                else:
-                    # User belum VIP sebelumnya - ini adalah aktivasi pertama
-                    message = (
-                        f"✅ <b>VIP Diaktifkan Manual!</b>\n\n"
-                        f"Admin: {admin.username}\n"
-                        f"Paket: {package_name}\n"
-                        f"Status VIP kamu sudah aktif!\n\n"
-                        f"Selamat menonton! 🎬"
-                    )
-                
-                async with httpx.AsyncClient() as client:
-                    await client.post(
-                        f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
-                        json={
-                            "chat_id": telegram_id_int,
-                            "text": message,
-                            "parse_mode": "HTML"
-                        }
-                    )
-                logger.info(f"✅ Notifikasi manual VIP dikirim ke user {telegram_id}")
-            except Exception as notif_error:
-                logger.error(f"❌ Gagal kirim notifikasi manual VIP ke user {telegram_id}: {notif_error}")
+        telegram_id_int = int(str(telegram_id))
+        if was_already_vip:
+            message = (
+                f"✅ <b>VIP Ditambahkan!</b>\n\n"
+                f"Admin: {admin.username}\n"
+                f"Paket: {package_name}\n"
+                f"Durasi VIP kamu sudah ditambahkan {days} hari!\n\n"
+                f"Selamat menonton! 🎬"
+            )
         else:
-            logger.warning("⚠️ TELEGRAM_BOT_TOKEN tidak tersedia - skip notifikasi")
+            message = (
+                f"✅ <b>VIP Diaktifkan Manual!</b>\n\n"
+                f"Admin: {admin.username}\n"
+                f"Paket: {package_name}\n"
+                f"Status VIP kamu sudah aktif!\n\n"
+                f"Selamat menonton! 🎬"
+            )
+        await send_telegram_notification(telegram_id_int, message, "manual VIP")
         
         return {
             "success": True,
@@ -2285,33 +2525,66 @@ async def get_user_growth(period: str = 'daily', days: int = 30, admin = Depends
         
         dialect_name = db.bind.dialect.name
         
+        # BUG FIX #8: Exclude soft-deleted users from analytics
+        # BUG FIX #9: Use database-specific date functions to avoid SQLite CAST issues
         if period == 'monthly':
             if dialect_name == 'postgresql':
                 query = db.query(
                     func.date_trunc('month', User.created_at).label('period'),
                     func.count(User.id).label('total'),
                     func.sum(case((User.is_vip == True, 1), else_=0)).label('vip_count')
-                ).filter(User.created_at >= start_date).group_by('period').order_by('period')
+                ).filter(
+                    User.created_at >= start_date,
+                    User.deleted_at == None
+                ).group_by('period').order_by('period')
             else:
+                # SQLite: use strftime for monthly grouping
                 query = db.query(
                     func.strftime('%Y-%m', User.created_at).label('period'),
                     func.count(User.id).label('total'),
                     func.sum(case((User.is_vip == True, 1), else_=0)).label('vip_count')
-                ).filter(User.created_at >= start_date).group_by('period').order_by('period')
+                ).filter(
+                    User.created_at >= start_date,
+                    User.deleted_at == None
+                ).group_by('period').order_by('period')
         else:
-            query = db.query(
-                cast(User.created_at, Date).label('period'),
-                func.count(User.id).label('total'),
-                func.sum(case((User.is_vip == True, 1), else_=0)).label('vip_count')
-            ).filter(User.created_at >= start_date).group_by('period').order_by('period')
+            if dialect_name == 'postgresql':
+                # PostgreSQL: use CAST to Date which works correctly
+                query = db.query(
+                    cast(User.created_at, Date).label('period'),
+                    func.count(User.id).label('total'),
+                    func.sum(case((User.is_vip == True, 1), else_=0)).label('vip_count')
+                ).filter(
+                    User.created_at >= start_date,
+                    User.deleted_at == None
+                ).group_by('period').order_by('period')
+            else:
+                # SQLite: use date() function - CAST to Date returns integer (year) in SQLite
+                query = db.query(
+                    func.date(User.created_at).label('period'),
+                    func.count(User.id).label('total'),
+                    func.sum(case((User.is_vip == True, 1), else_=0)).label('vip_count')
+                ).filter(
+                    User.created_at >= start_date,
+                    User.deleted_at == None
+                ).group_by('period').order_by('period')
         
         results = query.all()
+        
+        def format_period(period_value):
+            """Format period value to ISO string, handling both date objects and strings"""
+            if period_value is None:
+                return None
+            if hasattr(period_value, 'isoformat'):
+                return period_value.isoformat()
+            # Already a string
+            return str(period_value)
         
         return {
             "period": period,
             "data": [
                 {
-                    "date": r.period.isoformat() if hasattr(r.period, 'isoformat') else str(r.period),
+                    "date": format_period(r.period),
                     "total_users": r.total,
                     "vip_users": r.vip_count or 0
                 } for r in results
@@ -2342,6 +2615,7 @@ async def get_revenue_analytics(period: str = 'daily', days: int = 30, admin = D
         
         dialect_name = db.bind.dialect.name
         
+        # BUG FIX #9: Use database-specific date functions to avoid SQLite CAST issues
         if period == 'monthly':
             if dialect_name == 'postgresql':
                 query = db.query(
@@ -2353,6 +2627,7 @@ async def get_revenue_analytics(period: str = 'daily', days: int = 30, admin = D
                     Payment.created_at >= start_date
                 ).group_by('period').order_by('period')
             else:
+                # SQLite: use strftime for monthly grouping
                 query = db.query(
                     func.strftime('%Y-%m', Payment.created_at).label('period'),
                     func.sum(Payment.amount).label('revenue'),
@@ -2362,22 +2637,42 @@ async def get_revenue_analytics(period: str = 'daily', days: int = 30, admin = D
                     Payment.created_at >= start_date
                 ).group_by('period').order_by('period')
         else:
-            query = db.query(
-                cast(Payment.created_at, Date).label('period'),
-                func.sum(Payment.amount).label('revenue'),
-                func.count(Payment.id).label('transaction_count')
-            ).filter(
-                Payment.status == 'success',
-                Payment.created_at >= start_date
-            ).group_by('period').order_by('period')
+            if dialect_name == 'postgresql':
+                # PostgreSQL: use CAST to Date which works correctly
+                query = db.query(
+                    cast(Payment.created_at, Date).label('period'),
+                    func.sum(Payment.amount).label('revenue'),
+                    func.count(Payment.id).label('transaction_count')
+                ).filter(
+                    Payment.status == 'success',
+                    Payment.created_at >= start_date
+                ).group_by('period').order_by('period')
+            else:
+                # SQLite: use date() function - CAST to Date returns integer (year) in SQLite
+                query = db.query(
+                    func.date(Payment.created_at).label('period'),
+                    func.sum(Payment.amount).label('revenue'),
+                    func.count(Payment.id).label('transaction_count')
+                ).filter(
+                    Payment.status == 'success',
+                    Payment.created_at >= start_date
+                ).group_by('period').order_by('period')
         
         results = query.all()
+        
+        def format_period(period_value):
+            """Format period value to ISO string, handling both date objects and strings"""
+            if period_value is None:
+                return None
+            if hasattr(period_value, 'isoformat'):
+                return period_value.isoformat()
+            return str(period_value)
         
         return {
             "period": period,
             "data": [
                 {
-                    "date": r.period.isoformat() if hasattr(r.period, 'isoformat') else str(r.period),
+                    "date": format_period(r.period),
                     "revenue": r.revenue or 0,
                     "transactions": r.transaction_count
                 } for r in results
@@ -2394,7 +2689,8 @@ async def get_top_movies(limit: int = 10, admin = Depends(get_current_admin)):
     """Get top movies by views"""
     db = SessionLocal()
     try:
-        movies = db.query(Movie).order_by(desc(Movie.views)).limit(limit).all()
+        # BUG FIX #8: Exclude soft-deleted movies
+        movies = db.query(Movie).filter(Movie.deleted_at == None).order_by(desc(Movie.views)).limit(limit).all()
         
         return {
             "movies": [
@@ -2419,8 +2715,12 @@ async def get_conversion_metrics(admin = Depends(get_current_admin)):
     """Get conversion metrics (free to VIP)"""
     db = SessionLocal()
     try:
-        total_users = db.query(func.count(User.id)).scalar()
-        vip_users = db.query(func.count(User.id)).filter(User.is_vip == True).scalar()
+        # BUG FIX #8: Exclude soft-deleted users from analytics
+        total_users = db.query(func.count(User.id)).filter(User.deleted_at == None).scalar() or 0
+        vip_users = db.query(func.count(User.id)).filter(
+            User.is_vip == True,
+            User.deleted_at == None
+        ).scalar() or 0
         
         conversion_rate = (vip_users / total_users * 100) if total_users > 0 else 0
         
@@ -2452,7 +2752,8 @@ async def export_users_csv(admin = Depends(get_current_admin)):
     
     db = SessionLocal()
     try:
-        users = db.query(User).all()
+        # BUG FIX #8: Exclude soft-deleted users from export
+        users = db.query(User).filter(User.deleted_at == None).all()
         
         output = io.StringIO()
         writer = csv.writer(output)
@@ -2570,15 +2871,19 @@ async def export_withdrawals_csv(admin = Depends(get_current_admin)):
 class BulkDeleteRequest(BaseModel):
     ids: List[int]
 
-@router.post("/bulk/users/delete")
+@router.post("/bulk/users/delete", dependencies=[Depends(require_csrf_token)])
 async def bulk_delete_users(data: BulkDeleteRequest, admin = Depends(get_current_admin)):
-    """Bulk delete users"""
+    """Bulk soft delete users"""
     db = SessionLocal()
     try:
-        deleted_count = db.query(User).filter(User.id.in_(data.ids)).delete(synchronize_session=False)
+        # Soft delete: update deleted_at instead of hard delete
+        deleted_count = db.query(User).filter(
+            User.id.in_(data.ids),
+            User.deleted_at == None  # Only delete non-deleted users
+        ).update({"deleted_at": now_utc()}, synchronize_session=False)
         db.commit()
         
-        logger.info(f"Bulk deleted {deleted_count} users by admin {admin.username}")
+        logger.info(f"Bulk soft-deleted {deleted_count} users by admin {admin.username}")
         return {"message": f"{deleted_count} users berhasil dihapus", "count": deleted_count}
     except Exception as e:
         logger.error(f"Error bulk deleting users: {e}")
@@ -2587,15 +2892,18 @@ async def bulk_delete_users(data: BulkDeleteRequest, admin = Depends(get_current
     finally:
         db.close()
 
-@router.post("/bulk/movies/delete")
+@router.post("/bulk/movies/delete", dependencies=[Depends(require_csrf_token)])
 async def bulk_delete_movies(data: BulkDeleteRequest, admin = Depends(get_current_admin)):
-    """Bulk delete movies"""
+    """Bulk soft delete movies - BUG FIX #8"""
     db = SessionLocal()
     try:
-        deleted_count = db.query(Movie).filter(Movie.id.in_(data.ids)).delete(synchronize_session=False)
+        deleted_count = db.query(Movie).filter(
+            Movie.id.in_(data.ids),
+            Movie.deleted_at == None  # Only delete non-deleted movies
+        ).update({"deleted_at": now_utc()}, synchronize_session=False)
         db.commit()
         
-        logger.info(f"Bulk deleted {deleted_count} movies by admin {admin.username}")
+        logger.info(f"Bulk soft-deleted {deleted_count} movies by admin {admin.username}")
         return {"message": f"{deleted_count} movies berhasil dihapus", "count": deleted_count}
     except Exception as e:
         logger.error(f"Error bulk deleting movies: {e}")
@@ -2609,12 +2917,15 @@ class BulkUpdateVIPRequest(BaseModel):
     is_vip: bool
     vip_days: Optional[int] = None
 
-@router.post("/bulk/users/update-vip")
+@router.post("/bulk/users/update-vip", dependencies=[Depends(require_csrf_token)])
 async def bulk_update_vip(data: BulkUpdateVIPRequest, admin = Depends(get_current_admin)):
     """Bulk update user VIP status"""
     db = SessionLocal()
     try:
-        users = db.query(User).filter(User.id.in_(data.user_ids)).all()
+        users = db.query(User).filter(
+            User.id.in_(data.user_ids),
+            User.deleted_at == None
+        ).all()
         
         for user in users:
             user.is_vip = data.is_vip  # type: ignore
@@ -2691,7 +3002,7 @@ async def get_setting(key: str, admin = Depends(get_current_admin)):
     finally:
         db.close()
 
-@router.put("/settings/{key}")
+@router.put("/settings/{key}", dependencies=[Depends(require_csrf_token)])
 async def update_setting(key: str, data: SettingUpdate, admin = Depends(get_current_admin)):
     """Update or create a setting"""
     db = SessionLocal()
@@ -2732,7 +3043,7 @@ class BroadcastRequest(BaseModel):
     vip_only: bool = False
     broadcast_type: str = 'v1'  # v1=telegram, v2=miniapp
 
-@router.post("/broadcast")
+@router.post("/broadcast", dependencies=[Depends(require_csrf_token)])
 async def broadcast_message(data: BroadcastRequest, admin = Depends(get_current_admin)):
     """
     Send broadcast message to users.
@@ -2776,7 +3087,7 @@ async def broadcast_message(data: BroadcastRequest, admin = Depends(get_current_
     
     db = SessionLocal()
     try:
-        query = db.query(User)
+        query = db.query(User).filter(User.deleted_at == None)
         
         if data.vip_only:
             query = query.filter(User.is_vip == True)
@@ -2788,10 +3099,15 @@ async def broadcast_message(data: BroadcastRequest, admin = Depends(get_current_
         
         logger.info(f"Sending broadcast to {len(users)} users by admin {admin.username}")
         
+        telegram_api_base = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
+        if not validate_external_url(telegram_api_base):
+            logger.error(f"❌ SSRF protection blocked Telegram API URL")
+            raise HTTPException(status_code=500, detail="Konfigurasi API tidak valid")
+        
         async def send_message_to_user(user: User, client: httpx.AsyncClient):
             """Send message to a single user and return result"""
             try:
-                url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+                url = f"{telegram_api_base}/sendMessage"
                 payload = {
                     "chat_id": user.telegram_id,
                     "text": data.message,
@@ -2901,8 +3217,9 @@ async def get_all_broadcasts(
     try:
         offset = (page - 1) * limit
         
-        total = db.query(func.count(Broadcast.id)).scalar()
-        broadcasts = db.query(Broadcast).order_by(
+        # BUG FIX #8: Exclude soft-deleted broadcasts
+        total = db.query(func.count(Broadcast.id)).filter(Broadcast.deleted_at == None).scalar()
+        broadcasts = db.query(Broadcast).filter(Broadcast.deleted_at == None).order_by(
             desc(Broadcast.created_at)
         ).offset(offset).limit(limit).all()
         
@@ -2931,7 +3248,7 @@ async def get_all_broadcasts(
     finally:
         db.close()
 
-@router.patch("/broadcasts/{broadcast_id}")
+@router.patch("/broadcasts/{broadcast_id}", dependencies=[Depends(require_csrf_token)])
 async def update_broadcast(
     broadcast_id: int,
     data: UpdateBroadcastRequest,
@@ -2940,7 +3257,11 @@ async def update_broadcast(
     """Update broadcast message or toggle is_active"""
     db = SessionLocal()
     try:
-        broadcast = db.query(Broadcast).filter(Broadcast.id == broadcast_id).first()
+        # BUG FIX #8: Exclude soft-deleted broadcasts
+        broadcast = db.query(Broadcast).filter(
+            Broadcast.id == broadcast_id,
+            Broadcast.deleted_at == None
+        ).first()
         
         if not broadcast:
             raise HTTPException(status_code=404, detail="Broadcast tidak ditemukan")
@@ -2975,19 +3296,25 @@ async def update_broadcast(
     finally:
         db.close()
 
-@router.delete("/broadcasts/{broadcast_id}")
+@router.delete("/broadcasts/{broadcast_id}", dependencies=[Depends(require_csrf_token)])
 async def delete_broadcast(broadcast_id: int, admin = Depends(get_current_admin)):
     """Delete a broadcast"""
     db = SessionLocal()
     try:
-        broadcast = db.query(Broadcast).filter(Broadcast.id == broadcast_id).first()
+        # BUG FIX #8: Exclude already soft-deleted broadcasts
+        broadcast = db.query(Broadcast).filter(
+            Broadcast.id == broadcast_id,
+            Broadcast.deleted_at == None
+        ).first()
         
         if not broadcast:
             raise HTTPException(status_code=404, detail="Broadcast tidak ditemukan")
         
-        db.delete(broadcast)
+        # BUG FIX #8: Soft delete instead of hard delete
+        broadcast.deleted_at = now_utc()  # type: ignore
         db.commit()
         
+        logger.info(f"Admin soft-deleted broadcast: {broadcast_id}")
         return {"message": "Broadcast berhasil dihapus"}
     except HTTPException:
         raise
@@ -3007,9 +3334,11 @@ async def get_active_broadcasts_v2():
     """Get active v2 broadcasts for mini app (no authentication required)"""
     db = SessionLocal()
     try:
+        # BUG FIX #8: Exclude soft-deleted broadcasts
         broadcasts = db.query(Broadcast).filter(
             Broadcast.is_active == True,
-            Broadcast.broadcast_type == 'v2'
+            Broadcast.broadcast_type == 'v2',
+            Broadcast.deleted_at == None
         ).order_by(desc(Broadcast.created_at)).all()
         
         result = []
@@ -3051,6 +3380,10 @@ async def get_telegram_file_preview(file_id: str, admin = Depends(get_current_ad
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
             if file_id.startswith('http://') or file_id.startswith('https://'):
+                if not validate_external_url(file_id):
+                    logger.error(f"❌ SSRF protection blocked URL: {file_id[:50]}...")
+                    raise HTTPException(status_code=400, detail="URL tidak diizinkan")
+                
                 file_response = await client.get(file_id)
                 file_response.raise_for_status()
                 
@@ -3066,6 +3399,10 @@ async def get_telegram_file_preview(file_id: str, admin = Depends(get_current_ad
                 )
             
             get_file_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getFile"
+            if not validate_external_url(get_file_url):
+                logger.error(f"❌ SSRF protection blocked Telegram API URL")
+                raise HTTPException(status_code=500, detail="Konfigurasi API tidak valid")
+            
             params = {"file_id": file_id}
             
             response = await client.get(get_file_url, params=params)
@@ -3080,6 +3417,9 @@ async def get_telegram_file_preview(file_id: str, admin = Depends(get_current_ad
             
             file_path = data["result"]["file_path"]
             download_url = f"https://api.telegram.org/file/bot{TELEGRAM_BOT_TOKEN}/{file_path}"
+            if not validate_external_url(download_url):
+                logger.error(f"❌ SSRF protection blocked Telegram download URL")
+                raise HTTPException(status_code=500, detail="URL tidak valid")
             
             file_response = await client.get(download_url)
             file_response.raise_for_status()
@@ -3110,3 +3450,335 @@ async def get_telegram_file_preview(file_id: str, admin = Depends(get_current_ad
     except Exception as e:
         logger.error(f"Error in telegram file preview: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# ==================== PAYMENT GATEWAY CONFIGURATION ====================
+
+class PaymentConfigUpdate(BaseModel):
+    active_gateway: str
+    gateways: Dict[str, Any]
+    qris_status: Optional[Dict[str, bool]] = None
+
+@router.get("/payment-config")
+async def get_payment_config(admin = Depends(get_current_admin)):
+    """Get current payment gateway configuration from Settings table"""
+    db = SessionLocal()
+    try:
+        import json
+        
+        config_setting = db.query(Settings).filter(Settings.key == 'payment_config').first()
+        
+        if config_setting and config_setting.value:
+            try:
+                config = json.loads(config_setting.value)
+            except json.JSONDecodeError:
+                config = get_default_payment_config()
+        else:
+            config = get_default_payment_config()
+        
+        return {"config": config}
+    except Exception as e:
+        logger.error(f"Error getting payment config: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+def get_default_payment_config():
+    """Return default payment gateway configuration"""
+    return {
+        "active_gateway": "qrispw",
+        "gateways": {
+            "qrispw": {
+                "enabled": True,
+                "api_key": "",
+                "api_secret": "",
+                "api_url": "https://qris.pw/api"
+            },
+            "qris-interactive": {
+                "enabled": False,
+                "amounts": []
+            },
+            "doku": {
+                "enabled": False,
+                "client_id": "",
+                "secret_key": "",
+                "environment": "sandbox"
+            },
+            "midtrans": {
+                "enabled": False,
+                "server_key": "",
+                "client_key": "",
+                "merchant_id": "",
+                "environment": "sandbox"
+            }
+        }
+    }
+
+@router.put("/payment-config", dependencies=[Depends(require_csrf_token)])
+async def update_payment_config(data: PaymentConfigUpdate, admin = Depends(get_current_admin)):
+    """Update payment gateway configuration"""
+    db = SessionLocal()
+    try:
+        import json
+        
+        config_data = {
+            "active_gateway": data.active_gateway,
+            "gateways": data.gateways
+        }
+        
+        if data.qris_status is not None:
+            config_data["qris_status"] = data.qris_status
+        
+        config_setting = db.query(Settings).filter(Settings.key == 'payment_config').first()
+        
+        if config_setting:
+            existing_config = {}
+            try:
+                existing_config = json.loads(config_setting.value) if config_setting.value else {}
+            except json.JSONDecodeError:
+                pass
+            
+            if data.qris_status is None and "qris_status" in existing_config:
+                config_data["qris_status"] = existing_config["qris_status"]
+            
+            config_setting.value = json.dumps(config_data)
+            config_setting.updated_at = now_utc()
+            config_setting.updated_by = admin.username
+        else:
+            new_setting = Settings(
+                key='payment_config',
+                value=json.dumps(config_data),
+                description='Payment gateway configuration',
+                updated_by=admin.username
+            )
+            db.add(new_setting)
+        
+        db.commit()
+        
+        logger.info(f"Admin {admin.username} updated payment config: active_gateway={data.active_gateway}")
+        
+        return {"message": "Konfigurasi payment berhasil disimpan", "config": config_data}
+    except Exception as e:
+        logger.error(f"Error updating payment config: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+@router.get("/payment-env-status")
+async def get_payment_env_status(admin = Depends(get_current_admin)):
+    """Get status of payment credentials from env vars AND database"""
+    import os
+    import json
+    
+    db = SessionLocal()
+    try:
+        qrispw_env_key = os.getenv('QRIS_PW_API_KEY', '')
+        qrispw_env_secret = os.getenv('QRIS_PW_API_SECRET', '')
+        
+        doku_env_client_id = os.getenv('DOKU_CLIENT_ID', '')
+        doku_env_secret_key = os.getenv('DOKU_SECRET_KEY', '')
+        
+        midtrans_env_server_key = os.getenv('MIDTRANS_SERVER_KEY', '')
+        midtrans_env_client_key = os.getenv('MIDTRANS_CLIENT_KEY', '')
+        
+        qrispw_db_key = ''
+        qrispw_db_secret = ''
+        doku_db_client_id = ''
+        doku_db_secret_key = ''
+        midtrans_db_server_key = ''
+        midtrans_db_client_key = ''
+        
+        config_setting = db.query(Settings).filter(Settings.key == 'payment_config').first()
+        if config_setting and config_setting.value:
+            try:
+                config = json.loads(config_setting.value)
+                gateways = config.get('gateways', {})
+                
+                qrispw_config = gateways.get('qrispw', {})
+                qrispw_db_key = qrispw_config.get('api_key', '')
+                qrispw_db_secret = qrispw_config.get('api_secret', '')
+                
+                doku_config = gateways.get('doku', {})
+                doku_db_client_id = doku_config.get('client_id', '')
+                doku_db_secret_key = doku_config.get('secret_key', '')
+                
+                midtrans_config = gateways.get('midtrans', {})
+                midtrans_db_server_key = midtrans_config.get('server_key', '')
+                midtrans_db_client_key = midtrans_config.get('client_key', '')
+            except json.JSONDecodeError:
+                pass
+        
+        return {
+            "qrispw": {
+                "configured": bool((qrispw_env_key and qrispw_env_secret) or (qrispw_db_key and qrispw_db_secret)),
+                "env_configured": bool(qrispw_env_key and qrispw_env_secret),
+                "db_configured": bool(qrispw_db_key and qrispw_db_secret),
+                "source": "env" if (qrispw_env_key and qrispw_env_secret) else ("db" if (qrispw_db_key and qrispw_db_secret) else "none"),
+                "api_key_set": bool(qrispw_env_key or qrispw_db_key),
+                "api_secret_set": bool(qrispw_env_secret or qrispw_db_secret)
+            },
+            "doku": {
+                "configured": bool((doku_env_client_id and doku_env_secret_key) or (doku_db_client_id and doku_db_secret_key)),
+                "env_configured": bool(doku_env_client_id and doku_env_secret_key),
+                "db_configured": bool(doku_db_client_id and doku_db_secret_key),
+                "source": "env" if (doku_env_client_id and doku_env_secret_key) else ("db" if (doku_db_client_id and doku_db_secret_key) else "none"),
+                "client_id_set": bool(doku_env_client_id or doku_db_client_id),
+                "secret_key_set": bool(doku_env_secret_key or doku_db_secret_key)
+            },
+            "midtrans": {
+                "configured": bool((midtrans_env_server_key and midtrans_env_client_key) or (midtrans_db_server_key and midtrans_db_client_key)),
+                "env_configured": bool(midtrans_env_server_key and midtrans_env_client_key),
+                "db_configured": bool(midtrans_db_server_key and midtrans_db_client_key),
+                "source": "env" if (midtrans_env_server_key and midtrans_env_client_key) else ("db" if (midtrans_db_server_key and midtrans_db_client_key) else "none"),
+                "server_key_set": bool(midtrans_env_server_key or midtrans_db_server_key),
+                "client_key_set": bool(midtrans_env_client_key or midtrans_db_client_key)
+            }
+        }
+    finally:
+        db.close()
+
+@router.get("/qris-images")
+async def get_qris_images(admin = Depends(get_current_admin)):
+    """Get list of available QRIS images for manual payment"""
+    import os
+    import re
+    
+    qris_dir = "frontend/assets/qris"
+    images = []
+    
+    if os.path.exists(qris_dir):
+        for filename in os.listdir(qris_dir):
+            if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
+                match = re.match(r'^(\d+)\.(png|jpg|jpeg)$', filename.lower())
+                if match:
+                    amount = int(match.group(1))
+                    images.append({
+                        "amount": amount,
+                        "filename": filename,
+                        "url": f"/qris/{filename}"
+                    })
+    
+    images.sort(key=lambda x: x['amount'])
+    
+    return {"images": images}
+
+@router.post("/qris-images/upload", dependencies=[Depends(require_csrf_token)])
+async def upload_qris_image(
+    amount: int = Form(...),
+    image: UploadFile = File(...),
+    admin = Depends(get_current_admin)
+):
+    """Upload a new QRIS image for a specific amount with secure validation"""
+    import os
+    import shutil
+    from file_validation import validate_file_extension, validate_mime_type, MAX_FILE_SIZE, CHUNK_SIZE
+    
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="Nominal harus lebih dari 0")
+    
+    if not image.filename:
+        raise HTTPException(status_code=400, detail="Nama file tidak ada")
+    
+    valid_ext, ext_error = validate_file_extension(image.filename)
+    if not valid_ext:
+        raise HTTPException(status_code=400, detail=ext_error)
+    
+    valid_mime, mime_error = validate_mime_type(image.content_type)
+    if not valid_mime:
+        raise HTTPException(status_code=400, detail=mime_error)
+    
+    file_size = 0
+    chunks = []
+    try:
+        while True:
+            chunk = await image.read(CHUNK_SIZE)
+            if not chunk:
+                break
+            file_size += len(chunk)
+            if file_size > MAX_FILE_SIZE:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"File terlalu besar. Maksimal {MAX_FILE_SIZE / (1024 * 1024):.0f} MB"
+                )
+            chunks.append(chunk)
+        await image.seek(0)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error reading uploaded file: {e}")
+        raise HTTPException(status_code=400, detail="Gagal membaca file")
+    
+    if file_size == 0:
+        raise HTTPException(status_code=400, detail="File kosong tidak diperbolehkan")
+    
+    if file_size < 100:
+        raise HTTPException(status_code=400, detail="File terlalu kecil, kemungkinan corrupt")
+    
+    qris_dir = "frontend/assets/qris"
+    admin_qris_dir = "admin/assets/qris"
+    os.makedirs(qris_dir, exist_ok=True)
+    os.makedirs(admin_qris_dir, exist_ok=True)
+    
+    file_ext = os.path.splitext(image.filename)[1].lower()
+    filename = f"{amount}{file_ext}"
+    filepath = os.path.join(qris_dir, filename)
+    admin_filepath = os.path.join(admin_qris_dir, filename)
+    
+    for ext in ['.png', '.jpg', '.jpeg']:
+        if ext != file_ext:
+            old_file = os.path.join(qris_dir, f"{amount}{ext}")
+            old_admin_file = os.path.join(admin_qris_dir, f"{amount}{ext}")
+            if os.path.exists(old_file):
+                os.remove(old_file)
+            if os.path.exists(old_admin_file):
+                os.remove(old_admin_file)
+    
+    try:
+        with open(filepath, "wb") as buffer:
+            for chunk in chunks:
+                buffer.write(chunk)
+        
+        shutil.copy2(filepath, admin_filepath)
+        
+        logger.info(f"Admin {admin.username} uploaded QRIS image for amount {amount} ({file_size/1024:.1f} KB)")
+        
+        return {
+            "message": f"Gambar QRIS untuk nominal {amount} berhasil diupload",
+            "filename": filename,
+            "url": f"/qris/{filename}",
+            "size_kb": round(file_size / 1024, 1)
+        }
+    except Exception as e:
+        logger.error(f"Error uploading QRIS image: {e}")
+        if os.path.exists(filepath):
+            try:
+                os.remove(filepath)
+            except:
+                pass
+        raise HTTPException(status_code=500, detail=f"Gagal menyimpan file: {str(e)}")
+
+@router.delete("/qris-images/{amount}", dependencies=[Depends(require_csrf_token)])
+async def delete_qris_image(amount: int, admin = Depends(get_current_admin)):
+    """Delete a QRIS image for a specific amount from all directories"""
+    import os
+    
+    qris_dir = "frontend/assets/qris"
+    admin_qris_dir = "admin/assets/qris"
+    deleted = False
+    
+    for ext in ['.png', '.jpg', '.jpeg']:
+        filepath = os.path.join(qris_dir, f"{amount}{ext}")
+        admin_filepath = os.path.join(admin_qris_dir, f"{amount}{ext}")
+        
+        if os.path.exists(filepath):
+            os.remove(filepath)
+            deleted = True
+            logger.info(f"Admin {admin.username} deleted QRIS image for amount {amount}")
+        
+        if os.path.exists(admin_filepath):
+            os.remove(admin_filepath)
+    
+    if not deleted:
+        raise HTTPException(status_code=404, detail=f"Gambar QRIS untuk nominal {amount} tidak ditemukan")
+    
+    return {"message": f"Gambar QRIS untuk nominal {amount} berhasil dihapus"}

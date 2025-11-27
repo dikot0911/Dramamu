@@ -24,7 +24,10 @@ def update_admin_password():
     
     db = SessionLocal()
     try:
-        admin = db.query(Admin).filter(Admin.username == admin_username).first()
+        admin = db.query(Admin).filter(
+            Admin.username == admin_username,
+            Admin.deleted_at == None  # BUG FIX #8: Exclude soft-deleted admins
+        ).first()
         
         if not admin:
             logger.error(f"❌ Admin dengan username '{admin_username}' tidak ditemukan!")

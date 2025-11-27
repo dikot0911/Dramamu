@@ -109,7 +109,10 @@ def verify_token(token: str) -> Optional[dict]:
 def authenticate_admin(username: str, password: str) -> Optional[Admin]:
     db = SessionLocal()
     try:
-        admin = db.query(Admin).filter(Admin.username == username).first()
+        admin = db.query(Admin).filter(
+            Admin.username == username,
+            Admin.deleted_at == None  # BUG FIX #8: Exclude soft-deleted admins
+        ).first()
         
         if not admin:
             logger.warning(f"Percobaan login dengan username yang ga ada: {username}")
@@ -139,7 +142,10 @@ def authenticate_admin(username: str, password: str) -> Optional[Admin]:
 def get_admin_by_username(username: str) -> Optional[Admin]:
     db = SessionLocal()
     try:
-        admin = db.query(Admin).filter(Admin.username == username).first()
+        admin = db.query(Admin).filter(
+            Admin.username == username,
+            Admin.deleted_at == None  # BUG FIX #8: Exclude soft-deleted admins
+        ).first()
         return admin
     finally:
         db.close()
@@ -147,7 +153,10 @@ def get_admin_by_username(username: str) -> Optional[Admin]:
 def get_admin_by_id(admin_id: int) -> Optional[Admin]:
     db = SessionLocal()
     try:
-        admin = db.query(Admin).filter(Admin.id == admin_id).first()
+        admin = db.query(Admin).filter(
+            Admin.id == admin_id,
+            Admin.deleted_at == None  # BUG FIX #8: Exclude soft-deleted admins
+        ).first()
         return admin
     finally:
         db.close()
@@ -237,7 +246,10 @@ def ensure_admin_exists() -> Dict[str, Any]:
     
     db = SessionLocal()
     try:
-        existing_admin = db.query(Admin).filter(Admin.username == admin_username).first()
+        existing_admin = db.query(Admin).filter(
+            Admin.username == admin_username,
+            Admin.deleted_at == None  # BUG FIX #8: Exclude soft-deleted admins
+        ).first()
         
         if existing_admin:
             new_password_hash = hash_password(admin_password)
@@ -339,6 +351,7 @@ def create_admin_session(
     - Track active logins
     - Implement logout/kick functionality
     - Monitor admin activity
+    - CSRF protection via unique per-session token
     
     Args:
         admin_id: ID admin yang login
@@ -352,11 +365,13 @@ def create_admin_session(
     db = SessionLocal()
     try:
         session_token = secrets.token_urlsafe(32)
+        csrf_token = secrets.token_urlsafe(48)
         expires_at = now_utc() + timedelta(hours=expires_in_hours)
         
         session = AdminSession(
             admin_id=admin_id,
             session_token=session_token,
+            csrf_token=csrf_token,
             ip_address=ip_address,
             user_agent=user_agent,
             created_at=now_utc(),
@@ -368,7 +383,7 @@ def create_admin_session(
         db.commit()
         db.refresh(session)
         
-        logger.info(f"Session created for admin_id={admin_id}, expires_at={expires_at}")
+        logger.info(f"Session created for admin_id={admin_id}, expires_at={expires_at}, csrf_token generated")
         return session
     
     except Exception as e:

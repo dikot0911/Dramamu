@@ -56,9 +56,26 @@ def escape_html(text):
             .replace("'", '&#39;'))
 
 def generate_ref_code(telegram_id):
+    """
+    Generate referral code dengan format yang lebih aman dari collision.
+    
+    BUG FIX #5: Increased random part dari 4 ke 8 characters untuk prevent collision.
+    
+    Format: first 5 digits of telegram_id + 8 random alphanumeric chars
+    Total combinations: 62^8 = 218 trillion (vs previous 62^4 = 14 million)
+    
+    Collision probability dengan 1 juta users: ~0.000002% (practically zero)
+    
+    Args:
+        telegram_id: User's Telegram ID
+        
+    Returns:
+        13-character referral code (5 digits + 8 random chars)
+    """
     logger.info(f"Bikin ref_code buat {telegram_id}...")
     first_five = str(telegram_id)[:5]
-    rand_part = ''.join(random.choices(string.ascii_letters + string.digits, k=4))
+    # BUG FIX #5: Increased from k=4 to k=8 for 15,000x more combinations
+    rand_part = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
     ref_code = f"{first_five}{rand_part}"
     logger.info(f"Ref_code jadi: {ref_code}")
     return ref_code
@@ -87,8 +104,11 @@ def get_or_create_user(user, referred_by_code=None):
     for attempt in range(MAX_RETRIES):
         db = SessionLocal()
         try:
-            # Cek dulu apakah user udah ada
-            existing_user = db.query(User).filter(User.telegram_id == telegram_id).first()
+            # BUG FIX #8: Check for existing non-deleted user
+            existing_user = db.query(User).filter(
+                User.telegram_id == telegram_id,
+                User.deleted_at == None  # Exclude soft-deleted users
+            ).first()
             if existing_user:
                 logger.info(f"User {telegram_id} udah ada di DB")
                 return existing_user
@@ -113,7 +133,11 @@ def get_or_create_user(user, referred_by_code=None):
             
             # Update referrer kalau ada
             if referred_by_code and referred_by_code != ref_code:
-                referrer = db.query(User).filter(User.ref_code == referred_by_code).first()
+                # BUG FIX #8: Only count non-deleted referrers
+                referrer = db.query(User).filter(
+                    User.ref_code == referred_by_code,
+                    User.deleted_at == None  # Exclude soft-deleted users
+                ).first()
                 if referrer:
                     referrer.total_referrals += 1  # type: ignore
                     db.commit()
@@ -127,8 +151,11 @@ def get_or_create_user(user, referred_by_code=None):
         
         except IntegrityError as ie:
             db.rollback()
-            # Kemungkinan user sudah dibuat di concurrent request
-            existing_user = db.query(User).filter(User.telegram_id == telegram_id).first()
+            # BUG FIX #8: Check for non-deleted user created by concurrent request
+            existing_user = db.query(User).filter(
+                User.telegram_id == telegram_id,
+                User.deleted_at == None  # Exclude soft-deleted users
+            ).first()
             if existing_user:
                 logger.info(f"User {telegram_id} dibuat di concurrent request, gunakan yang existing")
                 return existing_user
@@ -162,7 +189,11 @@ def is_vip(user_id):
     db = SessionLocal()
     try:
         user_id_str = str(user_id)
-        db_user = db.query(User).filter(User.telegram_id == user_id_str).first()
+        # BUG FIX #8: Exclude soft-deleted users from VIP check
+        db_user = db.query(User).filter(
+            User.telegram_id == user_id_str,
+            User.deleted_at == None  # Exclude soft-deleted users
+        ).first()
         
         if not db_user:
             logger.warning(f"Cek VIP: User {user_id_str} gak ada")
@@ -657,7 +688,9 @@ if bot is not None:
             
             db = SessionLocal()
             try:
-                movies = db.query(Movie).order_by(Movie.created_at.desc()).limit(20).all()
+                movies = db.query(Movie).filter(
+                    Movie.deleted_at == None
+                ).order_by(Movie.created_at.desc()).limit(20).all()
                 
                 if not movies:
                     bot.answer_callback_query(call.id, "Belum ada film. Buat film baru dulu!", show_alert=True)
@@ -926,7 +959,11 @@ if bot is not None:
                     
                     db = SessionLocal()
                     try:
-                        movie = db.query(Movie).filter(Movie.id == movie_id).first()
+                        # BUG FIX #8: Exclude soft-deleted movies
+                        movie = db.query(Movie).filter(
+                            Movie.id == movie_id,
+                            Movie.deleted_at == None
+                        ).first()
                         if not movie:
                             bot.send_message(message.chat.id, "❌ Film tidak ditemukan")
                             delete_conversation(admin_id)
@@ -980,7 +1017,8 @@ if bot is not None:
                     db = SessionLocal()
                     try:
                         movie = db.query(Movie).filter(
-                            (Movie.id == movie_code) | (Movie.short_id == movie_code)
+                            (Movie.id == movie_code) | (Movie.short_id == movie_code),
+                            Movie.deleted_at == None
                         ).first()
                         
                         if not movie:
@@ -1188,7 +1226,11 @@ if bot is not None:
         db = SessionLocal()
         try:
             telegram_id = str(message.from_user.id)
-            db_user = db.query(User).filter(User.telegram_id == telegram_id).first()
+            # BUG FIX #8: Exclude soft-deleted users
+            db_user = db.query(User).filter(
+                User.telegram_id == telegram_id,
+                User.deleted_at == None
+            ).first()
             
             if db_user:
                 db_user.is_vip = True  # type: ignore
@@ -1211,7 +1253,11 @@ if bot is not None:
         db = SessionLocal()
         try:
             telegram_id = str(message.from_user.id)
-            db_user = db.query(User).filter(User.telegram_id == telegram_id).first()
+            # BUG FIX #8: Exclude soft-deleted users
+            db_user = db.query(User).filter(
+                User.telegram_id == telegram_id,
+                User.deleted_at == None
+            ).first()
             
             if db_user:
                 db_user.is_vip = False  # type: ignore

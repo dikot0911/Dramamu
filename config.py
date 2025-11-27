@@ -4,7 +4,10 @@ from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 
-load_dotenv()
+# CRITICAL: load_dotenv dengan override=False agar TIDAK menimpa
+# environment variables yang sudah di-set (seperti environment secrets)
+# Ini memperbaiki masalah dimana secrets hilang karena .env kosong
+load_dotenv(override=False)
 
 def now_utc():
     """
@@ -174,7 +177,7 @@ QRIS_PW_API_URL = 'https://qris.pw/api'
 
 if not QRIS_PW_API_KEY or not QRIS_PW_API_SECRET:
     print("⚠️  QRIS.PW credentials belum di-set - Fitur pembayaran QRIS disabled")
-    print("   Set QRIS_PW_API_KEY dan QRIS_PW_API_SECRET di Replit Secrets")
+    print("   Set QRIS_PW_API_KEY dan QRIS_PW_API_SECRET di environment variables")
 else:
     print("✅ QRIS.PW payment gateway configured")
     print(f"   API URL: {QRIS_PW_API_URL}")
@@ -194,10 +197,14 @@ else:
     print(f"   Environment: {api_env}")
 
 # Database
+# Development mode: Force SQLite di folder development
+# Ini memastikan database terpisah dari root project
 DATABASE_URL = get_env('DATABASE_URL')
-if not DATABASE_URL:
-    DATABASE_URL = 'sqlite:///dramamu.db'
-    print("Pake SQLite database (default)")
+if not DATABASE_URL or is_production() == False:
+    import pathlib
+    dev_db_path = pathlib.Path(__file__).parent / 'dramamu_dev.db'
+    DATABASE_URL = f'sqlite:///{dev_db_path}'
+    print(f"Pake SQLite database (development): {dev_db_path}")
 else:
     if DATABASE_URL.startswith('postgresql'):
         # Hide password dari log
@@ -208,9 +215,8 @@ else:
 
 # Backend URL (API)
 # Auto-detect production environment atau manual configuration
-# Priority: API_BASE_URL > RENDER_EXTERNAL_URL > DEV_DOMAIN > REPLIT_DOMAINS > localhost
-# IMPORTANT: Replit provides REPLIT_DOMAINS (bukan REPLIT_DEV_DOMAIN)
-dev_domain = get_env('DEV_DOMAIN') or get_env('REPLIT_DOMAINS')
+# Priority: API_BASE_URL > RENDER_EXTERNAL_URL > DEV_DOMAIN > localhost
+dev_domain = get_env('DEV_DOMAIN')
 BASE_URL = (
     get_env('API_BASE_URL') or 
     get_env('RENDER_EXTERNAL_URL') or 
@@ -223,8 +229,7 @@ if os.getenv('API_BASE_URL'):
 elif os.getenv('RENDER_EXTERNAL_URL'):
     print(f"✅ Auto-detected Render URL: {BASE_URL}")
 elif dev_domain:
-    print(f"✅ Auto-detected Replit Development URL: {BASE_URL}")
-    print(f"   Domain: {dev_domain}")
+    print(f"✅ Auto-detected Development URL: {BASE_URL}")
 else:
     print("⚠️  Pake localhost (development mode) - Telegram Mini App buttons TIDAK akan jalan!")
     print("   Telegram requires HTTPS for Web App buttons")

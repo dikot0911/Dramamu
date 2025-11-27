@@ -47,7 +47,10 @@ def create_default_admin():
     
     db = SessionLocal()
     try:
-        existing_admin = db.query(Admin).filter(Admin.username == admin_username).first()
+        existing_admin = db.query(Admin).filter(
+            Admin.username == admin_username,
+            Admin.deleted_at == None  # BUG FIX #8: Exclude soft-deleted admins
+        ).first()
         
         if existing_admin:
             logger.info(f"✅ Admin user '{admin_username}' sudah ada di database")

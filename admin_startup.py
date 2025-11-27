@@ -26,7 +26,10 @@ def create_first_admin(username: str, password: str, email: Optional[str] = None
     
     db = SessionLocal()
     try:
-        existing_admin = db.query(Admin).filter(Admin.username == username).first()
+        existing_admin = db.query(Admin).filter(
+            Admin.username == username,
+            Admin.deleted_at == None  # BUG FIX #8: Exclude soft-deleted admins
+        ).first()
         if existing_admin:
             logger.warning(f"⚠️  Admin dengan username '{username}' sudah ada!")
             logger.info("Apakah Anda ingin:")

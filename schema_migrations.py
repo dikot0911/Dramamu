@@ -609,6 +609,446 @@ def run_migration_009_add_drama_request_columns():
     finally:
         db.close()
 
+def run_migration_010_ensure_payment_commission_unique_constraint():
+    """
+    Migration 010: Ensure unique constraint on payment_commissions.payment_id
+    
+    BUG FIX #3: Prevent double commission payment race condition.
+    Ensures that one payment can only have one commission entry.
+    
+    The constraint already exists in the ORM model (database.py line 208-210),
+    but this migration ensures it's actually enforced in the database.
+    
+    Migration ini idempotent - bisa dijalankan berulang kali dengan aman.
+    """
+    logger.info("🔧 Running migration 010: Ensure PaymentCommission unique constraint")
+    
+    db = SessionLocal()
+    try:
+        from config import DATABASE_URL
+        is_postgresql = DATABASE_URL.startswith('postgresql')
+        
+        # Check if unique constraint already exists
+        logger.info("  → Checking for existing constraint...")
+        
+        if is_postgresql:
+            result = db.execute(text("""
+                SELECT constraint_name 
+                FROM information_schema.table_constraints 
+                WHERE table_name='payment_commissions' 
+                AND constraint_type='UNIQUE'
+                AND constraint_name='uq_payment_commission'
+            """))
+            existing_constraint = result.fetchone()
+            
+            if existing_constraint:
+                logger.info("  ✓ Unique constraint already exists")
+                return True
+            
+            logger.info("  → Creating unique constraint on payment_id...")
+            db.execute(text("""
+                ALTER TABLE payment_commissions 
+                ADD CONSTRAINT uq_payment_commission UNIQUE (payment_id)
+            """))
+        else:
+            # SQLite: Check for unique index
+            result = db.execute(text("""
+                SELECT name FROM sqlite_master 
+                WHERE type='index' 
+                AND tbl_name='payment_commissions' 
+                AND sql LIKE '%UNIQUE%payment_id%'
+            """))
+            existing_index = result.fetchone()
+            
+            if existing_index:
+                logger.info("  ✓ Unique index already exists")
+                return True
+            
+            logger.info("  → Creating unique index on payment_id...")
+            db.execute(text("""
+                CREATE UNIQUE INDEX IF NOT EXISTS uq_payment_commission 
+                ON payment_commissions(payment_id)
+            """))
+        
+        db.commit()
+        logger.info("  ✅ Migration 010 complete! Double commission race condition prevented.")
+        return True
+        
+    except Exception as e:
+        logger.error(f"  ❌ Migration 010 failed: {e}")
+        db.rollback()
+        return False
+    finally:
+        db.close()
+
+def run_migration_011_add_soft_delete_columns():
+    """
+    Migration 011: Add deleted_at columns for soft delete functionality
+    
+    BUG FIX #8: Replace hard delete with soft delete for better data integrity.
+    Adds nullable deleted_at timestamp to tables that need soft delete:
+    - movies: Prevent permanent data loss of content
+    - parts: Keep episode history
+    - admins: Audit trail for admin accounts
+    - broadcasts: Keep broadcast history
+    
+    Soft delete pattern:
+    - deleted_at IS NULL: Active records (default filter)
+    - deleted_at IS NOT NULL: Deleted records (hidden from normal queries)
+    
+    Migration ini idempotent - bisa dijalankan berulang kali dengan aman.
+    """
+    logger.info("🔧 Running migration 011: Add soft delete (deleted_at) columns")
+    
+    db = SessionLocal()
+    try:
+        from config import DATABASE_URL
+        is_postgresql = DATABASE_URL.startswith('postgresql')
+        
+        # Tables that need soft delete
+        tables_to_update = ['movies', 'parts', 'admins', 'broadcasts']
+        
+        for table in tables_to_update:
+            if not column_exists(db, table, 'deleted_at'):
+                logger.info(f"  → Adding deleted_at to {table}...")
+                
+                if is_postgresql:
+                    db.execute(text(f"""
+                        ALTER TABLE {table} 
+                        ADD COLUMN deleted_at TIMESTAMP WITH TIME ZONE
+                    """))
+                else:
+                    db.execute(text(f"""
+                        ALTER TABLE {table} 
+                        ADD COLUMN deleted_at DATETIME
+                    """))
+                
+                # Add index for performance (filtering by deleted_at IS NULL is common)
+                logger.info(f"  → Adding index on {table}.deleted_at...")
+                db.execute(text(f"""
+                    CREATE INDEX IF NOT EXISTS idx_{table}_deleted_at 
+                    ON {table}(deleted_at)
+                """))
+                
+                logger.info(f"  ✓ Table {table} now supports soft delete")
+            else:
+                logger.info(f"  ✓ Table {table} already has deleted_at column")
+        
+        db.commit()
+        logger.info("  ✅ Migration 011 complete! Soft delete enabled for critical tables.")
+        return True
+        
+    except Exception as e:
+        logger.error(f"  ❌ Migration 011 failed: {e}")
+        db.rollback()
+        return False
+    finally:
+        db.close()
+
+def run_migration_012_add_performance_indexes():
+    """
+    Migration 012: Add database indexes for frequently queried columns
+    
+    BUG FIX #11: Improve query performance by adding missing indexes.
+    Prevents full table scans on common query patterns.
+    
+    Indexes added:
+    - payments.transaction_id: Used in payment status checks
+    - payments.status: Filtered in many queries (pending, success)
+    - payments (telegram_id, status): Composite for user payment history
+    - withdrawals.status: Filtered for pending withdrawals
+    - broadcasts.is_active: Filtered for active broadcasts only
+    - watch_history.movie_id: Used in view count aggregations
+    
+    Migration ini idempotent - bisa dijalankan berulang kali dengan aman.
+    """
+    logger.info("🔧 Running migration 012: Add performance indexes")
+    
+    db = SessionLocal()
+    try:
+        # Define indexes to create
+        indexes = [
+            # Payments table indexes
+            ("idx_payments_transaction_id", "payments", "transaction_id"),
+            ("idx_payments_status", "payments", "status"),
+            
+            # Withdrawals table indexes
+            ("idx_withdrawals_status", "withdrawals", "status"),
+            
+            # Broadcasts table indexes
+            ("idx_broadcasts_is_active", "broadcasts", "is_active"),
+            
+            # Watch history indexes
+            ("idx_watch_history_movie_id", "watch_history", "movie_id"),
+        ]
+        
+        for index_name, table, column in indexes:
+            logger.info(f"  → Creating index {index_name} on {table}({column})...")
+            try:
+                db.execute(text(f"""
+                    CREATE INDEX IF NOT EXISTS {index_name} 
+                    ON {table}({column})
+                """))
+                logger.info(f"  ✓ Index {index_name} created")
+            except Exception as idx_error:
+                logger.warning(f"  ⚠️ Index {index_name} skipped: {idx_error}")
+        
+        # Composite index for user payment history queries
+        logger.info("  → Creating composite index on payments(telegram_id, status)...")
+        try:
+            db.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_payments_telegram_id_status 
+                ON payments(telegram_id, status)
+            """))
+            logger.info("  ✓ Composite index created")
+        except Exception as idx_error:
+            logger.warning(f"  ⚠️ Composite index skipped: {idx_error}")
+        
+        db.commit()
+        logger.info("  ✅ Migration 012 complete! Query performance improved.")
+        return True
+        
+    except Exception as e:
+        logger.error(f"  ❌ Migration 012 failed: {e}")
+        db.rollback()
+        return False
+    finally:
+        db.close()
+
+def run_migration_013_add_csrf_token_to_admin_sessions():
+    """
+    Migration 013: Add csrf_token column to admin_sessions table
+    
+    BUG FIX #2: Add CSRF protection to admin endpoints.
+    Stores per-session CSRF token for validating state-changing requests.
+    
+    Security improvement:
+    - Prevents Cross-Site Request Forgery attacks
+    - Each admin session gets unique CSRF token
+    - Token validated on all POST/PUT/DELETE/PATCH requests
+    
+    Migration ini idempotent - bisa dijalankan berulang kali dengan aman.
+    """
+    logger.info("🔧 Running migration 013: Add csrf_token to admin_sessions")
+    
+    db = SessionLocal()
+    try:
+        # Check if csrf_token column already exists
+        if column_exists(db, 'admin_sessions', 'csrf_token'):
+            logger.info("  ✓ Column csrf_token already exists, skip")
+            return True
+        
+        # Add csrf_token column
+        logger.info("  → Adding column csrf_token to admin_sessions...")
+        db.execute(text("""
+            ALTER TABLE admin_sessions 
+            ADD COLUMN csrf_token VARCHAR
+        """))
+        
+        # Add index for performance
+        logger.info("  → Creating index on csrf_token...")
+        db.execute(text("""
+            CREATE INDEX IF NOT EXISTS idx_admin_sessions_csrf_token 
+            ON admin_sessions(csrf_token)
+        """))
+        
+        db.commit()
+        logger.info("  ✅ Migration 013 complete! CSRF protection schema ready.")
+        return True
+        
+    except Exception as e:
+        logger.error(f"  ❌ Migration 013 failed: {e}")
+        db.rollback()
+        return False
+    finally:
+        db.close()
+
+def run_migration_014_add_deleted_at_to_users_and_requests():
+    """
+    Migration 014: Add deleted_at columns to users and drama_requests tables
+    
+    BUG FIX #8: Complete soft delete implementation for ALL tables with delete operations.
+    This migration adds deleted_at columns to tables that were missing them.
+    
+    Tables updated:
+    - users: Soft delete for user accounts
+    - drama_requests: Soft delete for drama requests
+    """
+    logger.info("🔧 Running migration 014: Add deleted_at to users and drama_requests")
+    
+    from config import DATABASE_URL
+    db = SessionLocal()
+    
+    try:
+        tables = ['users', 'drama_requests']
+        
+        for table in tables:
+            if not column_exists(db, table, 'deleted_at'):
+                logger.info(f"  → Adding deleted_at to {table}...")
+                
+                # Add column (Postgres vs SQLite syntax)
+                if DATABASE_URL.startswith('postgresql'):
+                    db.execute(text(f"""
+                        ALTER TABLE {table} 
+                        ADD COLUMN deleted_at TIMESTAMP WITH TIME ZONE
+                    """))
+                else:
+                    db.execute(text(f"""
+                        ALTER TABLE {table} 
+                        ADD COLUMN deleted_at DATETIME
+                    """))
+                
+                # Add index for performance (filtering by deleted_at IS NULL is common)
+                logger.info(f"  → Adding index on {table}.deleted_at...")
+                db.execute(text(f"""
+                    CREATE INDEX IF NOT EXISTS idx_{table}_deleted_at 
+                    ON {table}(deleted_at)
+                """))
+                
+                logger.info(f"  ✓ Added deleted_at to {table}")
+            else:
+                logger.info(f"  ✓ Table {table} already has deleted_at column")
+        
+        db.commit()
+        logger.info("  ✅ Migration 014 complete! Users and drama_requests now support soft delete.")
+        return True
+        
+    except Exception as e:
+        logger.error(f"  ❌ Migration 014 failed: {e}")
+        db.rollback()
+        return False
+    finally:
+        db.close()
+
+def run_migration_015_add_deleted_at_to_broadcasts():
+    """
+    Migration 015: Add deleted_at column to broadcasts table
+    
+    This completes the soft delete implementation for the Broadcast model.
+    Broadcasts can now be soft-deleted instead of hard-deleted.
+    """
+    logger.info("🔧 Running migration 015: Add deleted_at to broadcasts")
+    
+    from config import DATABASE_URL
+    
+    db = SessionLocal()
+    try:
+        if not column_exists(db, 'broadcasts', 'deleted_at'):
+            logger.info(f"  → Adding deleted_at to broadcasts...")
+            
+            # Use appropriate type for database dialect
+            if DATABASE_URL.startswith('postgresql'):
+                db.execute(text("""
+                    ALTER TABLE broadcasts 
+                    ADD COLUMN deleted_at TIMESTAMP WITH TIME ZONE
+                """))
+            else:
+                db.execute(text("""
+                    ALTER TABLE broadcasts 
+                    ADD COLUMN deleted_at DATETIME
+                """))
+            
+            # Add index for performance
+            logger.info(f"  → Adding index on broadcasts.deleted_at...")
+            db.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_broadcasts_deleted_at 
+                ON broadcasts(deleted_at)
+            """))
+            
+            logger.info(f"  ✓ Added deleted_at to broadcasts")
+        else:
+            logger.info(f"  ✓ Table broadcasts already has deleted_at column")
+        
+        db.commit()
+        logger.info("  ✅ Migration 015 complete!")
+        return True
+        
+    except Exception as e:
+        logger.error(f"  ❌ Migration 015 failed: {e}")
+        db.rollback()
+        return False
+    finally:
+        db.close()
+
+def run_migration_016_add_telegram_columns_to_movies():
+    """
+    Migration 016: Add telegram columns and series-related columns to movies table
+    
+    These columns are used to store telegram video metadata and series configuration.
+    """
+    logger.info("🔧 Running migration 016: Add telegram and series columns to movies")
+    
+    db = SessionLocal()
+    try:
+        columns_to_add = [
+            ('telegram_file_id', 'VARCHAR'),
+            ('telegram_chat_id', 'VARCHAR'),
+            ('telegram_message_id', 'VARCHAR'),
+            ('is_series', 'BOOLEAN DEFAULT 0'),
+            ('total_parts', 'INTEGER DEFAULT 0'),
+            ('deleted_at', 'DATETIME'),
+        ]
+        
+        for col_name, col_type in columns_to_add:
+            if not column_exists(db, 'movies', col_name):
+                logger.info(f"  → Adding {col_name} to movies...")
+                db.execute(text(f"""
+                    ALTER TABLE movies 
+                    ADD COLUMN {col_name} {col_type}
+                """))
+                logger.info(f"  ✓ Added {col_name} to movies")
+            else:
+                logger.info(f"  ✓ Column movies.{col_name} already exists")
+        
+        db.commit()
+        logger.info("  ✅ Migration 016 complete!")
+        return True
+        
+    except Exception as e:
+        logger.error(f"  ❌ Migration 016 failed: {e}")
+        db.rollback()
+        return False
+    finally:
+        db.close()
+
+def run_migration_017_add_series_columns_to_movies():
+    """
+    Migration 017: Add is_series, total_parts, and deleted_at columns to movies table
+    
+    These columns support drama series and soft delete functionality.
+    """
+    logger.info("🔧 Running migration 017: Add series and deleted_at columns to movies")
+    
+    db = SessionLocal()
+    try:
+        columns_to_add = [
+            ('is_series', 'BOOLEAN DEFAULT 0'),
+            ('total_parts', 'INTEGER DEFAULT 0'),
+            ('deleted_at', 'DATETIME'),
+        ]
+        
+        for col_name, col_type in columns_to_add:
+            if not column_exists(db, 'movies', col_name):
+                logger.info(f"  → Adding {col_name} to movies...")
+                db.execute(text(f"""
+                    ALTER TABLE movies 
+                    ADD COLUMN {col_name} {col_type}
+                """))
+                logger.info(f"  ✓ Added {col_name} to movies")
+            else:
+                logger.info(f"  ✓ Column movies.{col_name} already exists")
+        
+        db.commit()
+        logger.info("  ✅ Migration 017 complete!")
+        return True
+        
+    except Exception as e:
+        logger.error(f"  ❌ Migration 017 failed: {e}")
+        db.rollback()
+        return False
+    finally:
+        db.close()
+
 MIGRATIONS = [
     ('001_add_referred_by_code', run_migration_001_add_referred_by_code),
     ('002_ensure_movie_columns', run_migration_002_ensure_movie_columns),
@@ -619,6 +1059,14 @@ MIGRATIONS = [
     ('007_ensure_users_have_ref_codes', run_migration_007_ensure_users_have_ref_codes),
     ('008_add_screenshot_url_to_payments', run_migration_008_add_screenshot_url_to_payments),
     ('009_add_drama_request_columns', run_migration_009_add_drama_request_columns),
+    ('010_ensure_payment_commission_unique_constraint', run_migration_010_ensure_payment_commission_unique_constraint),
+    ('011_add_soft_delete_columns', run_migration_011_add_soft_delete_columns),
+    ('012_add_performance_indexes', run_migration_012_add_performance_indexes),
+    ('013_add_csrf_token_to_admin_sessions', run_migration_013_add_csrf_token_to_admin_sessions),
+    ('014_add_deleted_at_to_users_and_requests', run_migration_014_add_deleted_at_to_users_and_requests),
+    ('015_add_deleted_at_to_broadcasts', run_migration_015_add_deleted_at_to_broadcasts),
+    ('016_add_telegram_columns_to_movies', run_migration_016_add_telegram_columns_to_movies),
+    ('017_add_series_columns_to_movies', run_migration_017_add_series_columns_to_movies),
 ]
 
 def run_migrations():
