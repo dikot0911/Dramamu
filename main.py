@@ -9,7 +9,7 @@ from fastapi import FastAPI, HTTPException, Request, File, UploadFile, Form, Dep
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import text
 from database import SessionLocal, User, Movie, Favorite, Like, WatchHistory, DramaRequest, Withdrawal, Payment, PaymentCommission, Broadcast, init_db, check_and_update_vip_expiry, serialize_movie
 from schema_migrations import run_migrations, validate_critical_schema
@@ -390,10 +390,10 @@ class DramaRequestSubmit(BaseModel):
 
 class WithdrawalRequest(BaseModel):
     init_data: str
-    amount: int
-    payment_method: str
-    account_number: str
-    account_name: str
+    amount: int = Field(..., gt=0, description="Jumlah withdrawal harus lebih dari 0")
+    payment_method: str = Field(..., min_length=1, description="Metode pembayaran")
+    account_number: str = Field(..., min_length=1, description="Nomor rekening")
+    account_name: str = Field(..., min_length=1, description="Nama pemilik rekening")
 
 class UserDataRequest(BaseModel):
     init_data: str
@@ -2440,6 +2440,58 @@ async def get_pending_payments(request: UserDataRequest):
         raise
     except Exception as e:
         logger.error(f"Error waktu ambil riwayat pembayaran pending: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+@app.post("/api/v1/payment_history")
+async def get_payment_history(request: UserDataRequest):
+    """
+    Endpoint untuk mendapatkan SEMUA riwayat pembayaran user,
+    dipisahkan menjadi 2 kategori:
+    - ongoing: pending (transaksi yang masih berlangsung/menunggu pembayaran)
+    - completed: success, failed, expired, cancelled (transaksi yang sudah selesai)
+    """
+    validated_user = validate_telegram_webapp(request.init_data)
+    assert validated_user is not None, "validate_telegram_webapp should raise HTTPException if validation fails"
+    telegram_id = validated_user['telegram_id']
+    
+    db = SessionLocal()
+    try:
+        all_payments = db.query(Payment).filter(
+            Payment.telegram_id == str(telegram_id)
+        ).order_by(Payment.created_at.desc()).all()
+        
+        ongoing = []
+        completed = []
+        
+        for payment in all_payments:
+            payment_data = {
+                "id": payment.id,
+                "order_id": payment.order_id,
+                "transaction_id": payment.transaction_id,
+                "package_name": payment.package_name,
+                "amount": payment.amount,
+                "status": payment.status,
+                "qris_url": payment.qris_url,
+                "expires_at": payment.expires_at.isoformat() + 'Z' if payment.expires_at is not None else None,
+                "created_at": payment.created_at.isoformat() + 'Z' if payment.created_at is not None else None,
+                "paid_at": payment.paid_at.isoformat() + 'Z' if payment.paid_at is not None else None
+            }
+            
+            if payment.status == 'pending':
+                ongoing.append(payment_data)
+            else:
+                completed.append(payment_data)
+        
+        return {
+            "ongoing": ongoing,
+            "completed": completed
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error waktu ambil riwayat pembayaran: {e}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         db.close()
