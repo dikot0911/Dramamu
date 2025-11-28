@@ -2150,8 +2150,14 @@ async def get_movies_by_category(category: str, init_data: str | None = None):
         
         movies_list = []
         for movie in movies:
-            like_count = like_counts.get(movie.id, 0)
-            favorite_count = favorite_counts.get(movie.id, 0)
+            user_like_count = like_counts.get(movie.id, 0)
+            user_favorite_count = favorite_counts.get(movie.id, 0)
+            
+            base_like = movie.base_like_count if movie.base_like_count is not None else 0
+            base_favorite = movie.base_favorite_count if movie.base_favorite_count is not None else 0
+            
+            like_count = base_like + user_like_count
+            favorite_count = base_favorite + user_favorite_count
             
             movies_list.append({
                 "id": movie.id,

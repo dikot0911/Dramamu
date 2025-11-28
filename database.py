@@ -133,6 +133,9 @@ class Movie(Base):
     category = Column(String, nullable=True)
     views = Column(Integer, default=0)
     
+    base_like_count = Column(Integer, default=0)
+    base_favorite_count = Column(Integer, default=0)
+    
     telegram_file_id = Column(String, nullable=True)
     telegram_chat_id = Column(String, nullable=True)
     telegram_message_id = Column(String, nullable=True)

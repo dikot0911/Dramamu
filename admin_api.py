@@ -1350,6 +1350,8 @@ class MovieUpdate(BaseModel):
     video_link: Optional[str] = None
     category: Optional[str] = None
     is_series: Optional[bool] = None
+    base_like_count: Optional[int] = None
+    base_favorite_count: Optional[int] = None
 
 @router.get("/movies")
 async def get_all_movies_admin(page: int = 1, limit: int = 20, search: Optional[str] = None, category: Optional[str] = None, admin = Depends(get_current_admin)):
@@ -1569,6 +1571,8 @@ async def get_movie_detail(movie_id: str, admin = Depends(get_current_admin)):
             "is_series": movie.is_series,
             "total_parts": movie.total_parts,
             "views": movie.views,
+            "base_like_count": movie.base_like_count or 0,
+            "base_favorite_count": movie.base_favorite_count or 0,
             "created_at": to_iso_utc(movie.created_at)  # type: ignore
         }
     finally:
@@ -1600,6 +1604,10 @@ async def update_movie(movie_id: str, data: MovieUpdate, admin = Depends(get_cur
             movie.category = data.category  # type: ignore
         if data.is_series is not None:
             movie.is_series = data.is_series  # type: ignore
+        if data.base_like_count is not None:
+            movie.base_like_count = data.base_like_count  # type: ignore
+        if data.base_favorite_count is not None:
+            movie.base_favorite_count = data.base_favorite_count  # type: ignore
         
         db.commit()
         
