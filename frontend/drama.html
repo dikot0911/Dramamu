@@ -1125,6 +1125,85 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        /* Pagination Styles */
+        .pagination-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+            padding: 20px 12px;
+            margin-top: 24px;
+            margin-bottom: 100px;
+            width: 100%;
+            background: linear-gradient(135deg, rgba(26, 26, 46, 0.95), rgba(20, 20, 35, 0.95));
+            border-radius: 14px;
+            border: 2px solid rgba(212, 175, 55, 0.4);
+            box-sizing: border-box;
+        }
+
+        .pagination-btn {
+            min-width: 40px;
+            height: 40px;
+            padding: 0 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(30, 41, 59, 0.9);
+            border: 2px solid rgba(212, 175, 55, 0.4);
+            border-radius: 8px;
+            color: rgba(212, 175, 55, 0.95);
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .pagination-btn:hover:not(.disabled) {
+            background: rgba(212, 175, 55, 0.15);
+            border-color: rgba(212, 175, 55, 0.7);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(212, 175, 55, 0.2);
+        }
+
+        .pagination-btn:active:not(.disabled) {
+            transform: translateY(0);
+        }
+
+        .pagination-btn.active {
+            background: linear-gradient(135deg, #d4af37 0%, #f0d266 100%);
+            border-color: #d4af37;
+            color: #0f0f1e;
+            font-weight: 800;
+            box-shadow: 0 4px 16px rgba(212, 175, 55, 0.5);
+        }
+
+        .pagination-btn.disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .pagination-ellipsis {
+            min-width: 30px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(212, 175, 55, 0.7);
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+
+        .pagination-info {
+            width: 100%;
+            text-align: center;
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.65);
+            margin-top: 12px;
+            font-weight: 500;
+        }
     </style>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
@@ -1164,6 +1243,7 @@
             <div id="movies-container" style="display: flex; flex-direction: column; gap: 0;">
                 <div class="grid grid-cols-2 gap-x-3 gap-y-4" id="drama-list-container">
                 </div>
+                <div id="pagination-container" class="pagination-container" style="display: none;"></div>
             </div>
 
         </main>
@@ -1222,6 +1302,10 @@
     let allMovies = [];
     let currentFilter = 'populer';
     let selectedMovieForContext = null;
+    
+    // Pagination state
+    let currentPage = 1;
+    const itemsPerPage = 12;
     
     // Cached DOM elements (performance optimization)
     let cachedElements = {};
@@ -2485,21 +2569,34 @@
         }
     }
 
-    function renderMovies(movies) {
+    function renderMovies(movies, resetPage = true) {
         const container = getCachedElement('drama-list-container');
+        const paginationContainer = getCachedElement('pagination-container');
         if (!container) return;
         
         container.innerHTML = '';
         
         if (movies.length === 0) {
             container.innerHTML = '<p class="text-gray-400 text-center col-span-2">Tidak ada film yang sesuai.</p>';
+            if (paginationContainer) paginationContainer.style.display = 'none';
             return;
         }
+        
+        // Reset to page 1 when loading new data
+        if (resetPage) {
+            currentPage = 1;
+        }
+        
+        // Calculate pagination
+        const totalPages = Math.ceil(movies.length / itemsPerPage);
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const moviesToShow = movies.slice(startIndex, endIndex);
 
         // Use DocumentFragment for batch DOM writes
         const fragment = document.createDocumentFragment();
         
-        movies.forEach((movie, index) => {
+        moviesToShow.forEach((movie, index) => {
             const movieCard = document.createElement('div');
             movieCard.className = 'movie-card-premium rounded-xl p-2.5 cursor-pointer group movie-card-no-select movie-card-animate movie-card-interactive';
             
@@ -2712,6 +2809,155 @@
         
         // Batch append all movie cards at once
         container.appendChild(fragment);
+        
+        // Render pagination
+        createPagination(movies, totalPages);
+    }
+    
+    function createPagination(movies, totalPages) {
+        const paginationContainer = document.getElementById('pagination-container');
+        if (!paginationContainer) {
+            console.error('❌ Pagination container not found!');
+            return;
+        }
+        
+        // Hide pagination if only 1 page
+        if (totalPages <= 1) {
+            paginationContainer.style.display = 'none';
+            console.log('📄 Only 1 page, hiding pagination');
+            return;
+        }
+        
+        paginationContainer.style.display = 'flex';
+        console.log(`📄 Rendering pagination for ${totalPages} pages, current page: ${currentPage}`);
+        paginationContainer.innerHTML = '';
+        
+        const fragment = document.createDocumentFragment();
+        
+        // Helper to create button
+        function createButton(text, page, isActive = false, isDisabled = false) {
+            const btn = document.createElement('button');
+            btn.className = `pagination-btn${isActive ? ' active' : ''}${isDisabled ? ' disabled' : ''}`;
+            btn.textContent = text;
+            if (!isDisabled && !isActive) {
+                btn.addEventListener('click', () => goToPage(page, movies));
+            }
+            return btn;
+        }
+        
+        // Helper to create ellipsis
+        function createEllipsis() {
+            const span = document.createElement('span');
+            span.className = 'pagination-ellipsis';
+            span.textContent = '...';
+            return span;
+        }
+        
+        // Previous button
+        const prevBtn = createButton('Prev', currentPage - 1, false, currentPage === 1);
+        fragment.appendChild(prevBtn);
+        
+        // Generate page numbers like: 1 2 3 ... 17 ... 112
+        const pagesToShow = [];
+        
+        if (totalPages <= 9) {
+            // Show all pages if total is small
+            for (let i = 1; i <= totalPages; i++) {
+                pagesToShow.push(i);
+            }
+        } else {
+            // Always show first page
+            pagesToShow.push(1);
+            
+            if (currentPage <= 4) {
+                // Near start: 1 2 3 4 5 ... 17 ... 112
+                for (let i = 2; i <= 5; i++) {
+                    pagesToShow.push(i);
+                }
+                pagesToShow.push('...');
+                // Show a middle point if many pages
+                if (totalPages > 20) {
+                    const midPoint = Math.floor(totalPages / 2);
+                    pagesToShow.push(midPoint);
+                    pagesToShow.push('...');
+                }
+                pagesToShow.push(totalPages);
+            } else if (currentPage >= totalPages - 3) {
+                // Near end: 1 ... 17 ... 108 109 110 111 112
+                if (totalPages > 20) {
+                    pagesToShow.push('...');
+                    const midPoint = Math.floor(totalPages / 2);
+                    pagesToShow.push(midPoint);
+                }
+                pagesToShow.push('...');
+                for (let i = totalPages - 4; i <= totalPages; i++) {
+                    pagesToShow.push(i);
+                }
+            } else {
+                // Middle: 1 ... 17 ... 45 46 47 ... 112
+                pagesToShow.push('...');
+                
+                // Show a early point if far from start
+                if (currentPage > 10) {
+                    const earlyPoint = Math.floor(currentPage / 2);
+                    pagesToShow.push(earlyPoint);
+                    pagesToShow.push('...');
+                }
+                
+                // Current page and neighbors
+                for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+                    pagesToShow.push(i);
+                }
+                
+                // Show a late point if far from end
+                if (currentPage < totalPages - 10) {
+                    pagesToShow.push('...');
+                    const latePoint = Math.floor((currentPage + totalPages) / 2);
+                    pagesToShow.push(latePoint);
+                }
+                
+                pagesToShow.push('...');
+                pagesToShow.push(totalPages);
+            }
+        }
+        
+        // Render page buttons
+        pagesToShow.forEach(page => {
+            if (page === '...') {
+                fragment.appendChild(createEllipsis());
+            } else {
+                fragment.appendChild(createButton(String(page), page, page === currentPage));
+            }
+        });
+        
+        // Next button
+        const nextBtn = createButton('Next', currentPage + 1, false, currentPage === totalPages);
+        fragment.appendChild(nextBtn);
+        
+        // Page info
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'pagination-info';
+        const startItem = (currentPage - 1) * itemsPerPage + 1;
+        const endItem = Math.min(currentPage * itemsPerPage, movies.length);
+        infoDiv.textContent = `Halaman ${currentPage} dari ${totalPages} (${startItem}-${endItem} dari ${movies.length} film)`;
+        fragment.appendChild(infoDiv);
+        
+        paginationContainer.appendChild(fragment);
+    }
+    
+    function goToPage(page, movies) {
+        currentPage = page;
+        
+        // Scroll to top of movie container
+        const container = getCachedElement('movies-container');
+        if (container) {
+            container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        
+        // Re-render with new page (don't reset page)
+        renderMovies(movies, false);
+        
+        console.log(`📄 Navigated to page ${page}`);
     }
 
     function handleMovieClick(movieId) {
