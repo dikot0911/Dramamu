@@ -386,75 +386,99 @@
 
         function getDateRange() {
             if (currentDateFilter === 'custom' && currentCustomDates) {
+                const startParts = currentCustomDates.start.split('-');
+                const endParts = currentCustomDates.end.split('-');
                 return {
-                    start: new Date(currentCustomDates.start),
-                    end: new Date(currentCustomDates.end)
+                    start: new Date(Date.UTC(parseInt(startParts[0]), parseInt(startParts[1]) - 1, parseInt(startParts[2]), 0, 0, 0, 0)),
+                    end: new Date(Date.UTC(parseInt(endParts[0]), parseInt(endParts[1]) - 1, parseInt(endParts[2]), 0, 0, 0, 0))
                 };
             }
             
-            const end = new Date();
-            end.setHours(23, 59, 59, 999);
-            const start = new Date();
+            const now = new Date();
+            const wibOffset = 7 * 60 * 60 * 1000;
+            const nowWIB = new Date(now.getTime() + wibOffset);
+            const year = nowWIB.getUTCFullYear();
+            const month = nowWIB.getUTCMonth();
+            const day = nowWIB.getUTCDate();
+            
+            const end = new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
+            let start = new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
             
             switch(currentDateFilter) {
                 case 'today':
-                    start.setHours(0, 0, 0, 0);
                     break;
                 case '3days':
-                    start.setDate(start.getDate() - 2);
-                    start.setHours(0, 0, 0, 0);
+                    start = new Date(Date.UTC(year, month, day - 2, 0, 0, 0, 0));
                     break;
                 case '7days':
-                    start.setDate(start.getDate() - 6);
-                    start.setHours(0, 0, 0, 0);
+                    start = new Date(Date.UTC(year, month, day - 6, 0, 0, 0, 0));
                     break;
                 case '30days':
-                    start.setDate(start.getDate() - 29);
-                    start.setHours(0, 0, 0, 0);
+                    start = new Date(Date.UTC(year, month, day - 29, 0, 0, 0, 0));
                     break;
             }
             
             return { start, end };
         }
 
+        function toWIBDateKey(dateString) {
+            if (!dateString) return null;
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return null;
+            
+            const formatter = new Intl.DateTimeFormat('en-CA', {
+                timeZone: 'Asia/Jakarta',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            });
+            return formatter.format(date);
+        }
+
         function generateDateLabels() {
             const { start, end } = getDateRange();
             const labels = [];
-            const dates = [];
+            const dateKeys = [];
             
-            const current = new Date(start);
+            let current = new Date(start.getTime());
             while (current <= end) {
-                dates.push(new Date(current));
-                labels.push(current.toLocaleDateString('id-ID', { month: 'short', day: 'numeric' }));
-                current.setDate(current.getDate() + 1);
+                const y = current.getUTCFullYear();
+                const m = String(current.getUTCMonth() + 1).padStart(2, '0');
+                const d = String(current.getUTCDate()).padStart(2, '0');
+                dateKeys.push(`${y}-${m}-${d}`);
+                
+                const dateStr = new Date(current.getTime() + 7 * 60 * 60 * 1000).toLocaleDateString('id-ID', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+                labels.push(dateStr);
+                current = new Date(current.getTime() + 24 * 60 * 60 * 1000);
             }
             
-            return { labels, dates };
+            return { labels, dateKeys };
         }
 
         function initCharts(data) {
             window.lastDashboardData = data;
+            const chartPayments = data?.chart_payments || data?.recent_payments || [];
+            const chartUsers = data?.chart_users || data?.recent_users || [];
             const recentPayments = data?.recent_payments || [];
-            const recentUsers = data?.recent_users || [];
             
-            const { labels, dates } = generateDateLabels();
+            const { labels, dateKeys } = generateDateLabels();
             const isDark = AdminPanel.getCurrentTheme() === 'dark';
             
-            const revenueByDay = new Array(dates.length).fill(0);
-            recentPayments.forEach(payment => {
+            const revenueByDay = new Array(dateKeys.length).fill(0);
+            chartPayments.forEach(payment => {
                 if (!payment?.created_at || payment.amount == null) return;
+                if (payment.status !== 'settlement' && payment.status !== 'success') return;
                 
                 try {
-                    const paymentDate = AdminPanel.toWIBDate(payment.created_at);
-                    if (!paymentDate) return;
+                    const paymentDateKey = toWIBDateKey(payment.created_at);
+                    if (!paymentDateKey) return;
                     
-                    for (let i = 0; i < dates.length; i++) {
-                        if (paymentDate.getTime() === dates[i].getTime()) {
-                            revenueByDay[i] += payment.amount;
-                            break;
-                        }
+                    const idx = dateKeys.indexOf(paymentDateKey);
+                    if (idx >= 0) {
+                        revenueByDay[idx] += payment.amount;
                     }
                 } catch (e) {
+                    console.error('Error processing payment:', e);
                 }
             });
 
@@ -510,21 +534,20 @@
                 console.error('Error initializing revenue chart:', error);
             }
 
-            const userGrowthByDay = new Array(dates.length).fill(0);
-            recentUsers.forEach(user => {
+            const userGrowthByDay = new Array(dateKeys.length).fill(0);
+            chartUsers.forEach(user => {
                 if (!user?.created_at) return;
                 
                 try {
-                    const userDate = AdminPanel.toWIBDate(user.created_at);
-                    if (!userDate) return;
+                    const userDateKey = toWIBDateKey(user.created_at);
+                    if (!userDateKey) return;
                     
-                    for (let i = 0; i < dates.length; i++) {
-                        if (userDate.getTime() === dates[i].getTime()) {
-                            userGrowthByDay[i]++;
-                            break;
-                        }
+                    const idx = dateKeys.indexOf(userDateKey);
+                    if (idx >= 0) {
+                        userGrowthByDay[idx]++;
                     }
                 } catch (e) {
+                    console.error('Error processing user:', e);
                 }
             });
 
@@ -577,9 +600,15 @@
                 failed: 0
             };
             
-            recentPayments.forEach(p => {
-                if (p?.status && paymentStatuses.hasOwnProperty(p.status)) {
-                    paymentStatuses[p.status]++;
+            chartPayments.forEach(p => {
+                if (p?.status) {
+                    if (p.status === 'settlement' || p.status === 'success') {
+                        paymentStatuses.settlement++;
+                    } else if (p.status === 'pending') {
+                        paymentStatuses.pending++;
+                    } else if (p.status === 'failed' || p.status === 'expired') {
+                        paymentStatuses.failed++;
+                    }
                 }
             });
 

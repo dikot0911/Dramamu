@@ -473,13 +473,34 @@
 
             const days = generateUsersDays();
             const numDays = getUsersDays();
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const datesList = [];
+            
+            const now = new Date();
+            const wibOffset = 7 * 60 * 60 * 1000;
+            const wibNow = new Date(now.getTime() + wibOffset);
+            const todayYear = wibNow.getUTCFullYear();
+            const todayMonth = wibNow.getUTCMonth();
+            const todayDay = wibNow.getUTCDate();
+            
+            const dateKeys = [];
             for (let i = numDays - 1; i >= 0; i--) {
-                const date = new Date(today);
-                date.setDate(date.getDate() - i);
-                datesList.push(date);
+                const d = new Date(Date.UTC(todayYear, todayMonth, todayDay - i, 0, 0, 0, 0));
+                const y = d.getUTCFullYear();
+                const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+                const day = String(d.getUTCDate()).padStart(2, '0');
+                dateKeys.push(`${y}-${m}-${day}`);
+            }
+            
+            function toWIBDateKey(dateString) {
+                if (!dateString) return null;
+                const date = new Date(dateString);
+                if (isNaN(date.getTime())) return null;
+                const formatter = new Intl.DateTimeFormat('en-CA', {
+                    timeZone: 'Asia/Jakarta',
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit'
+                });
+                return formatter.format(date);
             }
 
             const userGrowthByDay = new Array(numDays).fill(0);
@@ -487,14 +508,12 @@
                 if (!user?.created_at) return;
                 
                 try {
-                    const userDate = AdminPanel.toWIBDate(user.created_at);
-                    if (!userDate) return;
+                    const userDateKey = toWIBDateKey(user.created_at);
+                    if (!userDateKey) return;
                     
-                    for (let i = 0; i < numDays; i++) {
-                        if (userDate.getTime() === datesList[i].getTime()) {
-                            userGrowthByDay[i]++;
-                            break;
-                        }
+                    const idx = dateKeys.indexOf(userDateKey);
+                    if (idx >= 0) {
+                        userGrowthByDay[idx]++;
                     }
                 } catch (e) {}
             });
