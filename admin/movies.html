@@ -295,6 +295,33 @@
                         <textarea id="movieDescription" rows="4" placeholder="Masukkan deskripsi film"></textarea>
                     </div>
                     
+                    <details id="customStatsSection" style="margin: 20px 0;" open>
+                        <summary style="cursor: pointer; padding: 10px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 6px; font-weight: 500;">
+                            📊 Custom Like & Favorit (Opsional)
+                        </summary>
+                        <div style="margin-top: 15px; padding: 15px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--border-color);">
+                            <p style="margin: 0 0 15px 0; font-size: 0.9em; color: var(--text-secondary);">
+                                Atur nilai dasar like dan favorit. Nilai ini akan ditambah dengan interaksi user yang sebenarnya.
+                            </p>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                <div class="form-group" style="margin: 0;">
+                                    <label style="display: flex; align-items: center; gap: 6px;">
+                                        <span style="font-size: 1.1em;">❤️</span> Custom Like
+                                    </label>
+                                    <input type="number" id="movieBaseLikeCount" min="0" value="0" placeholder="0" style="width: 100%;">
+                                    <small style="color: var(--text-secondary); font-size: 0.85em;">Nilai dasar like</small>
+                                </div>
+                                <div class="form-group" style="margin: 0;">
+                                    <label style="display: flex; align-items: center; gap: 6px;">
+                                        <span style="font-size: 1.1em;">⭐</span> Custom Favorit
+                                    </label>
+                                    <input type="number" id="movieBaseFavoriteCount" min="0" value="0" placeholder="0" style="width: 100%;">
+                                    <small style="color: var(--text-secondary); font-size: 0.85em;">Nilai dasar favorit</small>
+                                </div>
+                            </div>
+                        </div>
+                    </details>
+                    
                     <details id="moviePendingPostersSection" style="margin: 20px 0;">
                         <summary style="cursor: pointer; padding: 10px; background: var(--bg-primary); border-radius: 6px; font-weight: 500;">
                             🖼 Pilih dari Poster yang Baru Diupload
@@ -1002,6 +1029,8 @@
             document.getElementById('movieForm').reset();
             document.getElementById('movieId').disabled = false;
             document.getElementById('movieIsSeries').checked = false;
+            document.getElementById('movieBaseLikeCount').value = 0;
+            document.getElementById('movieBaseFavoriteCount').value = 0;
             document.querySelector('.series-toggle-card')?.classList.remove('active');
             document.getElementById('normalMovieFields').style.display = 'grid';
             document.getElementById('seriesUploadSection').style.display = 'none';
@@ -1417,6 +1446,8 @@
                 document.getElementById('moviePosterFileId').value = movie.poster_file_id || '';
                 document.getElementById('movieDescription').value = movie.description || '';
                 document.getElementById('movieIsSeries').checked = movie.is_series || false;
+                document.getElementById('movieBaseLikeCount').value = movie.base_like_count || 0;
+                document.getElementById('movieBaseFavoriteCount').value = movie.base_favorite_count || 0;
                 
                 const seriesCard = document.querySelector('.series-toggle-card');
                 const manualDataFilmSection = document.getElementById('manualDataFilmSection');
@@ -1471,13 +1502,18 @@
                 movieId = titleManual;
             }
             
+            const baseLikeCount = parseInt(document.getElementById('movieBaseLikeCount').value) || 0;
+            const baseFavoriteCount = parseInt(document.getElementById('movieBaseFavoriteCount').value) || 0;
+            
             const movieData = {
                 id: movieId,
                 title: finalTitle,
                 category: document.getElementById('movieCategory').value || null,
                 poster_file_id: document.getElementById('moviePosterFileId').value || null,
                 description: document.getElementById('movieDescription').value || null,
-                is_series: isSeries
+                is_series: isSeries,
+                base_like_count: baseLikeCount,
+                base_favorite_count: baseFavoriteCount
             };
 
             if (!movieData.title || (!isEditMode && !movieData.id)) {
