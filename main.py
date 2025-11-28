@@ -680,8 +680,14 @@ async def get_all_movies(sort: str = "terbaru", init_data: str | None = None):
             desc_value: str | None = cast(str | None, movie.description)
             description_text = desc_value if (desc_value is not None and desc_value != '') else ''
             
-            like_count = like_counts.get(movie.id, 0)
-            favorite_count = favorite_counts.get(movie.id, 0)
+            user_like_count = like_counts.get(movie.id, 0)
+            user_favorite_count = favorite_counts.get(movie.id, 0)
+            
+            base_like = movie.base_like_count if movie.base_like_count is not None else 0
+            base_favorite = movie.base_favorite_count if movie.base_favorite_count is not None else 0
+            
+            like_count = base_like + user_like_count
+            favorite_count = base_favorite + user_favorite_count
             
             movies_list.append({
                 "id": movie.id,
@@ -1771,13 +1777,27 @@ async def add_favorite(request: FavoriteRequest):
     
     db = SessionLocal()
     try:
+        movie = db.query(Movie).filter(
+            Movie.id == request.movie_id,
+            Movie.deleted_at == None
+        ).first()
+        if not movie:
+            raise HTTPException(status_code=404, detail="Film tidak ditemukan")
+        
         existing = db.query(Favorite).filter(
             Favorite.telegram_id == str(telegram_id),
             Favorite.movie_id == request.movie_id
         ).first()
         
+        base_favorite = movie.base_favorite_count if movie.base_favorite_count is not None else 0
+        
         if existing:
-            return {"status": "already_favorited", "message": "Film udah ada di favorit"}
+            from sqlalchemy import func
+            user_favorite_count = db.query(func.count(Favorite.id)).filter(
+                Favorite.movie_id == request.movie_id
+            ).scalar() or 0
+            favorite_count = base_favorite + user_favorite_count
+            return {"status": "already_favorited", "message": "Film udah ada di favorit", "favorite_count": favorite_count}
         
         favorite = Favorite(
             telegram_id=str(telegram_id),
@@ -1786,7 +1806,13 @@ async def add_favorite(request: FavoriteRequest):
         db.add(favorite)
         db.commit()
         
-        return {"status": "success", "message": "Film berhasil ditambahin ke favorit"}
+        from sqlalchemy import func
+        user_favorite_count = db.query(func.count(Favorite.id)).filter(
+            Favorite.movie_id == request.movie_id
+        ).scalar() or 0
+        favorite_count = base_favorite + user_favorite_count
+        
+        return {"status": "success", "message": "Film berhasil ditambahin ke favorit", "is_favorited": True, "favorite_count": favorite_count}
     except HTTPException:
         raise
     except Exception as e:
@@ -1804,6 +1830,11 @@ async def remove_favorite(request: RemoveFavoriteRequest):
     
     db = SessionLocal()
     try:
+        movie = db.query(Movie).filter(
+            Movie.id == request.movie_id,
+            Movie.deleted_at == None
+        ).first()
+        
         favorite = db.query(Favorite).filter(
             Favorite.telegram_id == str(telegram_id),
             Favorite.movie_id == request.movie_id
@@ -1815,10 +1846,13 @@ async def remove_favorite(request: RemoveFavoriteRequest):
         db.delete(favorite)
         db.commit()
         
+        base_favorite = movie.base_favorite_count if (movie and movie.base_favorite_count is not None) else 0
+        
         from sqlalchemy import func
-        favorite_count = db.query(func.count(Favorite.id)).filter(
+        user_favorite_count = db.query(func.count(Favorite.id)).filter(
             Favorite.movie_id == request.movie_id
         ).scalar() or 0
+        favorite_count = base_favorite + user_favorite_count
         
         return {
             "status": "success",
@@ -1895,11 +1929,14 @@ async def toggle_like(request: LikeRequest):
             Like.movie_id == request.movie_id
         ).first()
         
+        base_like = movie.base_like_count if movie.base_like_count is not None else 0
+        
         if existing:
             db.delete(existing)
             db.commit()
             
-            like_count = db.query(Like).filter(Like.movie_id == request.movie_id).count()
+            user_like_count = db.query(Like).filter(Like.movie_id == request.movie_id).count()
+            like_count = base_like + user_like_count
             
             return {
                 "status": "unliked",
@@ -1915,7 +1952,8 @@ async def toggle_like(request: LikeRequest):
             db.add(like)
             db.commit()
             
-            like_count = db.query(Like).filter(Like.movie_id == request.movie_id).count()
+            user_like_count = db.query(Like).filter(Like.movie_id == request.movie_id).count()
+            like_count = base_like + user_like_count
             
             return {
                 "status": "liked",

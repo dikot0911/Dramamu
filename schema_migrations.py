@@ -1377,6 +1377,66 @@ def run_migration_021_create_settings_table():
     finally:
         db.close()
 
+def run_migration_022_add_base_like_favorite_counts():
+    """
+    Migration 022: Add kolom base_like_count dan base_favorite_count ke table movies
+    
+    Untuk fitur custom like dan favorite count di admin panel.
+    Admin bisa set nilai dasar, dan interaksi user tetap bisa menambah jumlahnya.
+    
+    Kolom baru:
+    - base_like_count: Nilai dasar like yang di-set admin (default 0)
+    - base_favorite_count: Nilai dasar favorite yang di-set admin (default 0)
+    
+    Migration ini idempotent - bisa dijalankan berulang kali dengan aman.
+    """
+    logger.info("🔧 Running migration 022: Add base_like_count and base_favorite_count to movies")
+    
+    db = SessionLocal()
+    try:
+        # Add base_like_count column
+        if not column_exists(db, 'movies', 'base_like_count'):
+            logger.info("  → Adding column base_like_count...")
+            db.execute(text("""
+                ALTER TABLE movies 
+                ADD COLUMN base_like_count INTEGER DEFAULT 0
+            """))
+            db.execute(text("""
+                UPDATE movies 
+                SET base_like_count = 0 
+                WHERE base_like_count IS NULL
+            """))
+            logger.info("  ✓ Column base_like_count added")
+        else:
+            logger.info("  ✓ Column base_like_count already exists")
+        
+        # Add base_favorite_count column
+        if not column_exists(db, 'movies', 'base_favorite_count'):
+            logger.info("  → Adding column base_favorite_count...")
+            db.execute(text("""
+                ALTER TABLE movies 
+                ADD COLUMN base_favorite_count INTEGER DEFAULT 0
+            """))
+            db.execute(text("""
+                UPDATE movies 
+                SET base_favorite_count = 0 
+                WHERE base_favorite_count IS NULL
+            """))
+            logger.info("  ✓ Column base_favorite_count added")
+        else:
+            logger.info("  ✓ Column base_favorite_count already exists")
+        
+        db.commit()
+        logger.info("  ✅ Migration 022 complete!")
+        return True
+        
+    except Exception as e:
+        logger.error(f"  ❌ Migration 022 failed: {e}")
+        db.rollback()
+        return False
+    finally:
+        db.close()
+
 MIGRATIONS = [
     ('001_add_referred_by_code', run_migration_001_add_referred_by_code),
     ('002_ensure_movie_columns', run_migration_002_ensure_movie_columns),
@@ -1399,6 +1459,7 @@ MIGRATIONS = [
     ('019_add_email_to_admins', run_migration_019_add_email_to_admins),
     ('020_create_admin_conversations_table', run_migration_020_create_admin_conversations_table),
     ('021_create_settings_table', run_migration_021_create_settings_table),
+    ('022_add_base_like_favorite_counts', run_migration_022_add_base_like_favorite_counts),
 ]
 
 def run_migrations():
@@ -1493,7 +1554,7 @@ def validate_critical_schema():
     try:
         critical_tests = [
             ("users", ["id", "telegram_id", "ref_code", "referred_by_code", "is_vip", "deleted_at"]),
-            ("movies", ["id", "short_id", "title", "category", "views", "poster_file_id", "telegram_file_id", "is_series", "deleted_at"]),
+            ("movies", ["id", "short_id", "title", "category", "views", "poster_file_id", "telegram_file_id", "is_series", "deleted_at", "base_like_count", "base_favorite_count"]),
             ("favorites", ["id", "telegram_id", "movie_id"]),
             ("likes", ["id", "telegram_id", "movie_id"]),
             ("watch_history", ["id", "telegram_id", "movie_id", "watched_at"]),
