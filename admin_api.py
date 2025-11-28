@@ -1076,8 +1076,24 @@ async def get_dashboard_stats(admin = Depends(get_current_admin)):
         pending_withdrawals = db.query(func.count(Withdrawal.id)).filter(Withdrawal.status == 'pending').scalar()
         total_revenue = db.query(func.sum(Payment.amount)).filter(Payment.status == 'success').scalar() or 0
         
+        # Get 5 most recent for display list (no date filter - always show latest 5)
         recent_users = db.query(User).filter(User.deleted_at == None).order_by(desc(User.created_at)).limit(5).all()
         recent_payments = db.query(Payment).order_by(desc(Payment.created_at)).limit(5).all()
+        
+        # FIX: Get data for last 60 days for charts (separate from display list)
+        from datetime import timedelta
+        sixty_days_ago = now_utc() - timedelta(days=60)
+        
+        # Get users created in last 60 days for chart data
+        chart_users = db.query(User).filter(
+            User.deleted_at == None,
+            User.created_at >= sixty_days_ago
+        ).order_by(desc(User.created_at)).all()
+        
+        # Get payments in last 60 days for chart data
+        chart_payments = db.query(Payment).filter(
+            Payment.created_at >= sixty_days_ago
+        ).order_by(desc(Payment.created_at)).all()
         
         return {
             "stats": {
@@ -1105,6 +1121,20 @@ async def get_dashboard_stats(admin = Depends(get_current_admin)):
                     "status": p.status,
                     "created_at": to_iso_utc(p.created_at)  # type: ignore
                 } for p in recent_payments
+            ],
+            "chart_users": [
+                {
+                    "id": u.id,
+                    "created_at": to_iso_utc(u.created_at)  # type: ignore
+                } for u in chart_users
+            ],
+            "chart_payments": [
+                {
+                    "id": p.id,
+                    "amount": p.amount,
+                    "status": p.status,
+                    "created_at": to_iso_utc(p.created_at)  # type: ignore
+                } for p in chart_payments
             ]
         }
     finally:

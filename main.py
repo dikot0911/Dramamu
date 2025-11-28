@@ -2369,39 +2369,6 @@ async def get_user_profile(request: UserDataRequest):
     finally:
         db.close()
 
-@app.post("/api/v1/payment_history")
-async def get_payment_history(request: UserDataRequest):
-    validated_user = validate_telegram_webapp(request.init_data)
-    assert validated_user is not None, "validate_telegram_webapp should raise HTTPException if validation fails"
-    telegram_id = validated_user['telegram_id']
-    
-    db = SessionLocal()
-    try:
-        payments = db.query(Payment).filter(
-            Payment.telegram_id == str(telegram_id)
-        ).order_by(Payment.created_at.desc()).all()
-        
-        result = []
-        for payment in payments:
-            result.append({
-                "id": payment.id,
-                "order_id": payment.order_id,
-                "package_name": payment.package_name,
-                "amount": payment.amount,
-                "status": payment.status,
-                "created_at": payment.created_at.isoformat() + 'Z' if payment.created_at is not None else None,
-                "paid_at": payment.paid_at.isoformat() + 'Z' if payment.paid_at is not None else None
-            })
-        
-        return {"payments": result}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error waktu ambil riwayat pembayaran: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        db.close()
-
 @app.post("/api/v1/pending_payments")
 async def get_pending_payments(request: UserDataRequest):
     """
