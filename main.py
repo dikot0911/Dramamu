@@ -2070,24 +2070,64 @@ async def get_categories():
         db.close()
 
 @app.get("/api/v1/movies/category/{category}")
-async def get_movies_by_category(category: str):
+async def get_movies_by_category(category: str, init_data: str | None = None):
     db = SessionLocal()
     try:
+        telegram_id = None
+        if init_data:
+            try:
+                validated_user = validate_telegram_webapp(init_data, allow_missing_token=True)
+                if validated_user:
+                    telegram_id = str(validated_user['telegram_id'])
+            except Exception as e:
+                logger.warning(f"Could not validate init_data for category: {e}")
+        
         movies = db.query(Movie).filter(
             Movie.category == category,
             Movie.deleted_at == None
-        ).all()
+        ).order_by(Movie.created_at.desc()).all()
+        
+        user_likes = set()
+        user_favorites = set()
+        
+        if telegram_id:
+            user_likes_query = db.query(Like.movie_id).filter(Like.telegram_id == telegram_id).all()
+            user_likes = {like[0] for like in user_likes_query}
+            
+            user_fav_query = db.query(Favorite.movie_id).filter(Favorite.telegram_id == telegram_id).all()
+            user_favorites = {fav[0] for fav in user_fav_query}
+        
+        from sqlalchemy import func
+        like_counts_query = db.query(
+            Like.movie_id,
+            func.count(Like.id).label('count')
+        ).group_by(Like.movie_id).all()
+        like_counts = {movie_id: count for movie_id, count in like_counts_query}
+        
+        favorite_counts_query = db.query(
+            Favorite.movie_id,
+            func.count(Favorite.id).label('count')
+        ).group_by(Favorite.movie_id).all()
+        favorite_counts = {movie_id: count for movie_id, count in favorite_counts_query}
         
         movies_list = []
         for movie in movies:
+            like_count = like_counts.get(movie.id, 0)
+            favorite_count = favorite_counts.get(movie.id, 0)
+            
             movies_list.append({
                 "id": movie.id,
                 "title": movie.title,
                 "description": movie.description if movie.description is not None else "",
                 "poster_url": movie.poster_url,
+                "poster_file_id": movie.poster_file_id,
                 "video_link": movie.video_link,
                 "category": movie.category if movie.category is not None else "",
-                "views": movie.views if movie.views is not None else 0
+                "views": movie.views if movie.views is not None else 0,
+                "like_count": like_count,
+                "favorite_count": favorite_count,
+                "is_liked": movie.id in user_likes if telegram_id else False,
+                "is_favorited": movie.id in user_favorites if telegram_id else False
             })
         
         return {"movies": movies_list, "category": category}
