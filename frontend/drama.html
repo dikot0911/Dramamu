@@ -1126,83 +1126,81 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* Pagination Styles */
+        /* Pagination Styles - Compact Design */
         .pagination-container {
             display: flex;
             justify-content: center;
             align-items: center;
             flex-wrap: wrap;
-            gap: 6px;
-            padding: 20px 12px;
-            margin-top: 24px;
+            gap: 4px;
+            padding: 10px 8px;
+            margin-top: 16px;
             margin-bottom: 100px;
             width: 100%;
-            background: linear-gradient(135deg, rgba(26, 26, 46, 0.95), rgba(20, 20, 35, 0.95));
-            border-radius: 14px;
-            border: 2px solid rgba(212, 175, 55, 0.4);
+            background: rgba(20, 20, 35, 0.85);
+            border-radius: 10px;
+            border: 1px solid rgba(212, 175, 55, 0.25);
             box-sizing: border-box;
         }
 
         .pagination-btn {
-            min-width: 40px;
-            height: 40px;
-            padding: 0 10px;
+            min-width: 28px;
+            height: 28px;
+            padding: 0 8px;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: rgba(30, 41, 59, 0.9);
-            border: 2px solid rgba(212, 175, 55, 0.4);
-            border-radius: 8px;
-            color: rgba(212, 175, 55, 0.95);
-            font-size: 0.9rem;
-            font-weight: 700;
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 6px;
+            color: rgba(212, 175, 55, 0.9);
+            font-size: 0.75rem;
+            font-weight: 600;
             cursor: pointer;
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.2s ease;
         }
 
         .pagination-btn:hover:not(.disabled) {
-            background: rgba(212, 175, 55, 0.15);
-            border-color: rgba(212, 175, 55, 0.7);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(212, 175, 55, 0.2);
+            background: rgba(212, 175, 55, 0.12);
+            border-color: rgba(212, 175, 55, 0.5);
         }
 
         .pagination-btn:active:not(.disabled) {
-            transform: translateY(0);
+            transform: scale(0.95);
         }
 
         .pagination-btn.active {
-            background: linear-gradient(135deg, #d4af37 0%, #f0d266 100%);
+            background: linear-gradient(135deg, #d4af37 0%, #e8c547 100%);
             border-color: #d4af37;
             color: #0f0f1e;
-            font-weight: 800;
-            box-shadow: 0 4px 16px rgba(212, 175, 55, 0.5);
+            font-weight: 700;
+            box-shadow: 0 2px 8px rgba(212, 175, 55, 0.35);
         }
 
         .pagination-btn.disabled {
-            opacity: 0.35;
+            opacity: 0.3;
             cursor: not-allowed;
             pointer-events: none;
         }
 
         .pagination-ellipsis {
-            min-width: 30px;
-            height: 40px;
+            min-width: 20px;
+            height: 28px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: rgba(212, 175, 55, 0.7);
-            font-size: 0.9rem;
-            font-weight: 700;
+            color: rgba(212, 175, 55, 0.6);
+            font-size: 0.75rem;
+            font-weight: 600;
         }
 
         .pagination-info {
             width: 100%;
             text-align: center;
-            font-size: 0.85rem;
-            color: rgba(255, 255, 255, 0.65);
-            margin-top: 12px;
-            font-weight: 500;
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.5);
+            margin-top: 6px;
+            font-weight: 400;
         }
     </style>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -1301,11 +1299,58 @@
     <script>
     let allMovies = [];
     let currentFilter = 'populer';
+    let currentCategory = null; // Category filter from URL
     let selectedMovieForContext = null;
     
     // Pagination state
     let currentPage = 1;
     const itemsPerPage = 12;
+    
+    // Get category from URL parameter
+    function getCategoryFromUrl() {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get('category');
+    }
+    
+    // Clear category filter
+    function clearCategoryFilter() {
+        currentCategory = null;
+        window.history.replaceState({}, '', 'drama.html');
+        hideCategoryBanner();
+        fetchMovies();
+    }
+    
+    // Show category banner
+    function showCategoryBanner(category) {
+        let banner = document.getElementById('category-filter-banner');
+        if (!banner) {
+            banner = document.createElement('div');
+            banner.id = 'category-filter-banner';
+            banner.style.cssText = 'background: linear-gradient(135deg, rgba(212, 175, 55, 0.2), rgba(212, 175, 55, 0.1)); border: 1px solid rgba(212, 175, 55, 0.4); border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;';
+            const mainContent = document.querySelector('main');
+            if (mainContent) {
+                mainContent.insertBefore(banner, mainContent.firstChild.nextSibling);
+            }
+        }
+        banner.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="color: #d4af37; font-size: 1.1rem;">🏷️</span>
+                <span style="color: #fff; font-size: 0.85rem;">Kategori: <strong style="color: #d4af37;">${category}</strong></span>
+            </div>
+            <button onclick="clearCategoryFilter()" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #ef4444; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer;">
+                ✕ Hapus Filter
+            </button>
+        `;
+        banner.style.display = 'flex';
+    }
+    
+    // Hide category banner
+    function hideCategoryBanner() {
+        const banner = document.getElementById('category-filter-banner');
+        if (banner) {
+            banner.style.display = 'none';
+        }
+    }
     
     // Cached DOM elements (performance optimization)
     let cachedElements = {};
@@ -2195,6 +2240,12 @@
     document.addEventListener("DOMContentLoaded", () => {
         const tg = window.Telegram?.WebApp;
         
+        // Check for category filter from URL
+        currentCategory = getCategoryFromUrl();
+        if (currentCategory) {
+            console.log(`🏷️ Category filter detected from URL: ${currentCategory}`);
+        }
+        
         if (tg) {
             console.log("✅ Telegram WebApp SDK aktif");
             console.log("✅ Platform:", tg.platform);
@@ -2514,10 +2565,20 @@
                 console.error('❌ API_BASE_URL tidak tersedia!');
                 throw new Error('API configuration missing');
             }
-            let apiUrl = baseUrl + '/api/v1/movies';
             
+            let apiUrl;
             const queryParams = [];
-            queryParams.push('sort=' + encodeURIComponent(currentFilter));
+            
+            // Check if filtering by category
+            if (currentCategory) {
+                apiUrl = baseUrl + '/api/v1/movies/category/' + encodeURIComponent(currentCategory);
+                console.log(`🏷️ Filtering by category: ${currentCategory}`);
+                showCategoryBanner(currentCategory);
+            } else {
+                apiUrl = baseUrl + '/api/v1/movies';
+                queryParams.push('sort=' + encodeURIComponent(currentFilter));
+                hideCategoryBanner();
+            }
             
             if (window.tg && window.tg.initData) {
                 queryParams.push('init_data=' + encodeURIComponent(window.tg.initData));
@@ -2526,7 +2587,9 @@
                 console.warn('⚠️ No init_data available, fetching without user context');
             }
             
-            apiUrl = apiUrl + '?' + queryParams.join('&');
+            if (queryParams.length > 0) {
+                apiUrl = apiUrl + '?' + queryParams.join('&');
+            }
             console.log(`API URL: ${apiUrl}`);
             
             const response = await fetch(apiUrl, {
