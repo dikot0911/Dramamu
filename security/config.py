@@ -45,22 +45,28 @@ def is_production_env() -> bool:
 
 @dataclass
 class RateLimitConfig:
-    """Rate limiting configuration"""
+    """
+    Rate limiting configuration
+    
+    NOTE: Rate limits are per-IP and do NOT discriminate by country/geo-location.
+    All users worldwide get the same generous limits.
+    Adjust via environment variables if needed.
+    """
     enabled: bool = True
-    global_requests_per_minute: int = 3000
-    global_block_duration: int = 60
+    global_requests_per_minute: int = 5000
+    global_block_duration: int = 30
     
-    api_requests_per_minute: int = 1000
-    api_block_duration: int = 30
+    api_requests_per_minute: int = 2000
+    api_block_duration: int = 20
     
-    auth_requests_per_minute: int = 30
-    auth_block_duration: int = 300
+    auth_requests_per_minute: int = 60
+    auth_block_duration: int = 180
     
-    payment_requests_per_minute: int = 50
-    payment_block_duration: int = 60
+    payment_requests_per_minute: int = 100
+    payment_block_duration: int = 30
     
-    admin_requests_per_minute: int = 200
-    admin_block_duration: int = 120
+    admin_requests_per_minute: int = 500
+    admin_block_duration: int = 60
     
     def __post_init__(self):
         default_enabled = is_production_env()
@@ -194,11 +200,20 @@ class CSPConfig:
 
 @dataclass
 class IPBlockerConfig:
-    """IP blocker configuration"""
+    """
+    IP blocker configuration
+    
+    NOTE: This IP blocker does NOT block by country/geo-location.
+    It only blocks IPs that exceed the request threshold (potential abuse).
+    Users from any country (Cambodia, Malaysia, Thailand, Singapore, etc.)
+    are welcome and will NOT be blocked unless they trigger abuse detection.
+    
+    To completely disable IP blocking, set IP_BLOCKER_ENABLED=false in env vars.
+    """
     enabled: bool = True
-    auto_block_threshold: int = 500
-    auto_block_window: int = 60
-    auto_block_duration: int = 300
+    auto_block_threshold: int = 2000
+    auto_block_window: int = 120
+    auto_block_duration: int = 180
     
     whitelist: Set[str] = field(default_factory=lambda: {
         "127.0.0.1",
@@ -222,6 +237,9 @@ class IPBlockerConfig:
     def __post_init__(self):
         default_enabled = is_production_env()
         self.enabled = get_bool_env('IP_BLOCKER_ENABLED', default_enabled)
+        self.auto_block_threshold = get_int_env('IP_BLOCK_THRESHOLD', self.auto_block_threshold)
+        self.auto_block_window = get_int_env('IP_BLOCK_WINDOW', self.auto_block_window)
+        self.auto_block_duration = get_int_env('IP_BLOCK_DURATION', self.auto_block_duration)
         whitelist_env = get_list_env('IP_WHITELIST')
         if whitelist_env:
             self.whitelist.update(whitelist_env)
