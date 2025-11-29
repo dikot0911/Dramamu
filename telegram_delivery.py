@@ -1,7 +1,7 @@
 import logging
 import os
 from telebot import types
-from database import get_parts_by_movie_id
+from database import get_parts_by_movie_id, record_bot_watch_history
 from config import URL_CARI_JUDUL, URL_BELI_VIP
 
 logging.basicConfig(level=logging.INFO)
@@ -87,6 +87,7 @@ def send_single_movie(bot, chat_id, movie):
                 )
             )
             logger.info(f"✅ Video terkirim via telegram_file_id ke {chat_id}")
+            record_bot_watch_history(chat_id, movie.get('id'))
             return
         except Exception as e:
             logger.error(f"❌ Gagal kirim via telegram_file_id: {e}, fallback ke link")
@@ -117,6 +118,8 @@ def send_single_movie(bot, chat_id, movie):
                     reply_markup=markup
                 )
                 logger.info(f"✅ Poster dari Telegram File ID terkirim untuk film {movie_id}")
+                if video_link:
+                    record_bot_watch_history(chat_id, movie_id)
                 return
             except Exception as e:
                 logger.warning(f"⚠️ Gagal kirim poster via file_id: {e}, fallback ke poster_url")
@@ -137,13 +140,19 @@ def send_single_movie(bot, chat_id, movie):
                     parse_mode='HTML',
                     reply_markup=markup
                 )
+            if video_link:
+                record_bot_watch_history(chat_id, movie_id)
         else:
             logger.warning(f"Poster ga ketemu buat film {movie_id}, kirim pesan aja")
             bot.send_message(chat_id, caption, parse_mode='HTML', reply_markup=markup)
+            if video_link:
+                record_bot_watch_history(chat_id, movie_id)
     except Exception as e:
         logger.error(f"❌ Error waktu kirim foto: {e}")
         try:
             bot.send_message(chat_id, caption, parse_mode='HTML', reply_markup=markup)
+            if video_link:
+                record_bot_watch_history(chat_id, movie_id)
         except Exception as fallback_error:
             logger.error(f"❌ Fallback message gagal: {fallback_error}")
 
@@ -445,6 +454,7 @@ def send_series_part(bot, chat_id, movie, part, part_number, total_parts, short_
             )
             from database import increment_part_views
             increment_part_views(part.get('id'))
+            record_bot_watch_history(chat_id, movie_id, part_number)
             logger.info(f"✅ Part {part_number} terkirim via file_id")
             return True
         except Exception as e:
@@ -460,6 +470,7 @@ def send_series_part(bot, chat_id, movie, part, part_number, total_parts, short_
         )
         from database import increment_part_views
         increment_part_views(part.get('id'))
+        record_bot_watch_history(chat_id, movie_id, part_number)
         logger.info(f"✅ Part {part_number} terkirim via link")
         return True
     

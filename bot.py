@@ -111,39 +111,87 @@ def get_or_create_user(user, referred_by_code=None):
     def find_and_restore_user(db_session, tg_id, uname, ref_code_param):
         """
         Helper function untuk find user (active atau soft-deleted) dan restore jika perlu.
+        
+        CRITICAL FIX: Juga handle referral untuk active users yang belum punya referred_by_code.
+        Ini memastikan referral system bekerja bahkan jika user sudah ada tapi baru klik invite link.
+        
+        RACE CONDITION FIX: Use row-level locking dan atomic update untuk prevent double increment.
+        
         Returns: (user, was_restored, was_created)
         """
-        # FIRST: Check for ANY user with this telegram_id (regardless of deleted_at)
-        # This is more reliable than separate queries
+        from sqlalchemy import update
+        
         any_user = db_session.query(User).filter(
             User.telegram_id == tg_id
         ).first()
         
         if any_user:
             if any_user.deleted_at is None:
-                # Active user found
                 logger.info(f"User {tg_id} udah ada di DB (active)")
+                
+                if ref_code_param and not any_user.referred_by_code:
+                    if ref_code_param != any_user.ref_code:
+                        result = db_session.execute(
+                            update(User)
+                            .where(
+                                User.telegram_id == tg_id,
+                                User.referred_by_code == None
+                            )
+                            .values(referred_by_code=ref_code_param)
+                        )
+                        
+                        if result.rowcount > 0:
+                            logger.info(f"✅ REFERRAL FIX: Updated referred_by_code to {ref_code_param} for active user {tg_id}")
+                            
+                            increment_result = db_session.execute(
+                                update(User)
+                                .where(
+                                    User.ref_code == ref_code_param,
+                                    User.deleted_at == None
+                                )
+                                .values(total_referrals=User.total_referrals + 1)
+                            )
+                            
+                            if increment_result.rowcount > 0:
+                                logger.info(f"✅ REFERRAL FIX: Referrer {ref_code_param} total_referrals incremented (atomic) for active user {tg_id}")
+                            else:
+                                logger.warning(f"⚠️ Referrer dengan code {ref_code_param} tidak ditemukan")
+                            
+                            db_session.commit()
+                            db_session.refresh(any_user)
+                        else:
+                            logger.info(f"ℹ️ User {tg_id} referred_by_code already set by concurrent request, skip")
+                    else:
+                        logger.warning(f"⚠️ Self-referral detected for active user {tg_id}, ignoring")
+                elif ref_code_param and any_user.referred_by_code:
+                    logger.info(f"ℹ️ User {tg_id} sudah punya referred_by_code: {any_user.referred_by_code}, ignore new code: {ref_code_param}")
+                
                 return any_user, False, False
             else:
-                # Soft-deleted user - restore them
                 logger.info(f"🔄 Restoring soft-deleted user {tg_id}")
                 any_user.deleted_at = None  # type: ignore
                 any_user.username = uname  # type: ignore
                 
-                # Handle referral for restored user
                 if ref_code_param and not any_user.referred_by_code:
-                    any_user.referred_by_code = ref_code_param  # type: ignore
-                    logger.info(f"✅ Updated referred_by_code to {ref_code_param} for restored user {tg_id}")
-                    
-                    # Increment referrer's count
                     if ref_code_param != any_user.ref_code:
-                        referrer = db_session.query(User).filter(
-                            User.ref_code == ref_code_param,
-                            User.deleted_at == None
-                        ).first()
-                        if referrer:
-                            referrer.total_referrals += 1  # type: ignore
-                            logger.info(f"✅ Referrer {ref_code_param} total_referrals incremented (restored user)")
+                        any_user.referred_by_code = ref_code_param  # type: ignore
+                        logger.info(f"✅ Updated referred_by_code to {ref_code_param} for restored user {tg_id}")
+                        
+                        increment_result = db_session.execute(
+                            update(User)
+                            .where(
+                                User.ref_code == ref_code_param,
+                                User.deleted_at == None
+                            )
+                            .values(total_referrals=User.total_referrals + 1)
+                        )
+                        
+                        if increment_result.rowcount > 0:
+                            logger.info(f"✅ Referrer {ref_code_param} total_referrals incremented (atomic, restored user)")
+                        else:
+                            logger.warning(f"⚠️ Referrer dengan code {ref_code_param} tidak ditemukan")
+                    else:
+                        logger.warning(f"⚠️ Self-referral detected for restored user {tg_id}, ignoring")
                 
                 db_session.commit()
                 db_session.refresh(any_user)
@@ -178,16 +226,20 @@ def get_or_create_user(user, referred_by_code=None):
             
             logger.info(f"✅ User {telegram_id} dibuat dengan ref_code: {ref_code}")
             
-            # Update referrer kalau ada
+            # Update referrer kalau ada (using atomic update to prevent race conditions)
             if referred_by_code and referred_by_code != ref_code:
-                referrer = db.query(User).filter(
-                    User.ref_code == referred_by_code,
-                    User.deleted_at == None
-                ).first()
-                if referrer:
-                    referrer.total_referrals += 1  # type: ignore
+                from sqlalchemy import update
+                increment_result = db.execute(
+                    update(User)
+                    .where(
+                        User.ref_code == referred_by_code,
+                        User.deleted_at == None
+                    )
+                    .values(total_referrals=User.total_referrals + 1)
+                )
+                if increment_result.rowcount > 0:
                     db.commit()
-                    logger.info(f"✅ Referrer {referred_by_code} total_referrals incremented")
+                    logger.info(f"✅ Referrer {referred_by_code} total_referrals incremented (atomic)")
                 else:
                     logger.warning(f"⚠️ Referrer dengan code {referred_by_code} tidak ditemukan")
             elif referred_by_code == ref_code:

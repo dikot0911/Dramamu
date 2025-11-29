@@ -2299,7 +2299,7 @@ async def approve_qris_payment(data: QRISApproveRequest, admin = Depends(get_cur
             logger.warning(f"⏭️ Payment {data.order_id} already processed (status: {payment.status}), skipping admin approval")
             raise HTTPException(status_code=400, detail=f"Payment sudah diproses dengan status {payment.status}, silakan refresh halaman")
         
-        payment.status = 'paid'
+        payment.status = 'paid'  # Admin approval uses 'paid' status (distinct from 'success')
         payment.paid_at = now_utc()
         
         # CRITICAL: Lock user record to prevent concurrent VIP activation

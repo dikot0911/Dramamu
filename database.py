@@ -959,6 +959,59 @@ def delete_conversation(admin_id):
     finally:
         db.close()
 
+def record_bot_watch_history(telegram_id, movie_id, part_number=None):
+    """
+    Record watch history ketika bot mengirim film/part ke user.
+    
+    Fungsi ini dipanggil dari telegram_delivery.py setiap kali bot 
+    mengirim video ke user VIP. Ini memastikan 'Ditonton' count 
+    di profil user terupdate dengan benar.
+    
+    Setiap kombinasi telegram_id + movie_id hanya dicatat sekali 
+    untuk mencegah duplikasi di "Ditonton" count.
+    
+    Args:
+        telegram_id: User's Telegram ID
+        movie_id: Movie ID yang dikirim
+        part_number: Part number jika series (optional)
+        
+    Returns:
+        bool: True jika berhasil record, False jika sudah ada/gagal
+    """
+    db = SessionLocal()
+    try:
+        tg_id_str = str(telegram_id)
+        
+        existing = db.query(WatchHistory).filter(
+            WatchHistory.telegram_id == tg_id_str,
+            WatchHistory.movie_id == movie_id
+        ).first()
+        
+        if existing:
+            logger.debug(f"⏭️ Watch history sudah ada: user {telegram_id} sudah nonton {movie_id}")
+            return True
+        
+        watch_entry = WatchHistory(
+            telegram_id=tg_id_str,
+            movie_id=movie_id,
+            watched_at=now_utc()
+        )
+        db.add(watch_entry)
+        db.commit()
+        
+        if part_number:
+            logger.info(f"✅ Watch history recorded: user {telegram_id} watched {movie_id} part {part_number}")
+        else:
+            logger.info(f"✅ Watch history recorded: user {telegram_id} watched {movie_id}")
+        return True
+    except Exception as e:
+        logger.error(f"❌ Error recording watch history: {e}")
+        db.rollback()
+        return False
+    finally:
+        db.close()
+
+
 def check_and_update_vip_expiry(user: User, db_session) -> bool:
     """
     Helper buat ngecek VIP expiration dan update database secara atomic.

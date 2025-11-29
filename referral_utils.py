@@ -80,16 +80,24 @@ def process_referral_commission(
         db.flush()  # Flush sebelum commit untuk ensure unique constraint di-enforce
         return False, None, None
     
-    # Step 2: Check apakah ini first payment
-    is_first_payment = (
-        db.query(Payment)
+    # Step 2: Check apakah ini first payment yang dapat komisi
+    # BUG FIX #9: Use PaymentCommission record instead of Payment.status
+    # Sebelumnya menggunakan Payment.status == 'success', tapi admin approval
+    # menggunakan status 'paid', sehingga deteksi first payment tidak akurat.
+    # 
+    # Solusi: Cek apakah ada PaymentCommission record dengan commission_amount > 0
+    # untuk user ini. Jika ada, berarti komisi sudah pernah dibayar untuk payment
+    # sebelumnya, jadi payment ini bukan first payment.
+    existing_paid_commission = (
+        db.query(PaymentCommission)
         .filter(
-            Payment.telegram_id == payment.telegram_id,
-            Payment.status == 'success',
-            Payment.id != payment.id
+            PaymentCommission.referral_user_telegram_id == payment.telegram_id,
+            PaymentCommission.commission_amount > 0,
+            PaymentCommission.payment_id != payment.id
         )
-        .first() is None
+        .first()
     )
+    is_first_payment = existing_paid_commission is None
     
     if not is_first_payment:
         logger.info(f"⏭️ Skip commission - not first payment for user {payment.telegram_id}")
