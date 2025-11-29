@@ -653,24 +653,27 @@ const AdminPanel = {
         const pagination = document.createElement('div');
         pagination.className = 'pagination';
 
-        if (currentPage > 1) {
+        const safeCurrentPage = currentPage || 1;
+        const safeTotalPages = totalPages || 1;
+
+        if (safeCurrentPage > 1) {
             const prev = document.createElement('button');
             prev.className = 'btn btn-secondary';
             prev.textContent = 'Sebelumnya';
-            prev.onclick = () => onPageChange(currentPage - 1);
+            prev.onclick = () => onPageChange(safeCurrentPage - 1);
             pagination.appendChild(prev);
         }
 
         const pageInfo = document.createElement('span');
         pageInfo.className = 'pagination-info';
-        pageInfo.textContent = `Halaman ${currentPage} dari ${totalPages}`;
+        pageInfo.textContent = `Halaman ${safeCurrentPage} dari ${safeTotalPages}`;
         pagination.appendChild(pageInfo);
 
-        if (currentPage < totalPages) {
+        if (safeCurrentPage < safeTotalPages) {
             const next = document.createElement('button');
             next.className = 'btn btn-secondary';
             next.textContent = 'Selanjutnya';
-            next.onclick = () => onPageChange(currentPage + 1);
+            next.onclick = () => onPageChange(safeCurrentPage + 1);
             pagination.appendChild(next);
         }
 

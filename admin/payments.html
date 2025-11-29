@@ -200,6 +200,8 @@
                                 <option value="">Semua Status</option>
                                 <option value="pending">Pending</option>
                                 <option value="qris_pending">QRIS Pending</option>
+                                <option value="paid">Berhasil (QRIS)</option>
+                                <option value="success">Berhasil (Gateway)</option>
                                 <option value="settlement">Settlement</option>
                                 <option value="expire">Expired</option>
                                 <option value="cancel">Cancelled</option>
@@ -544,9 +546,13 @@
                 
                 const statusCount = {
                     settlement: 0,
+                    paid: 0,
+                    success: 0,
                     pending: 0,
+                    qris_pending: 0,
                     expire: 0,
-                    cancel: 0
+                    cancel: 0,
+                    failed: 0
                 };
                 
                 let totalRevenue = 0;
@@ -555,12 +561,13 @@
                     if (p.status && statusCount.hasOwnProperty(p.status)) {
                         statusCount[p.status]++;
                     }
-                    if (p.status === 'settlement') {
+                    if (p.status === 'settlement' || p.status === 'paid' || p.status === 'success') {
                         totalRevenue += p.amount || 0;
                     }
                 });
                 
-                document.getElementById('successfulPayments').textContent = statusCount.settlement.toLocaleString();
+                const totalSuccessful = statusCount.settlement + statusCount.paid + statusCount.success;
+                document.getElementById('successfulPayments').textContent = totalSuccessful.toLocaleString();
                 document.getElementById('pendingPayments').textContent = statusCount.pending.toLocaleString();
                 document.getElementById('totalRevenue').textContent = AdminPanel.formatCurrency(totalRevenue);
                 
@@ -804,9 +811,12 @@
             const badges = {
                 'pending': 'badge-warning',
                 'qris_pending': 'badge-warning',
+                'paid': 'badge-success',
+                'success': 'badge-success',
                 'settlement': 'badge-success',
                 'expire': 'badge-secondary',
-                'cancel': 'badge-danger'
+                'cancel': 'badge-danger',
+                'failed': 'badge-danger'
             };
             return badges[status] || 'badge-secondary';
         }

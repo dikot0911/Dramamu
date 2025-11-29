@@ -664,53 +664,34 @@
 
         async function loadMovieStats() {
             try {
-                const allMovies = await AdminPanel.apiCall('/admin/movies?page=1&limit=1000');
-                const movies = allMovies.movies || [];
+                // BUG FIX: Use dedicated stats endpoint for accurate totals
+                // This ensures correct counts even if there are more than 1000 movies
+                const days = getMoviesDays();
+                const stats = await AdminPanel.apiCall(`/admin/movies/stats?days=${days}`);
                 
                 const totalMoviesEl = document.getElementById('totalMoviesCount');
                 const topCategoryEl = document.getElementById('topCategory');
                 const totalViewsEl = document.getElementById('totalViews');
                 const recentAdditionsEl = document.getElementById('recentAdditions');
                 
-                if (totalMoviesEl) totalMoviesEl.textContent = movies.length.toLocaleString();
+                if (totalMoviesEl) totalMoviesEl.textContent = (stats.total_movies || 0).toLocaleString();
                 
-                const categoryCount = {};
-                let totalViews = 0;
-                movies.forEach(m => {
-                    if (m && m.category) {
-                        categoryCount[m.category] = (categoryCount[m.category] || 0) + 1;
-                    }
-                    totalViews += (m && m.views) || 0;
-                });
-                
-                const topCategory = Object.entries(categoryCount).sort((a, b) => b[1] - a[1])[0];
                 if (topCategoryEl) {
-                    topCategoryEl.textContent = topCategory ? `${topCategory[0]} (${topCategory[1]})` : 'N/A';
+                    if (stats.top_category) {
+                        topCategoryEl.textContent = `${stats.top_category} (${stats.top_category_count || 0})`;
+                    } else {
+                        topCategoryEl.textContent = 'N/A';
+                    }
                 }
                 if (totalViewsEl) {
-                    totalViewsEl.textContent = totalViews.toLocaleString();
+                    totalViewsEl.textContent = (stats.total_views || 0).toLocaleString();
                 }
-                
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                const sevenDaysAgo = new Date(today);
-                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-                const recentCount = movies.filter(m => {
-                    if (!m || !m.created_at) return false;
-                    try {
-                        const createdDate = AdminPanel.toWIBDate(m.created_at);
-                        if (!createdDate) return false;
-                        return createdDate >= sevenDaysAgo;
-                    } catch (e) {
-                        console.error('Error parsing date:', e);
-                        return false;
-                    }
-                }).length;
                 if (recentAdditionsEl) {
-                    recentAdditionsEl.textContent = recentCount.toLocaleString();
+                    recentAdditionsEl.textContent = (stats.recent_additions || 0).toLocaleString();
                 }
                 
-                initMovieCharts(movies);
+                // Use category breakdown and timeline data from API for charts
+                initMovieCharts(stats.category_breakdown || [], stats.timeline_movies || []);
             } catch (error) {
                 console.error('Error loading movie stats:', error);
                 AdminPanel.showToast('Gagal memuat statistik drama: ' + error.message, 'error');
@@ -720,26 +701,24 @@
                 document.getElementById('totalViews').textContent = '0';
                 document.getElementById('recentAdditions').textContent = '0';
                 
-                initMovieCharts([]);
+                initMovieCharts([], []);
             }
         }
 
-        function initMovieCharts(movies) {
+        function initMovieCharts(categoryBreakdown, timelineMovies) {
             const isDark = AdminPanel.getCurrentTheme() === 'dark';
             const chartConfig = AdminPanel.getChartConfig(isDark);
             const donutConfig = AdminPanel.getDonutChartConfig(isDark);
             
             if (categoryChart) categoryChart.destroy();
             
-            const categoryCount = {};
-            movies.forEach(m => {
-                if (m && m.category) {
-                    categoryCount[m.category] = (categoryCount[m.category] || 0) + 1;
-                }
-            });
+            // BUG FIX: Use pre-aggregated category breakdown from API
+            // Format: [{name, count}, ...]
+            const categories = (categoryBreakdown || []).map(c => c.name || 'Lainnya');
+            const counts = (categoryBreakdown || []).map(c => c.count || 0);
             
-            const categories = Object.keys(categoryCount);
-            const counts = Object.values(categoryCount);
+            // Store timeline movies for later use
+            const movies = timelineMovies || [];
             const colors = ['#667eea', '#f093fb', '#4facfe', '#43e97b', '#feca57'];
             
             try {
