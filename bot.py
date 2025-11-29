@@ -82,7 +82,13 @@ def generate_ref_code(telegram_id):
 
 def get_or_create_user(user, referred_by_code=None):
     """
-    Get or create user dengan simple, reliable approach.
+    Get or create user dengan robust approach yang handle semua edge cases.
+    
+    CRITICAL BUG FIXES:
+    - Handle soft-deleted users properly
+    - Handle concurrent requests (race conditions)
+    - Handle stale database sessions after rollback
+    - Correct error detection for telegram_id vs ref_code violations
     
     Args:
         user: Telegram user object dengan .id dan .username attributes
@@ -95,25 +101,66 @@ def get_or_create_user(user, referred_by_code=None):
         RuntimeError: Jika gagal create user setelah max retries
     """
     from sqlalchemy.exc import IntegrityError
+    from config import now_utc
     
     telegram_id = str(user.id)
     username = user.username if user.username else None
     
     MAX_RETRIES = 3
     
+    def find_and_restore_user(db_session, tg_id, uname, ref_code_param):
+        """
+        Helper function untuk find user (active atau soft-deleted) dan restore jika perlu.
+        Returns: (user, was_restored, was_created)
+        """
+        # FIRST: Check for ANY user with this telegram_id (regardless of deleted_at)
+        # This is more reliable than separate queries
+        any_user = db_session.query(User).filter(
+            User.telegram_id == tg_id
+        ).first()
+        
+        if any_user:
+            if any_user.deleted_at is None:
+                # Active user found
+                logger.info(f"User {tg_id} udah ada di DB (active)")
+                return any_user, False, False
+            else:
+                # Soft-deleted user - restore them
+                logger.info(f"🔄 Restoring soft-deleted user {tg_id}")
+                any_user.deleted_at = None  # type: ignore
+                any_user.username = uname  # type: ignore
+                
+                # Handle referral for restored user
+                if ref_code_param and not any_user.referred_by_code:
+                    any_user.referred_by_code = ref_code_param  # type: ignore
+                    logger.info(f"✅ Updated referred_by_code to {ref_code_param} for restored user {tg_id}")
+                    
+                    # Increment referrer's count
+                    if ref_code_param != any_user.ref_code:
+                        referrer = db_session.query(User).filter(
+                            User.ref_code == ref_code_param,
+                            User.deleted_at == None
+                        ).first()
+                        if referrer:
+                            referrer.total_referrals += 1  # type: ignore
+                            logger.info(f"✅ Referrer {ref_code_param} total_referrals incremented (restored user)")
+                
+                db_session.commit()
+                db_session.refresh(any_user)
+                logger.info(f"✅ User {tg_id} restored successfully")
+                return any_user, True, False
+        
+        return None, False, False
+    
     for attempt in range(MAX_RETRIES):
         db = SessionLocal()
         try:
-            # BUG FIX #8: Check for existing non-deleted user
-            existing_user = db.query(User).filter(
-                User.telegram_id == telegram_id,
-                User.deleted_at == None  # Exclude soft-deleted users
-            ).first()
+            # Step 1: Find existing user (active or soft-deleted)
+            existing_user, was_restored, _ = find_and_restore_user(db, telegram_id, username, referred_by_code)
             if existing_user:
-                logger.info(f"User {telegram_id} udah ada di DB")
                 return existing_user
             
-            # Bikin user baru
+            # Step 2: Create new user (no existing record found)
             ref_code = generate_ref_code(telegram_id)
             new_user = User(
                 telegram_id=telegram_id,
@@ -133,10 +180,9 @@ def get_or_create_user(user, referred_by_code=None):
             
             # Update referrer kalau ada
             if referred_by_code and referred_by_code != ref_code:
-                # BUG FIX #8: Only count non-deleted referrers
                 referrer = db.query(User).filter(
                     User.ref_code == referred_by_code,
-                    User.deleted_at == None  # Exclude soft-deleted users
+                    User.deleted_at == None
                 ).first()
                 if referrer:
                     referrer.total_referrals += 1  # type: ignore
@@ -151,23 +197,42 @@ def get_or_create_user(user, referred_by_code=None):
         
         except IntegrityError as ie:
             db.rollback()
-            # BUG FIX #8: Check for non-deleted user created by concurrent request
-            existing_user = db.query(User).filter(
-                User.telegram_id == telegram_id,
-                User.deleted_at == None  # Exclude soft-deleted users
-            ).first()
-            if existing_user:
-                logger.info(f"User {telegram_id} dibuat di concurrent request, gunakan yang existing")
-                return existing_user
+            error_str = str(ie).lower()
             
-            # Kalau bukan duplicate telegram_id, mungkin ref_code collision
-            if 'ref_code' in str(ie):
-                logger.warning(f"ref_code collision on attempt {attempt + 1}/{MAX_RETRIES}, retrying...")
+            # CRITICAL FIX: Detect which constraint was violated
+            is_telegram_id_violation = 'telegram_id' in error_str or 'ix_users_telegram_id' in error_str
+            is_ref_code_violation = 'ref_code' in error_str and not is_telegram_id_violation
+            
+            if is_telegram_id_violation:
+                # User was created by concurrent request - close this session and get fresh one
+                db.close()
+                db = SessionLocal()
+                
+                logger.info(f"🔄 telegram_id collision detected, re-checking with fresh session...")
+                
+                # Re-check with fresh session (this MUST find the user now)
+                existing_user, was_restored, _ = find_and_restore_user(db, telegram_id, username, referred_by_code)
+                if existing_user:
+                    logger.info(f"✅ Found user {telegram_id} after telegram_id collision (restored={was_restored})")
+                    return existing_user
+                
+                # If still not found, something is very wrong - but try one more time
+                logger.error(f"❌ UNEXPECTED: telegram_id collision but user not found! Attempt {attempt + 1}/{MAX_RETRIES}")
                 if attempt < MAX_RETRIES - 1:
                     continue
                 else:
-                    raise RuntimeError(f"Failed to create user {telegram_id}: {ie}")
+                    raise RuntimeError(f"Failed to create user {telegram_id}: telegram_id exists but user not found: {ie}")
+            
+            elif is_ref_code_violation:
+                logger.warning(f"⚠️ ref_code collision on attempt {attempt + 1}/{MAX_RETRIES}, retrying with new ref_code...")
+                if attempt < MAX_RETRIES - 1:
+                    continue
+                else:
+                    raise RuntimeError(f"Failed to create user {telegram_id}: ref_code collision after {MAX_RETRIES} attempts: {ie}")
+            
             else:
+                # Unknown constraint violation
+                logger.error(f"❌ Unknown IntegrityError: {ie}")
                 raise RuntimeError(f"Failed to create user {telegram_id}: {ie}")
         
         except Exception as e:

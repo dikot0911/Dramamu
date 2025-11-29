@@ -80,15 +80,25 @@ def query_for_update(query, use_lock=True):
         # Fallback: if we can't detect dialect, skip locking (safe default)
         return query
 
-# Log environment info pada startup
+# Log environment info pada startup with comprehensive deployment info
 if is_production():
-    logger.info("=" * 60)
+    logger.info("=" * 70)
     logger.info("🚀 PRODUCTION MODE - Dramamu Bot API Starting")
-    logger.info("=" * 60)
+    logger.info("=" * 70)
 else:
-    logger.info("=" * 60)
+    logger.info("=" * 70)
     logger.info("🔧 DEVELOPMENT MODE - Dramamu Bot API Starting")
-    logger.info("=" * 60)
+    logger.info("=" * 70)
+
+# ENHANCED LOGGING: Comprehensive startup info for debugging
+logger.info("📊 Environment Configuration:")
+logger.info(f"   BASE_URL: {BASE_URL}")
+logger.info(f"   FRONTEND_URL: {FRONTEND_URL}")
+logger.info(f"   BOT_USERNAME: {TELEGRAM_BOT_USERNAME}")
+logger.info(f"   BOT_TOKEN configured: {'✅' if TELEGRAM_BOT_TOKEN else '❌'}")
+logger.info(f"   QRIS_PW configured: {'✅' if QRIS_PW_API_KEY and QRIS_PW_API_SECRET else '❌'}")
+logger.info(f"   DOKU configured: {'✅' if DOKU_CLIENT_ID and DOKU_SECRET_KEY else '❌'}")
+logger.info(f"   ALLOWED_ORIGINS: {ALLOWED_ORIGINS}")
 
 app = FastAPI(title="Dramamu API")
 
@@ -2600,7 +2610,8 @@ async def payment_callback(callback: PaymentCallback):
                         "VIP 3 Hari": 3,
                         "VIP 7 Hari": 7,
                         "VIP 15 Hari": 15,
-                        "VIP 30 Hari": 30
+                        "VIP 30 Hari": 30,
+                        "VIP 180 Hari": 180
                     }
                     days = days_map.get(str(payment.package_name), 1)
                     

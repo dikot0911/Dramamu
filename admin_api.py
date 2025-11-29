@@ -1068,7 +1068,7 @@ async def get_dashboard_stats(admin = Depends(get_current_admin)):
             User.is_vip == True,
             User.deleted_at == None
         ).scalar()
-        total_movies = db.query(func.count(Movie.id)).scalar()
+        total_movies = db.query(func.count(Movie.id)).filter(Movie.deleted_at == None).scalar()
         pending_requests = db.query(func.count(DramaRequest.id)).filter(
             DramaRequest.status == 'pending',
             DramaRequest.deleted_at == None
@@ -1161,7 +1161,7 @@ async def get_pending_counts(admin = Depends(get_current_admin)):
             User.is_vip == True,
             User.deleted_at == None  # Exclude soft-deleted users
         ).scalar()
-        total_movies = db.query(func.count(Movie.id)).scalar()
+        total_movies = db.query(func.count(Movie.id)).filter(Movie.deleted_at == None).scalar()
         total_revenue = db.query(func.sum(Payment.amount)).filter(Payment.status == 'success').scalar() or 0
         
         return {
@@ -1371,6 +1371,21 @@ async def get_all_movies_admin(page: int = 1, limit: int = 20, search: Optional[
         offset = (page - 1) * limit
         movies = query.order_by(desc(Movie.created_at)).offset(offset).limit(limit).all()
         
+        movie_ids = [m.id for m in movies]
+        
+        part_views_by_movie = {}
+        if movie_ids:
+            part_views_query = db.query(
+                Part.movie_id,
+                func.coalesce(func.sum(Part.views), 0).label('total_part_views')
+            ).filter(
+                Part.movie_id.in_(movie_ids),
+                Part.deleted_at == None
+            ).group_by(Part.movie_id).all()
+            
+            for movie_id, total_part_views in part_views_query:
+                part_views_by_movie[movie_id] = int(total_part_views)
+        
         return {
             "movies": [
                 {
@@ -1383,7 +1398,7 @@ async def get_all_movies_admin(page: int = 1, limit: int = 20, search: Optional[
                     "category": m.category,
                     "is_series": m.is_series,
                     "total_parts": m.total_parts,
-                    "views": m.views,
+                    "views": (m.views or 0) + part_views_by_movie.get(m.id, 0),
                     "created_at": to_iso_utc(m.created_at)  # type: ignore
                 } for m in movies
             ],
@@ -1391,6 +1406,93 @@ async def get_all_movies_admin(page: int = 1, limit: int = 20, search: Optional[
             "page": page,
             "limit": limit,
             "total_pages": (total + limit - 1) // limit
+        }
+    finally:
+        db.close()
+
+@router.get("/movies/stats")
+async def get_movies_stats(days: int = 30, admin = Depends(get_current_admin)):
+    """
+    Get aggregated movie statistics from database.
+    
+    This endpoint provides accurate totals without pagination limits,
+    ensuring correct statistics display in admin panel.
+    
+    Args:
+        days: Number of days for timeline data (default: 30)
+    """
+    db = SessionLocal()
+    try:
+        from sqlalchemy import func, case
+        from datetime import timedelta
+        
+        # BUG FIX: Aggregate stats directly from database (no pagination limit)
+        # Exclude soft-deleted movies
+        base_query = db.query(Movie).filter(Movie.deleted_at == None)
+        
+        # Total movie count
+        total_movies = base_query.count()
+        
+        # Total views - sum Movie.views AND Part.views for complete cross-platform count
+        # Movie.views = views from web mini app (tracked in /api/v1/watch_history)
+        # Part.views = views from Telegram bot (tracked in telegram_delivery.py)
+        # These are SEPARATE counters for DIFFERENT platforms, no double counting
+        movie_views = db.query(func.coalesce(func.sum(Movie.views), 0)).filter(
+            Movie.deleted_at == None
+        ).scalar() or 0
+        
+        part_views = db.query(func.coalesce(func.sum(Part.views), 0)).filter(
+            Part.deleted_at == None
+        ).scalar() or 0
+        
+        total_views = int(movie_views) + int(part_views)
+        
+        # Category breakdown
+        category_stats = db.query(
+            Movie.category,
+            func.count(Movie.id).label('count')
+        ).filter(
+            Movie.deleted_at == None,
+            Movie.category.isnot(None)
+        ).group_by(Movie.category).all()
+        
+        # Top category
+        top_category = None
+        top_category_count = 0
+        for cat, count in category_stats:
+            if count > top_category_count:
+                top_category = cat
+                top_category_count = count
+        
+        # Recent additions (last 7 days)
+        seven_days_ago = now_utc() - timedelta(days=7)
+        recent_additions = base_query.filter(
+            Movie.created_at >= seven_days_ago
+        ).count()
+        
+        # Timeline data: count movies added per day for the given period
+        n_days_ago = now_utc() - timedelta(days=days)
+        movies_in_period = base_query.filter(
+            Movie.created_at >= n_days_ago
+        ).all()
+        
+        # Build timeline data with movie created_at dates
+        timeline_movies = [
+            {"created_at": to_iso_utc(m.created_at)}
+            for m in movies_in_period
+        ]
+        
+        return {
+            "total_movies": total_movies,
+            "total_views": total_views,
+            "top_category": top_category,
+            "top_category_count": top_category_count,
+            "recent_additions": recent_additions,
+            "category_breakdown": [
+                {"name": cat, "count": count}
+                for cat, count in category_stats
+            ],
+            "timeline_movies": timeline_movies
         }
     finally:
         db.close()
@@ -2216,7 +2318,8 @@ async def approve_qris_payment(data: QRISApproveRequest, admin = Depends(get_cur
             "VIP 3 Hari": 3,
             "VIP 7 Hari": 7,
             "VIP 15 Hari": 15,
-            "VIP 30 Hari": 30
+            "VIP 30 Hari": 30,
+            "VIP 180 Hari": 180
         }
         days = days_map.get(str(payment.package_name), 1)
         
@@ -2406,7 +2509,8 @@ async def manual_vip_activation(request: ManualVIPActivationRequest, admin = Dep
             "VIP 3 Hari": 3,
             "VIP 7 Hari": 7,
             "VIP 15 Hari": 15,
-            "VIP 30 Hari": 30
+            "VIP 30 Hari": 30,
+            "VIP 180 Hari": 180
         }
         days = days_map.get(str(package_name), 1)
         
@@ -2874,11 +2978,30 @@ async def get_revenue_analytics(period: str = 'daily', days: int = 30, admin = D
 
 @router.get("/analytics/top-movies")
 async def get_top_movies(limit: int = 10, admin = Depends(get_current_admin)):
-    """Get top movies by views"""
+    """Get top movies by views (Movie.views + sum of Part.views)"""
     db = SessionLocal()
     try:
-        # BUG FIX #8: Exclude soft-deleted movies
-        movies = db.query(Movie).filter(Movie.deleted_at == None).order_by(desc(Movie.views)).limit(limit).all()
+        from sqlalchemy.orm import aliased
+        from sqlalchemy import select, literal_column
+        
+        part_views_subquery = db.query(
+            Part.movie_id,
+            func.coalesce(func.sum(Part.views), 0).label('part_views_total')
+        ).filter(
+            Part.deleted_at == None
+        ).group_by(Part.movie_id).subquery()
+        
+        movies_with_total_views = db.query(
+            Movie,
+            (func.coalesce(Movie.views, 0) + func.coalesce(part_views_subquery.c.part_views_total, 0)).label('total_views')
+        ).outerjoin(
+            part_views_subquery,
+            Movie.id == part_views_subquery.c.movie_id
+        ).filter(
+            Movie.deleted_at == None
+        ).order_by(
+            desc('total_views')
+        ).limit(limit).all()
         
         return {
             "movies": [
@@ -2886,10 +3009,10 @@ async def get_top_movies(limit: int = 10, admin = Depends(get_current_admin)):
                     "id": m.id,
                     "title": m.title,
                     "category": m.category,
-                    "views": m.views,
+                    "views": int(total_views),
                     "is_series": m.is_series,
                     "total_parts": m.total_parts
-                } for m in movies
+                } for m, total_views in movies_with_total_views
             ]
         }
     except Exception as e:

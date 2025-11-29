@@ -28,12 +28,17 @@ class VipPackage(str, Enum):
     
     Using Enum ensures type safety and prevents typos.
     Each package has exact duration mapping.
+    
+    Updated pricing (2024):
+    - VIP 30 Hari: Rp 30,000 (30 days)
+    - VIP 180 Hari: Rp 150,000 (6 months)
     """
     VIP_1_DAY = "VIP 1 Hari"
     VIP_3_DAYS = "VIP 3 Hari"
     VIP_7_DAYS = "VIP 7 Hari"
     VIP_15_DAYS = "VIP 15 Hari"
     VIP_30_DAYS = "VIP 30 Hari"
+    VIP_180_DAYS = "VIP 180 Hari"
 
 
 # Package duration mapping (days)
@@ -43,16 +48,19 @@ PACKAGE_DURATIONS: dict[VipPackage, int] = {
     VipPackage.VIP_7_DAYS: 7,
     VipPackage.VIP_15_DAYS: 15,
     VipPackage.VIP_30_DAYS: 30,
+    VipPackage.VIP_180_DAYS: 180,
 }
 
 
 # Package price mapping (Rupiah)
+# Updated: VIP 30 Hari = 30,000, VIP 180 Hari = 150,000
 PACKAGE_PRICES = {
     VipPackage.VIP_1_DAY: 2000,
     VipPackage.VIP_3_DAYS: 5000,
     VipPackage.VIP_7_DAYS: 10000,
     VipPackage.VIP_15_DAYS: 30000,
-    VipPackage.VIP_30_DAYS: 150000,
+    VipPackage.VIP_30_DAYS: 30000,
+    VipPackage.VIP_180_DAYS: 150000,
 }
 
 
