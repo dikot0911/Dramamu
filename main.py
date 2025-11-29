@@ -2609,7 +2609,6 @@ async def payment_callback(callback: PaymentCallback):
                         "VIP 1 Hari": 1,
                         "VIP 3 Hari": 3,
                         "VIP 7 Hari": 7,
-                        "VIP 15 Hari": 15,
                         "VIP 30 Hari": 30,
                         "VIP 180 Hari": 180
                     }

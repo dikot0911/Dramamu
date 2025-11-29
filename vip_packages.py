@@ -36,7 +36,6 @@ class VipPackage(str, Enum):
     VIP_1_DAY = "VIP 1 Hari"
     VIP_3_DAYS = "VIP 3 Hari"
     VIP_7_DAYS = "VIP 7 Hari"
-    VIP_15_DAYS = "VIP 15 Hari"
     VIP_30_DAYS = "VIP 30 Hari"
     VIP_180_DAYS = "VIP 180 Hari"
 
@@ -46,7 +45,6 @@ PACKAGE_DURATIONS: dict[VipPackage, int] = {
     VipPackage.VIP_1_DAY: 1,
     VipPackage.VIP_3_DAYS: 3,
     VipPackage.VIP_7_DAYS: 7,
-    VipPackage.VIP_15_DAYS: 15,
     VipPackage.VIP_30_DAYS: 30,
     VipPackage.VIP_180_DAYS: 180,
 }
@@ -58,7 +56,6 @@ PACKAGE_PRICES = {
     VipPackage.VIP_1_DAY: 2000,
     VipPackage.VIP_3_DAYS: 5000,
     VipPackage.VIP_7_DAYS: 10000,
-    VipPackage.VIP_15_DAYS: 30000,
     VipPackage.VIP_30_DAYS: 30000,
     VipPackage.VIP_180_DAYS: 150000,
 }

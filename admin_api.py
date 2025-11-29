@@ -2317,7 +2317,6 @@ async def approve_qris_payment(data: QRISApproveRequest, admin = Depends(get_cur
             "VIP 1 Hari": 1,
             "VIP 3 Hari": 3,
             "VIP 7 Hari": 7,
-            "VIP 15 Hari": 15,
             "VIP 30 Hari": 30,
             "VIP 180 Hari": 180
         }
@@ -2508,7 +2507,6 @@ async def manual_vip_activation(request: ManualVIPActivationRequest, admin = Dep
             "VIP 1 Hari": 1,
             "VIP 3 Hari": 3,
             "VIP 7 Hari": 7,
-            "VIP 15 Hari": 15,
             "VIP 30 Hari": 30,
             "VIP 180 Hari": 180
         }
