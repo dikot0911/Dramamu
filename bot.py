@@ -1435,7 +1435,7 @@ if bot is not None:
             "6️⃣ Kembali ke telegram, dan selamat VIP kamu telah aktif"
             "</blockquote>\n\n"
             "🤔 Masih bingung?\n"
-            "👉 chat: @dramamu_admin
+            "👉 chat: @dramamu_admin"
         )
         
         markup = types.InlineKeyboardMarkup(row_width=1)
@@ -1601,9 +1601,9 @@ if bot is not None:
             "📞 <b>Kontak Admin</b> 👨‍💼\n\n"
             "<blockquote>"
             "Butuh bantuan? Hubungi admin kami:\n\n"
-            "📱 Telegram: @dramamuadmin\n"
+            "📱 Telegram: @dramamu_admin\n"
             "💬 Grup Official: @dramamuofficial\n"
-            "⏰ Jam Operasional: 09.00 - 21.00 WIB"
+            "⏰ Jam Operasional: 09.00 - 22.00 WIB"
             "</blockquote>\n\n"
             "💡 Tips:\n"
             "• Jelaskan masalah dengan detail\n"
