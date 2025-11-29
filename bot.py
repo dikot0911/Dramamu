@@ -1425,7 +1425,7 @@ if bot is not None:
         text = (
             "💎 <b>Panduan Cara Jadi VIP</b> 🎬\n\n"
             "<blockquote>"
-            "1️⃣ Buka bot @dramamuvipbot\n"
+            "1️⃣ Buka bot @dramamu_bot\n"
             "2️⃣ Tekan start atau ketik /start\n"
             "3️⃣ Tekan 'Jadi VIP' atau ketik /vip\n"
             "4️⃣ Pilih paket VIP yang diinginkan\n"
@@ -1435,7 +1435,7 @@ if bot is not None:
             "6️⃣ Kembali ke telegram, dan selamat VIP kamu telah aktif"
             "</blockquote>\n\n"
             "🤔 Masih bingung?\n"
-            "👉 Buka: @carajadivip"
+            "👉 chat: @dramamu_admin
         )
         
         markup = types.InlineKeyboardMarkup(row_width=1)
