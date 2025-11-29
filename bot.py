@@ -347,8 +347,10 @@ def send_welcome_message(bot_instance, chat_id):
     btn_req_drama = types.InlineKeyboardButton("📽 REQ DRAMA", web_app=types.WebAppInfo(url=URL_REQUEST))
     btn_hubungi_kami = types.InlineKeyboardButton("💬 HUBUNGI KAMI", web_app=types.WebAppInfo(url=URL_HUBUNGI_KAMI))
     btn_join_grup = types.InlineKeyboardButton("⭐ Join GRUP DRAMA MU OFFICIAL ⭐", url="https://t.me/dramamuofficial")
+    btn_tutorial = types.InlineKeyboardButton("📚 Tutorial Wajib", callback_data="tutorial_wajib")
     
     keyboard_markup.add(btn_join_grup)
+    keyboard_markup.add(btn_tutorial)
     keyboard_markup.add(btn_cari_judul, btn_cari_cuan)
     keyboard_markup.add(btn_beli_vip, btn_req_drama)
     keyboard_markup.add(btn_hubungi_kami)
@@ -1330,8 +1332,311 @@ if bot is not None:
     def handle_menu_utama_callback(call):
         logger.info(f"User {call.from_user.id} balik ke menu utama")
         
-        send_welcome_message(bot, call.message.chat.id)
+        welcome_text = (
+            "🎬 <b>Selamat datang di Dramamu Bot!</b>\n\n"
+            "Nonton drama favorit kamu dengan harga terjangkau.\n\n"
+            "Pilih menu di bawah:"
+        )
+        
+        keyboard_markup = types.InlineKeyboardMarkup(row_width=2)
+        
+        btn_cari_judul = types.InlineKeyboardButton("🎬 CARI JUDUL", web_app=types.WebAppInfo(url=URL_CARI_JUDUL))
+        btn_cari_cuan = types.InlineKeyboardButton("💰 CARI CUAN", web_app=types.WebAppInfo(url=URL_CARI_CUAN))
+        btn_beli_vip = types.InlineKeyboardButton("💎 BELI VIP", web_app=types.WebAppInfo(url=URL_BELI_VIP))
+        btn_req_drama = types.InlineKeyboardButton("📽 REQ DRAMA", web_app=types.WebAppInfo(url=URL_REQUEST))
+        btn_hubungi_kami = types.InlineKeyboardButton("💬 HUBUNGI KAMI", web_app=types.WebAppInfo(url=URL_HUBUNGI_KAMI))
+        btn_join_grup = types.InlineKeyboardButton("⭐ Join GRUP DRAMA MU OFFICIAL ⭐", url="https://t.me/dramamuofficial")
+        btn_tutorial = types.InlineKeyboardButton("📚 Tutorial Wajib", callback_data="tutorial_wajib")
+        
+        keyboard_markup.add(btn_join_grup)
+        keyboard_markup.add(btn_tutorial)
+        keyboard_markup.add(btn_cari_judul, btn_cari_cuan)
+        keyboard_markup.add(btn_beli_vip, btn_req_drama)
+        keyboard_markup.add(btn_hubungi_kami)
+        
+        try:
+            bot.edit_message_caption(
+                caption=welcome_text,
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                parse_mode='HTML',
+                reply_markup=keyboard_markup
+            )
+        except Exception:
+            bot.edit_message_text(
+                welcome_text,
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                parse_mode='HTML',
+                reply_markup=keyboard_markup
+            )
         bot.answer_callback_query(call.id, "🏠 Menu Utama")
+
+    @bot.callback_query_handler(func=lambda call: call.data == "tutorial_wajib")
+    def handle_tutorial_wajib_callback(call):
+        logger.info(f"User {call.from_user.id} buka Tutorial Wajib")
+        
+        text = (
+            "📚 <b>Panduan di Dramamu</b> 🎬\n\n"
+            "<blockquote>"
+            "1️⃣ Panduan Cara Jadi VIP\n"
+            "2️⃣ Panduan Cara Menonton\n"
+            "3️⃣ Panduan Cara Request Drama\n"
+            "4️⃣ Panduan Cara Cuan Online\n"
+            "5️⃣ Kontak Admin"
+            "</blockquote>\n\n"
+            "Silakan pilih nomor panduan yang ingin dipelajari:"
+        )
+        
+        markup = types.InlineKeyboardMarkup(row_width=3)
+        btn_1 = types.InlineKeyboardButton("1", callback_data="tutorial_1")
+        btn_2 = types.InlineKeyboardButton("2", callback_data="tutorial_2")
+        btn_3 = types.InlineKeyboardButton("3", callback_data="tutorial_3")
+        btn_4 = types.InlineKeyboardButton("4", callback_data="tutorial_4")
+        btn_5 = types.InlineKeyboardButton("5", callback_data="tutorial_5")
+        btn_kembali = types.InlineKeyboardButton("⬅️ Kembali", callback_data="menu_utama")
+        
+        markup.add(btn_1, btn_2, btn_3)
+        markup.add(btn_4, btn_5)
+        markup.add(btn_kembali)
+        
+        try:
+            bot.edit_message_caption(
+                caption=text,
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                parse_mode='HTML',
+                reply_markup=markup
+            )
+        except Exception:
+            bot.edit_message_text(
+                text,
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                parse_mode='HTML',
+                reply_markup=markup
+            )
+        bot.answer_callback_query(call.id, "📚 Tutorial Wajib")
+
+    @bot.callback_query_handler(func=lambda call: call.data == "tutorial_1")
+    def handle_tutorial_1_callback(call):
+        logger.info(f"User {call.from_user.id} buka Tutorial 1 - Cara Jadi VIP")
+        
+        text = (
+            "💎 <b>Panduan Cara Jadi VIP</b> 🎬\n\n"
+            "<blockquote>"
+            "1️⃣ Buka bot @dramamuvipbot\n"
+            "2️⃣ Tekan start atau ketik /start\n"
+            "3️⃣ Tekan 'Jadi VIP' atau ketik /vip\n"
+            "4️⃣ Pilih paket VIP yang diinginkan\n"
+            "5️⃣ Setelah barcode QRIS muncul\n"
+            "➤ Scan menggunakan hp lain atau,\n"
+            "➤ Save atau screenshot gambar barcode lalu upload di aplikasi e-wallet atau bank yang kamu miliki, dan lakukan pembayaran\n"
+            "6️⃣ Kembali ke telegram, dan selamat VIP kamu telah aktif"
+            "</blockquote>\n\n"
+            "🤔 Masih bingung?\n"
+            "👉 Buka: @carajadivip"
+        )
+        
+        markup = types.InlineKeyboardMarkup(row_width=1)
+        btn_next = types.InlineKeyboardButton("➡️ Selanjutnya", callback_data="tutorial_2")
+        btn_kembali = types.InlineKeyboardButton("⬅️ Kembali", callback_data="tutorial_wajib")
+        
+        markup.add(btn_next)
+        markup.add(btn_kembali)
+        
+        try:
+            bot.edit_message_caption(
+                caption=text,
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                parse_mode='HTML',
+                reply_markup=markup
+            )
+        except Exception:
+            bot.edit_message_text(
+                text,
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                parse_mode='HTML',
+                reply_markup=markup
+            )
+        bot.answer_callback_query(call.id, "💎 Panduan VIP")
+
+    @bot.callback_query_handler(func=lambda call: call.data == "tutorial_2")
+    def handle_tutorial_2_callback(call):
+        logger.info(f"User {call.from_user.id} buka Tutorial 2 - Cara Menonton")
+        
+        text = (
+            "🎬 <b>Panduan Cara Menonton</b> 📺\n\n"
+            "<blockquote>"
+            "1️⃣ Pastikan kamu sudah menjadi member VIP\n"
+            "2️⃣ Klik tombol 'CARI JUDUL' di menu utama\n"
+            "3️⃣ Cari drama yang ingin ditonton\n"
+            "4️⃣ Klik drama yang dipilih\n"
+            "5️⃣ Klik tombol 'Tonton' untuk mulai menonton\n"
+            "6️⃣ Video akan dikirim langsung ke chat kamu"
+            "</blockquote>\n\n"
+            "💡 Tips: Gunakan fitur pencarian untuk menemukan drama lebih cepat!"
+        )
+        
+        markup = types.InlineKeyboardMarkup(row_width=2)
+        btn_prev = types.InlineKeyboardButton("⬅️ Sebelumnya", callback_data="tutorial_1")
+        btn_next = types.InlineKeyboardButton("➡️ Selanjutnya", callback_data="tutorial_3")
+        btn_kembali = types.InlineKeyboardButton("⬅️ Kembali", callback_data="tutorial_wajib")
+        
+        markup.add(btn_prev, btn_next)
+        markup.add(btn_kembali)
+        
+        try:
+            bot.edit_message_caption(
+                caption=text,
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                parse_mode='HTML',
+                reply_markup=markup
+            )
+        except Exception:
+            bot.edit_message_text(
+                text,
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                parse_mode='HTML',
+                reply_markup=markup
+            )
+        bot.answer_callback_query(call.id, "🎬 Panduan Menonton")
+
+    @bot.callback_query_handler(func=lambda call: call.data == "tutorial_3")
+    def handle_tutorial_3_callback(call):
+        logger.info(f"User {call.from_user.id} buka Tutorial 3 - Cara Request Drama")
+        
+        text = (
+            "📽 <b>Panduan Cara Request Drama</b> 🎬\n\n"
+            "<blockquote>"
+            "1️⃣ Klik tombol 'REQ DRAMA' di menu utama\n"
+            "2️⃣ Isi form request dengan lengkap:\n"
+            "   • Judul drama yang diinginkan\n"
+            "   • Nama aplikasi asal drama\n"
+            "3️⃣ Klik tombol 'Kirim Request'\n"
+            "4️⃣ Tunggu konfirmasi dari admin\n"
+            "5️⃣ Drama akan segera diupload jika tersedia"
+            "</blockquote>\n\n"
+            "⏰ Estimasi: 1-3 hari kerja untuk proses request"
+        )
+        
+        markup = types.InlineKeyboardMarkup(row_width=2)
+        btn_prev = types.InlineKeyboardButton("⬅️ Sebelumnya", callback_data="tutorial_2")
+        btn_next = types.InlineKeyboardButton("➡️ Selanjutnya", callback_data="tutorial_4")
+        btn_kembali = types.InlineKeyboardButton("⬅️ Kembali", callback_data="tutorial_wajib")
+        
+        markup.add(btn_prev, btn_next)
+        markup.add(btn_kembali)
+        
+        try:
+            bot.edit_message_caption(
+                caption=text,
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                parse_mode='HTML',
+                reply_markup=markup
+            )
+        except Exception:
+            bot.edit_message_text(
+                text,
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                parse_mode='HTML',
+                reply_markup=markup
+            )
+        bot.answer_callback_query(call.id, "📽 Panduan Request")
+
+    @bot.callback_query_handler(func=lambda call: call.data == "tutorial_4")
+    def handle_tutorial_4_callback(call):
+        logger.info(f"User {call.from_user.id} buka Tutorial 4 - Cara Cuan Online")
+        
+        text = (
+            "💰 <b>Panduan Cara Cuan Online</b> 🤑\n\n"
+            "<blockquote>"
+            "1️⃣ Klik tombol 'CARI CUAN' di menu utama\n"
+            "2️⃣ Salin kode referral kamu\n"
+            "3️⃣ Bagikan link referral ke teman-teman\n"
+            "4️⃣ Setiap teman yang join VIP menggunakan kode kamu, kamu dapat komisi!\n"
+            "5️⃣ Komisi bisa ditarik ke e-wallet atau rekening bank"
+            "</blockquote>\n\n"
+            "💎 Komisi: Dapatkan hingga 20% dari setiap pembelian VIP!\n"
+            "📈 Semakin banyak referral, semakin banyak cuan!"
+        )
+        
+        markup = types.InlineKeyboardMarkup(row_width=2)
+        btn_prev = types.InlineKeyboardButton("⬅️ Sebelumnya", callback_data="tutorial_3")
+        btn_next = types.InlineKeyboardButton("➡️ Selanjutnya", callback_data="tutorial_5")
+        btn_kembali = types.InlineKeyboardButton("⬅️ Kembali", callback_data="tutorial_wajib")
+        
+        markup.add(btn_prev, btn_next)
+        markup.add(btn_kembali)
+        
+        try:
+            bot.edit_message_caption(
+                caption=text,
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                parse_mode='HTML',
+                reply_markup=markup
+            )
+        except Exception:
+            bot.edit_message_text(
+                text,
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                parse_mode='HTML',
+                reply_markup=markup
+            )
+        bot.answer_callback_query(call.id, "💰 Panduan Cuan")
+
+    @bot.callback_query_handler(func=lambda call: call.data == "tutorial_5")
+    def handle_tutorial_5_callback(call):
+        logger.info(f"User {call.from_user.id} buka Tutorial 5 - Kontak Admin")
+        
+        text = (
+            "📞 <b>Kontak Admin</b> 👨‍💼\n\n"
+            "<blockquote>"
+            "Butuh bantuan? Hubungi admin kami:\n\n"
+            "📱 Telegram: @dramamuadmin\n"
+            "💬 Grup Official: @dramamuofficial\n"
+            "⏰ Jam Operasional: 09.00 - 21.00 WIB"
+            "</blockquote>\n\n"
+            "💡 Tips:\n"
+            "• Jelaskan masalah dengan detail\n"
+            "• Sertakan screenshot jika diperlukan\n"
+            "• Sabar menunggu balasan admin"
+        )
+        
+        markup = types.InlineKeyboardMarkup(row_width=1)
+        btn_prev = types.InlineKeyboardButton("⬅️ Sebelumnya", callback_data="tutorial_4")
+        btn_kembali = types.InlineKeyboardButton("⬅️ Kembali", callback_data="tutorial_wajib")
+        btn_menu = types.InlineKeyboardButton("🏠 Menu Utama", callback_data="menu_utama")
+        
+        markup.add(btn_prev)
+        markup.add(btn_kembali)
+        markup.add(btn_menu)
+        
+        try:
+            bot.edit_message_caption(
+                caption=text,
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                parse_mode='HTML',
+                reply_markup=markup
+            )
+        except Exception:
+            bot.edit_message_text(
+                text,
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                parse_mode='HTML',
+                reply_markup=markup
+            )
+        bot.answer_callback_query(call.id, "📞 Kontak Admin")
 
     @bot.message_handler(commands=['addvip'])
     def add_vip_command(message):
