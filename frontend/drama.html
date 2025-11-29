@@ -1126,81 +1126,93 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* Pagination Styles - Compact Design */
+        /* Pagination Styles - Minimal Design with Controls */
         .pagination-container {
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
-            flex-wrap: wrap;
-            gap: 4px;
-            padding: 10px 8px;
+            gap: 10px;
+            padding: 12px 16px;
             margin-top: 16px;
             margin-bottom: 0;
             width: 100%;
-            background: rgba(20, 20, 35, 0.85);
-            border-radius: 10px;
-            border: 1px solid rgba(212, 175, 55, 0.25);
             box-sizing: border-box;
         }
 
-        .pagination-btn {
-            min-width: 28px;
-            height: 28px;
-            padding: 0 8px;
+        .pagination-bar-wrapper {
+            width: 100%;
+            height: 4px;
+            background: rgba(212, 175, 55, 0.15);
+            border-radius: 2px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .pagination-progress {
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            background: linear-gradient(90deg, #d4af37 0%, #f0d266 100%);
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+
+        .pagination-controls {
             display: flex;
             align-items: center;
             justify-content: center;
+            gap: 12px;
+            width: 100%;
+        }
+
+        .pagination-nav-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 44px;
+            min-height: 44px;
+            padding: 10px 16px;
             background: rgba(30, 41, 59, 0.8);
-            border: 1px solid rgba(212, 175, 55, 0.3);
-            border-radius: 6px;
-            color: rgba(212, 175, 55, 0.9);
-            font-size: 0.75rem;
-            font-weight: 600;
+            border: 1px solid rgba(212, 175, 55, 0.4);
+            border-radius: 8px;
+            color: rgba(212, 175, 55, 1);
+            font-size: 0.8rem;
+            font-weight: 700;
             cursor: pointer;
             transition: all 0.2s ease;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        .pagination-btn:hover:not(.disabled) {
-            background: rgba(212, 175, 55, 0.12);
-            border-color: rgba(212, 175, 55, 0.5);
-        }
-
-        .pagination-btn:active:not(.disabled) {
+        .pagination-nav-btn:active {
             transform: scale(0.95);
+            background: rgba(212, 175, 55, 0.2);
+            border-color: rgba(212, 175, 55, 0.6);
         }
 
-        .pagination-btn.active {
-            background: linear-gradient(135deg, #d4af37 0%, #e8c547 100%);
-            border-color: #d4af37;
-            color: #0f0f1e;
-            font-weight: 700;
-            box-shadow: 0 2px 8px rgba(212, 175, 55, 0.35);
-        }
-
-        .pagination-btn.disabled {
+        .pagination-nav-btn.disabled {
             opacity: 0.3;
-            cursor: not-allowed;
             pointer-events: none;
         }
 
-        .pagination-ellipsis {
-            min-width: 20px;
-            height: 28px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: rgba(212, 175, 55, 0.6);
-            font-size: 0.75rem;
+        .pagination-page-info {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.9);
             font-weight: 600;
+            min-width: 70px;
+            text-align: center;
+        }
+
+        .pagination-btn {
+            display: none;
+        }
+
+        .pagination-ellipsis {
+            display: none;
         }
 
         .pagination-info {
-            width: 100%;
-            text-align: center;
-            font-size: 0.7rem;
-            color: rgba(255, 255, 255, 0.5);
-            margin-top: 6px;
-            font-weight: 400;
+            display: none;
         }
     </style>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -2892,117 +2904,50 @@
         console.log(`📄 Rendering pagination for ${totalPages} pages, current page: ${currentPage}`);
         paginationContainer.innerHTML = '';
         
-        const fragment = document.createDocumentFragment();
+        // Calculate progress percentage
+        const progressPercent = (currentPage / totalPages) * 100;
         
-        // Helper to create button
-        function createButton(text, page, isActive = false, isDisabled = false) {
-            const btn = document.createElement('button');
-            btn.className = `pagination-btn${isActive ? ' active' : ''}${isDisabled ? ' disabled' : ''}`;
-            btn.textContent = text;
-            if (!isDisabled && !isActive) {
-                btn.addEventListener('click', () => goToPage(page, movies));
-            }
-            return btn;
+        // Create progress bar wrapper (visual indicator only)
+        const barWrapper = document.createElement('div');
+        barWrapper.className = 'pagination-bar-wrapper';
+        
+        // Create progress bar
+        const progressBar = document.createElement('div');
+        progressBar.className = 'pagination-progress';
+        progressBar.style.width = `${progressPercent}%`;
+        barWrapper.appendChild(progressBar);
+        
+        paginationContainer.appendChild(barWrapper);
+        
+        // Create navigation controls
+        const controls = document.createElement('div');
+        controls.className = 'pagination-controls';
+        
+        // Prev button
+        const prevBtn = document.createElement('button');
+        prevBtn.className = `pagination-nav-btn${currentPage === 1 ? ' disabled' : ''}`;
+        prevBtn.innerHTML = '← Prev';
+        if (currentPage > 1) {
+            prevBtn.addEventListener('click', () => goToPage(currentPage - 1, movies));
         }
-        
-        // Helper to create ellipsis
-        function createEllipsis() {
-            const span = document.createElement('span');
-            span.className = 'pagination-ellipsis';
-            span.textContent = '...';
-            return span;
-        }
-        
-        // Previous button
-        const prevBtn = createButton('Prev', currentPage - 1, false, currentPage === 1);
-        fragment.appendChild(prevBtn);
-        
-        // Generate page numbers like: 1 2 3 ... 17 ... 112
-        const pagesToShow = [];
-        
-        if (totalPages <= 9) {
-            // Show all pages if total is small
-            for (let i = 1; i <= totalPages; i++) {
-                pagesToShow.push(i);
-            }
-        } else {
-            // Always show first page
-            pagesToShow.push(1);
-            
-            if (currentPage <= 4) {
-                // Near start: 1 2 3 4 5 ... 17 ... 112
-                for (let i = 2; i <= 5; i++) {
-                    pagesToShow.push(i);
-                }
-                pagesToShow.push('...');
-                // Show a middle point if many pages
-                if (totalPages > 20) {
-                    const midPoint = Math.floor(totalPages / 2);
-                    pagesToShow.push(midPoint);
-                    pagesToShow.push('...');
-                }
-                pagesToShow.push(totalPages);
-            } else if (currentPage >= totalPages - 3) {
-                // Near end: 1 ... 17 ... 108 109 110 111 112
-                if (totalPages > 20) {
-                    pagesToShow.push('...');
-                    const midPoint = Math.floor(totalPages / 2);
-                    pagesToShow.push(midPoint);
-                }
-                pagesToShow.push('...');
-                for (let i = totalPages - 4; i <= totalPages; i++) {
-                    pagesToShow.push(i);
-                }
-            } else {
-                // Middle: 1 ... 17 ... 45 46 47 ... 112
-                pagesToShow.push('...');
-                
-                // Show a early point if far from start
-                if (currentPage > 10) {
-                    const earlyPoint = Math.floor(currentPage / 2);
-                    pagesToShow.push(earlyPoint);
-                    pagesToShow.push('...');
-                }
-                
-                // Current page and neighbors
-                for (let i = currentPage - 1; i <= currentPage + 1; i++) {
-                    pagesToShow.push(i);
-                }
-                
-                // Show a late point if far from end
-                if (currentPage < totalPages - 10) {
-                    pagesToShow.push('...');
-                    const latePoint = Math.floor((currentPage + totalPages) / 2);
-                    pagesToShow.push(latePoint);
-                }
-                
-                pagesToShow.push('...');
-                pagesToShow.push(totalPages);
-            }
-        }
-        
-        // Render page buttons
-        pagesToShow.forEach(page => {
-            if (page === '...') {
-                fragment.appendChild(createEllipsis());
-            } else {
-                fragment.appendChild(createButton(String(page), page, page === currentPage));
-            }
-        });
-        
-        // Next button
-        const nextBtn = createButton('Next', currentPage + 1, false, currentPage === totalPages);
-        fragment.appendChild(nextBtn);
         
         // Page info
-        const infoDiv = document.createElement('div');
-        infoDiv.className = 'pagination-info';
-        const startItem = (currentPage - 1) * itemsPerPage + 1;
-        const endItem = Math.min(currentPage * itemsPerPage, movies.length);
-        infoDiv.textContent = `Halaman ${currentPage} dari ${totalPages} (${startItem}-${endItem} dari ${movies.length} film)`;
-        fragment.appendChild(infoDiv);
+        const pageInfo = document.createElement('span');
+        pageInfo.className = 'pagination-page-info';
+        pageInfo.textContent = `${currentPage} / ${totalPages}`;
         
-        paginationContainer.appendChild(fragment);
+        // Next button
+        const nextBtn = document.createElement('button');
+        nextBtn.className = `pagination-nav-btn${currentPage === totalPages ? ' disabled' : ''}`;
+        nextBtn.innerHTML = 'Next →';
+        if (currentPage < totalPages) {
+            nextBtn.addEventListener('click', () => goToPage(currentPage + 1, movies));
+        }
+        
+        controls.appendChild(prevBtn);
+        controls.appendChild(pageInfo);
+        controls.appendChild(nextBtn);
+        paginationContainer.appendChild(controls);
     }
     
     function goToPage(page, movies) {
