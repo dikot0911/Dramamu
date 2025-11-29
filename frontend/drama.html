@@ -1241,7 +1241,6 @@
             <div id="movies-container" style="display: flex; flex-direction: column; gap: 0;">
                 <div class="grid grid-cols-2 gap-x-3 gap-y-4" id="drama-list-container">
                 </div>
-                <div id="pagination-container" class="pagination-container" style="display: none;"></div>
             </div>
 
         </main>
@@ -2872,9 +2871,6 @@
         
         // Batch append all movie cards at once
         container.appendChild(fragment);
-        
-        // Render pagination
-        createPagination(movies, totalPages);
     }
     
     function createPagination(movies, totalPages) {
