@@ -1316,7 +1316,7 @@
     
     // Pagination state
     let currentPage = 1;
-    const itemsPerPage = 2;
+    const itemsPerPage = 12;
     
     // Get category from URL parameter
     function getCategoryFromUrl() {
@@ -2884,6 +2884,9 @@
         
         // Batch append all movie cards at once
         container.appendChild(fragment);
+        
+        // Create pagination controls
+        createPagination(movies, totalPages);
     }
     
     function createPagination(movies, totalPages) {
@@ -2893,19 +2896,13 @@
             return;
         }
         
-        // Hide pagination if only 1 page
-        if (totalPages <= 1) {
-            paginationContainer.style.display = 'none';
-            console.log('📄 Only 1 page, hiding pagination');
-            return;
-        }
-        
+        // Always show pagination (even with 1 page, just with disabled controls)
         paginationContainer.style.display = 'flex';
         console.log(`📄 Rendering pagination for ${totalPages} pages, current page: ${currentPage}`);
         paginationContainer.innerHTML = '';
         
-        // Calculate progress percentage
-        const progressPercent = (currentPage / totalPages) * 100;
+        // Calculate progress percentage (minimum 5% for visibility)
+        const progressPercent = totalPages > 0 ? Math.max(5, (currentPage / totalPages) * 100) : 100;
         
         // Create progress bar wrapper (visual indicator only)
         const barWrapper = document.createElement('div');
@@ -2925,10 +2922,16 @@
         
         // Prev button
         const prevBtn = document.createElement('button');
-        prevBtn.className = `pagination-nav-btn${currentPage === 1 ? ' disabled' : ''}`;
+        const isPrevDisabled = currentPage <= 1;
+        prevBtn.className = `pagination-nav-btn${isPrevDisabled ? ' disabled' : ''}`;
         prevBtn.innerHTML = '← Prev';
-        if (currentPage > 1) {
-            prevBtn.addEventListener('click', () => goToPage(currentPage - 1, movies));
+        prevBtn.type = 'button';
+        if (!isPrevDisabled) {
+            prevBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                goToPage(currentPage - 1, movies);
+            });
         }
         
         // Page info
@@ -2938,16 +2941,24 @@
         
         // Next button
         const nextBtn = document.createElement('button');
-        nextBtn.className = `pagination-nav-btn${currentPage === totalPages ? ' disabled' : ''}`;
+        const isNextDisabled = currentPage >= totalPages;
+        nextBtn.className = `pagination-nav-btn${isNextDisabled ? ' disabled' : ''}`;
         nextBtn.innerHTML = 'Next →';
-        if (currentPage < totalPages) {
-            nextBtn.addEventListener('click', () => goToPage(currentPage + 1, movies));
+        nextBtn.type = 'button';
+        if (!isNextDisabled) {
+            nextBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                goToPage(currentPage + 1, movies);
+            });
         }
         
         controls.appendChild(prevBtn);
         controls.appendChild(pageInfo);
         controls.appendChild(nextBtn);
         paginationContainer.appendChild(controls);
+        
+        console.log(`✅ Pagination rendered: page ${currentPage}/${totalPages}, prev=${!isPrevDisabled}, next=${!isNextDisabled}`);
     }
     
     function goToPage(page, movies) {
