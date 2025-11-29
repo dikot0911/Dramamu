@@ -1474,7 +1474,7 @@ if bot is not None:
             "2️⃣ Klik tombol 'CARI JUDUL' di menu utama\n"
             "3️⃣ Cari drama yang ingin ditonton\n"
             "4️⃣ Klik drama yang dipilih\n"
-            "5️⃣ Klik tombol 'Tonton' untuk mulai menonton\n"
+            "5️⃣ Klik 'Film' untuk mulai menonton\n"
             "6️⃣ Video akan dikirim langsung ke chat kamu"
             "</blockquote>\n\n"
             "💡 Tips: Gunakan fitur pencarian untuk menemukan drama lebih cepat!"
@@ -1560,10 +1560,10 @@ if bot is not None:
             "1️⃣ Klik tombol 'CARI CUAN' di menu utama\n"
             "2️⃣ Salin kode referral kamu\n"
             "3️⃣ Bagikan link referral ke teman-teman\n"
-            "4️⃣ Setiap teman yang join VIP menggunakan kode kamu, kamu dapat komisi!\n"
+            "4️⃣ Setiap teman yang join VIP melalui link kamu, kamu dapat komisi!\n"
             "5️⃣ Komisi bisa ditarik ke e-wallet atau rekening bank"
             "</blockquote>\n\n"
-            "💎 Komisi: Dapatkan hingga 20% dari setiap pembelian VIP!\n"
+            "💎 Komisi: Dapatkan hingga 25% dari setiap pembelian VIP!\n"
             "📈 Semakin banyak referral, semakin banyak cuan!"
         )
         
